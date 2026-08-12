@@ -73,7 +73,6 @@ pnpm prisma generate
 
 ## Running the Application
 To start the development servers, run both the backend and frontend in separate terminal windows/tabs:
-```
 
 * Backend Server (Terminal 1):
 ```bash
