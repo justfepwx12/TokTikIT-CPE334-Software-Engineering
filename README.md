@@ -79,18 +79,17 @@ pnpm prisma generate
 #### Running the Application
 To start the development servers, run both the backend and frontend in separate terminal windows/tabs:
 
-* Backend Server (Terminal 1):
+* Backend Server (Runs on http://localhost:3000):
 ```bash
 cd server
 pnpm dev
-Runs on http://localhost:3000
 ```
 
-* Frontend Client (Terminal 2):
+* Frontend Client (Runs on http://localhost:5173):
 ```bash
 cd client
 pnpm dev
-Runs on http://localhost:5173
+
 ```
 ---
 
