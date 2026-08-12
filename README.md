@@ -1,10 +1,10 @@
-### TokTikIT-CPE334-Software-Engineering
+## TokTikIT-CPE334-Software-Engineering
 
 TokTikIT is a web-based IT request and ticketing management system developed as part of the CPE334 Software Engineering course. It provides a platform for users to submit IT support tickets and for IT staff to manage, track, and resolve them efficiently.
 
 ---
 
-#### 🛠️ Tech Stack
+### 🛠️ Tech Stack
 
 This project is separated into a frontend client and a backend server, utilizing the following technologies:
 
@@ -26,7 +26,7 @@ This project is separated into a frontend client and a backend server, utilizing
 
 ---
 
-#### 📂 Project Structure
+### 📂 Project Structure
 
 The repository follows a clear separation of concerns:
 
@@ -41,7 +41,7 @@ TokTikIT-CPE334-Software-Engineering/
 ```
 ---
 
-#### Getting Started (Setup Guide)
+### Getting Started (Setup Guide)
 
 1. Prerequisites
 Ensure you have the following installed on your local machine:
@@ -76,7 +76,7 @@ pnpm prisma generate
 ```
 ---
 
-#### Running the Application
+### Running the Application
 To start the development servers, run both the backend and frontend in separate terminal windows/tabs:
 
 * Backend Server (Runs on http://localhost:3000):
@@ -93,7 +93,7 @@ pnpm dev
 ```
 ---
 
-#### Testing
+### Testing
 The backend is configured with Vitest for automated testing. To run the test suite:
 ```bash
 cd server
