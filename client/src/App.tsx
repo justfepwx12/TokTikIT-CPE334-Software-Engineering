@@ -9,6 +9,14 @@ function App() {
 
   return (
     <>
+      {/* 🟢 ส่วนที่เพิ่ม Bootstrap มา test  */}
+      <div className="container mt-4 text-center">
+        <div className="alert alert-success" role="alert">
+          Bootstrap is installed and working successfully!
+        </div>
+        <button className="btn btn-primary mb-3 me-2">Bootstrap Button</button>
+      </div>
+
       <section id="center">
         <div className="hero">
           <img src={heroImg} className="base" width="170" height="179" alt="" />
