@@ -1,7 +1,9 @@
 ### TokTikIT-CPE334-Software-Engineering
 
 TokTikIT is a web-based IT request and ticketing management system developed as part of the CPE334 Software Engineering course. It provides a platform for users to submit IT support tickets and for IT staff to manage, track, and resolve them efficiently.
+
 ---
+
 #### 🛠️ Tech Stack
 
 This project is separated into a frontend client and a backend server, utilizing the following technologies:
