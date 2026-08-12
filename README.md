@@ -61,7 +61,6 @@ pnpm install
 
 3. Environment Variables
 Navigate to the server directory and set up your environment variables:
-
 ```bash
 cd server
 cp .env.example .env
@@ -69,7 +68,6 @@ cp .env.example .env
 
 4. Database Initialization
 Generate the Prisma Client based on the initial schema:
-
 ```bash
 # Ensure you are inside the server directory
 pnpm prisma generate
@@ -89,7 +87,6 @@ pnpm dev
 ```bash
 cd client
 pnpm dev
-
 ```
 ---
 
@@ -97,5 +94,5 @@ pnpm dev
 The backend is configured with Vitest for automated testing. To run the test suite:
 ```bash
 cd server
-pnpm test run
+pnpm test or pnpm run
 ```
