@@ -39,6 +39,7 @@ TokTikIT-CPE334-Software-Engineering/
 ├── pnpm-workspace.yaml # pnpm workspace configuration
 └── README.md        # Project overview and setup instructions
 ```
+---
 
 #### Getting Started (Setup Guide)
 
@@ -72,10 +73,11 @@ Generate the Prisma Client based on the initial schema:
 ```bash
 # Ensure you are inside the server directory
 pnpm prisma generate
-
-## Running the Application
-To start the development servers, run both the backend and frontend in separate terminal windows/tabs:
 ```
+---
+
+#### Running the Application
+To start the development servers, run both the backend and frontend in separate terminal windows/tabs:
 
 * Backend Server (Terminal 1):
 ```bash
@@ -90,6 +92,7 @@ cd client
 pnpm dev
 Runs on http://localhost:5173
 ```
+---
 
 #### Testing
 The backend is configured with Vitest for automated testing. To run the test suite:
