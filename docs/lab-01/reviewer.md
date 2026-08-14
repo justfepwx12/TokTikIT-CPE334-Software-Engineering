@@ -22,9 +22,9 @@
 ## Pull Requests I reviewed for my partner
 **My comment:**
 > feature/1-project-foundation: Requested changes on `feature/1-project-foundation` due to missing `docs/lab-01/` and `server/tests/lab-01/` folders, failing test runner on server, and corrupted `server/pnpm-lock.yaml` (Also reported incomplete frontend integration on `feature/2-health-check`)
-> feature/2-health-check
+> feature/2-health-check: Requested changes on Criteria 4 & 5. Backend passed all tests (HTTP 200 OK, JSON structure, and Supertest tests passing), but Frontend implementation was incomplete `checkSystem()` in `client/src/api.ts` was not implemented, React UI did not fetch/display status, and error handling UI fallback was missing
 
 
 **Partner's response:**
 > feature/1-project-foundation: Added the required folder structures, fixed test configuration, re-generated `pnpm-lock.yaml`, and submitted updated commits for re-review
-> feature/2-health-check
+> feature/2-health-check: Implemented Criteria 4 & 5 by connecting the React page to the `/api/health` endpoint via Vite proxy, added Online/Offline status display with error handling, included Vitest tests for both states, and submitted for final approval (Approved & Merged)
