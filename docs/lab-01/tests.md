@@ -12,6 +12,7 @@ All test files live under server/tests/lab-01/ and client/tests/lab-01/.
 
 Paste your passing terminal output / screenshot below:
 
+issue 1
 ```text
  ✓ server/tests/lab-01/app.test.ts (1)
    ✓ Issue 1: GET /api/health returns 200, status=ok
