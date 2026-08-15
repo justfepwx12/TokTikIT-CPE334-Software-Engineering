@@ -2,7 +2,7 @@
 
 TokTikIT is a web-based IT request and ticketing management system developed as part of the CPE334 Software Engineering course. It provides a platform for users to submit IT support tickets and for IT staff to manage, track, and resolve them efficiently.
 ---
-## 🛠️ Tech Stack
+## Tech Stack
 
 This project is separated into a frontend client and a backend server, utilizing the following technologies:
 
@@ -24,7 +24,7 @@ This project is separated into a frontend client and a backend server, utilizing
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 The repository follows a clear separation of concerns:
 
@@ -89,5 +89,5 @@ pnpm dev
 The backend is configured with Vitest for automated testing. To run the test suite:
 ```bash
 cd server
-pnpm test or pnpm run
+pnpm test
 ```
