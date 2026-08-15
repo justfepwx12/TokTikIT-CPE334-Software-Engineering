@@ -18,8 +18,10 @@ export async function checkSystem(): Promise<SystemStatus> {
     throw new Error(`Health check failed with status: ${res.status}`);
   }
 
+  const data = await res.json();
+
   return {
-    online: true,
+    online: data.status === "ok",
     categories: [],
   };
 }
