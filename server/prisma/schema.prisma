@@ -7,10 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ---------------------------------------------------------------------------
 // Issue 3 — Create and seed IT request categories
-// ---------------------------------------------------------------------------
-
 model Category {
   id        Int      @id @default(autoincrement())
   name      String   @unique

@@ -2,7 +2,7 @@
 
 TokTikIT is a web-based IT request and ticketing management system developed as part of the CPE334 Software Engineering course. It provides a platform for users to submit IT support tickets and for IT staff to manage, track, and resolve them efficiently.
 ---
-## 🛠️ Tech Stack
+## Tech Stack
 
 This project is separated into a frontend client and a backend server, utilizing the following technologies:
 
@@ -24,7 +24,7 @@ This project is separated into a frontend client and a backend server, utilizing
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 The repository follows a clear separation of concerns:
 
@@ -58,7 +58,6 @@ pnpm install
 
 3. Environment Variables
 Navigate to the server directory and set up your environment variables:
-
 ```bash
 cd server
 cp .env.example .env
@@ -68,29 +67,27 @@ cp .env.example .env
 Generate the Prisma Client based on the initial schema:
 
 ```bash
-# Ensure you are inside the server directory
 pnpm prisma generate
+```
 
 ## Running the Application
-To start the development servers, run both the backend and frontend in separate terminal windows/tabs:
+To start the development servers, run both the backend and frontend in separate terminal tabs:
 
-* Backend Server (Terminal 1):
+* Backend Server (Runs on http://localhost:3000):
 ```bash
 cd server
 pnpm dev
-Runs on http://localhost:3000
 ```
 
-* Frontend Client (Terminal 2):
+* Frontend Client (Runs on http://localhost:5173):
 ```bash
 cd client
 pnpm dev
-Runs on http://localhost:5173
 ```
 
 ## Testing
 The backend is configured with Vitest for automated testing. To run the test suite:
 ```bash
 cd server
-pnpm test run
+pnpm test
 ```
