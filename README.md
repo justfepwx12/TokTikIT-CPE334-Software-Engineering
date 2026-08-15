@@ -1,10 +1,11 @@
 # TokTikIT-CPE334-Software-Engineering
 
-TokTikIT is a web-based IT request and ticketing management system developed as part of the CPE334 Software Engineering course. It provides a platform for users to submit IT support tickets and for IT staff to manage, track, and resolve them efficiently.
----
-## Tech Stack
+TokTikIT is a web-based IT request and ticketing management system developed as part the CPE334 Software Engineering course at KMUTT. 
+Lab 1 delivers a full-stack vertical slice: **React UI → Express REST API → Prisma ORM → PostgreSQL**.
 
-This project is separated into a frontend client and a backend server, utilizing the following technologies:
+---
+
+## Tech Stack
 
 **Frontend (Client)**
 * [React](https://react.dev/) - UI Library
@@ -13,81 +14,125 @@ This project is separated into a frontend client and a backend server, utilizing
 * [Bootstrap](https://getbootstrap.com/) - CSS Framework for UI components
 
 **Backend (Server)**
-* [Node.js](https://nodejs.org/) & [Express](https://expressjs.com/) - Web Framework
+* [Node.js](https://nodejs.org/) (v24) & [Express](https://expressjs.com/) - Web Framework
 * [TypeScript](https://www.typescriptlang.org/) - Programming Language
-* [PostgreSQL](https://www.postgresql.org/) - Relational Database
+* [PostgreSQL](https://www.postgresql.org/) (v17) - Relational Database
 * [Prisma](https://www.prisma.io/) - Next-generation ORM
 
 **Testing & Tooling**
 * [Vitest](https://vitest.dev/) & [Supertest](https://github.com/ladjs/supertest) - Unit and Integration Testing
-* [pnpm](https://pnpm.io/) - Fast, disk space efficient package manager
+* [pnpm](https://pnpm.io/) (v11.20) - Fast, disk-space efficient package manager
+* [Docker](https://www.docker.com/) - Containerization for local PostgreSQL database
 
 ---
 
-## Project Structure
-
-The repository follows a clear separation of concerns:
+## Repository Structure
 
 ```bash
 TokTikIT-CPE334-Software-Engineering/
-├── client/          # Frontend application (React + Vite)
-├── server/          # Backend application (Express + Prisma)
-├── docs/            # Project documentation and lab templates
-│   └── lab-01/      # Documents specific to Lab 01
-├── pnpm-workspace.yaml # pnpm workspace configuration
-└── README.md        # Project overview and setup instructions
+├── client/
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   ├── api.ts
+│   │   ├── App.css
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   ├── main.tsx
+│   │   └── vite-env.d.ts
+│   ├── tests/
+│   │   └── lab-01/
+│   ├── .env.example
+│   ├── index.html
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.ts
+├── server/
+│   ├── prisma/
+│   │   ├── migrations/
+│   │   ├── schema.prisma
+│   │   └── seed.ts
+│   ├── src/
+│   │   ├── index.ts
+│   │   └── routes/
+│   ├── tests/
+│   │   └── lab-01/
+│   ├── .env.example
+│   ├── package.json
+│   └── tsconfig.json
+├── docs/
+│   └── lab-01/
+│       ├── ai_use.md
+│       ├── reviewer.md
+│       └── tests.md
+├── docker-compose.yml
+├── .gitignore
+└── README.md
 ```
 
-## Getting Started (Setup Guide)
+## Setup Guide
 
 1. Prerequisites
 Ensure you have the following installed on your local machine:
 
-* Node.js (v18 or higher)
-* pnpm (npm install -g pnpm)
-* PostgreSQL (Running locally or via Docker)
+* Node.js (v24 or higher)
+* pnpm (v11.20 or higher)
+* PostgreSQL (Installed and running (for local PostgreSQL container))
 
 2. Installation
-Clone the repository and install all dependencies:
-
+Clone the repository and install dependencies for both server and client:
 ```bash
 git clone [https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering.git](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering.git)
 cd TokTikIT-CPE334-Software-Engineering
-pnpm install
+
+# Install server dependencies
+cd server && pnpm install
+
+# Install client dependencies
+cd ../client && pnpm install
 ```
 
 3. Environment Variables
 Navigate to the server directory and set up your environment variables:
 ```bash
-cd server
-cp .env.example .env
+# Server configuration (from project root)
+cp server/.env.example server/.env
+
+# Client configuration
+cp client/.env.example client/.env
 ```
 
 4. Database Initialization
-Generate the Prisma Client based on the initial schema:
-
+Start the PostgreSQL container and run Prisma migrations/seed scripts:
 ```bash
-pnpm prisma generate
+# 1. Start PostgreSQL Container (from root directory)
+docker compose up -d
+
+# 2. Run Database Migration and Generate Prisma Client (in server directory)
+cd server
+pnpm exec prisma generate
+pnpm exec prisma migrate dev
+
+# 3. Seed Initial Categories Data
+pnpm exec prisma db seed
 ```
 
 ## Running the Application
-To start the development servers, run both the backend and frontend in separate terminal tabs:
+Run the backend server and frontend client in separate terminal windows:
+| App | Command | URL |
+|---|---|---|
+| Backend | `cd server && pnpm dev` | http://localhost:5000 |
+| Frontend | `cd client && pnpm dev` | http://localhost:5173 |
 
-* Backend Server (Runs on http://localhost:3000):
-```bash
-cd server
-pnpm dev
-```
 
-* Frontend Client (Runs on http://localhost:5173):
-```bash
-cd client
-pnpm dev
-```
+## API Endpoints
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/health` | Backend status → `{ "status": "ok", "service": "TokTickIT API" }` |
+| GET | `/api/categories` | Seeded request categories from PostgreSQL |
 
-## Testing
-The backend is configured with Vitest for automated testing. To run the test suite:
+## Tests
 ```bash
-cd server
-pnpm test
+cd server && pnpm test    # Supertest API tests (Vitest)
+cd client && pnpm test    # Vitest UI tests
 ```

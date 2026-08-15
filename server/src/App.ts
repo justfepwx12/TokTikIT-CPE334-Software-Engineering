@@ -12,7 +12,7 @@ app.use(express.json());
 // Issue 2 — API health check
 // It must return HTTP 200 with JSON: { status: "ok", service: "TokTickIT API" }
 app.get("/api/health", (_req: Request, res: Response) => {
-  res.status(200).json({ status: "ok", service: "TokTickIT API" });
+  res.status(200).json({ status: "ok", service: "TokTikIT API" });
 });
 
 // Issue 4 — Category list

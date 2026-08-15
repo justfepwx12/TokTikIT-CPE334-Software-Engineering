@@ -3,14 +3,19 @@ import request from "supertest";
 import { app } from "../src/App.js";
 
 describe("GET /api/categories", () => {
-  it("returns HTTP 200 and a predictable list of categories", async () => {
+  it("returns HTTP 200 and all seeded categories from Issue 3", async () => {
     const response = await request(app).get("/api/categories");
 
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
-    expect(response.body.length).toBeGreaterThan(0);
+    expect(response.body.length).toBe(4);
 
-    expect(response.body[0]).toHaveProperty("id");
-    expect(response.body[0]).toHaveProperty("name");
+    const names = response.body.map((item: { name: string }) => item.name);
+    expect(names).toEqual([
+      "Account and Access",
+      "Hardware",
+      "Software",
+      "Network",
+    ]);
   });
 });
