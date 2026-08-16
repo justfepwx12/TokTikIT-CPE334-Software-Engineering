@@ -139,4 +139,3 @@ Run the backend server and frontend client in separate terminal windows:
 cd server && pnpm test    # Supertest API tests (Vitest)
 cd client && pnpm test    # Vitest UI tests
 ```
-

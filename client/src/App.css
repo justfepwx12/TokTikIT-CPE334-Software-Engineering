@@ -1,0 +1,37 @@
+:root {
+  --primary-color: #004d2d;
+  --bg-light-green: #e6f4ea;
+}
+
+.brand-title {
+  color: var(--primary-color);
+}
+
+.loading-text {
+  color: var(--primary-color);
+}
+
+.alert-success-custom {
+  background-color: var(--bg-light-green);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.category-container {
+  max-width: 500px;
+}
+
+.badge-custom {
+  background-color: var(--primary-color);
+}
+
+.btn-custom {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-custom:hover,
+.btn-custom:focus {
+  background-color: #003620;
+  border-color: #003620;
+}
