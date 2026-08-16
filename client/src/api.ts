@@ -16,12 +16,15 @@ export async function checkSystem(): Promise<SystemStatus> {
     throw new Error(`Health check failed with status: ${res.status}`);
   }
 
+  // อ่าน JSON Response เพื่อเช็ค status จริง
+  const healthData = await res.json();
+
   // ดึงข้อมูล Categories เพิ่มเติม
   const catRes = await fetch(`${API_URL}/api/categories`);
   const categories = catRes.ok ? await catRes.json() : [];
 
   return {
-    online: true,
+    online: healthData.status === "ok",
     categories,
   };
 }
