@@ -81,7 +81,7 @@ Ensure you have the following installed on your local machine:
 
 2. Installation
 Clone the repository and install dependencies for both server and client:
-```bash
+```sh
 git clone [https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering.git](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering.git)
 cd TokTikIT-CPE334-Software-Engineering
 
@@ -94,7 +94,7 @@ cd ../client && pnpm install
 
 3. Environment Variables
 Navigate to the server directory and set up your environment variables:
-```bash
+```sh
 # Server configuration (from project root)
 cp server/.env.example server/.env
 
@@ -104,7 +104,7 @@ cp client/.env.example client/.env
 
 4. Database Initialization
 Start the PostgreSQL container and run Prisma migrations/seed scripts:
-```bash
+```sh
 # 1. Start PostgreSQL Container (from root directory)
 docker compose up -d
 
@@ -119,6 +119,7 @@ pnpm exec prisma db seed
 
 ## Running the Application
 Run the backend server and frontend client in separate terminal windows:
+
 | App | Command | URL |
 |---|---|---|
 | Backend | `cd server && pnpm dev` | http://localhost:5000 |
@@ -126,13 +127,15 @@ Run the backend server and frontend client in separate terminal windows:
 
 
 ## API Endpoints
+
 | Method | Path | Description |
 |---|---|---|
 | GET | `/api/health` | Backend status → `{ "status": "ok", "service": "TokTickIT API" }` |
 | GET | `/api/categories` | Seeded request categories from PostgreSQL |
 
 ## Tests
-```bash
+
+```sh
 cd server && pnpm test    # Supertest API tests (Vitest)
 cd client && pnpm test    # Vitest UI tests
 ```
