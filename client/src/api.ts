@@ -10,18 +10,21 @@ export interface SystemStatus {
   categories: Category[];
 }
 
-// Issue 2 — API health check call
 export async function checkSystem(): Promise<SystemStatus> {
   const res = await fetch(`${API_URL}/api/health`);
-  
   if (!res.ok) {
     throw new Error(`Health check failed with status: ${res.status}`);
   }
 
-  const data = await res.json();
+  // อ่าน JSON Response เพื่อเช็ค status จริง
+  const healthData = await res.json();
+
+  // ดึงข้อมูล Categories เพิ่มเติม
+  const catRes = await fetch(`${API_URL}/api/categories`);
+  const categories = catRes.ok ? await catRes.json() : [];
 
   return {
-    online: data.status === "ok",
-    categories: [],
+    online: healthData.status === "ok",
+    categories,
   };
 }
