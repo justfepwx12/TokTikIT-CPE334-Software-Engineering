@@ -9,7 +9,7 @@
 | #22 | feature/1-project-foundation | Approved |
 | #24 / #26 | feature/2-health-check | Approved |
 | #25 | feature/3-category-seed | Approved |
-| #27 | feature/4-category-list | Waitting -> Approved |
+| #27 | feature/4-category-list | Approved |
 
 **Reviewer comment I received:**
 > **feature/1-project-foundation:** Requested fixes for blocking issues (empty `server/tsconfig.json`, stray `server/viteconfig.ts`, broken `pnpm-workspace.yaml`), CI test script (`vitest run`), lockfile duplication, README code block formatting, and unused Vite boilerplate. After approval, noted that `pnpm test run` in `README.md` caused Vitest to mistake `run` for a file name and recommended using `pnpm test` instead.
