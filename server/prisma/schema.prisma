@@ -12,4 +12,72 @@ model Category {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   createdAt DateTime @default(now())
+
+  tickets Ticket[]
+}
+
+// Issue 41 — Systems that a ticket can be related to (e.g. "Payroll Portal", "VPN")
+model RelatedSystem {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  tickets Ticket[]
+}
+
+// Issue 41 — Development Requester: the person who opens IT tickets
+model Requester {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tickets Ticket[]
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// Issue 41 — Core IT ticket
+model Ticket {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String
+  status      TicketStatus @default(OPEN)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  requesterId      Int
+  requester        Requester      @relation(fields: [requesterId], references: [id])
+
+  categoryId       Int
+  category         Category       @relation(fields: [categoryId], references: [id])
+
+  relatedSystemId  Int?
+  relatedSystem    RelatedSystem? @relation(fields: [relatedSystemId], references: [id])
+
+  attachments Attachment[]
+
+  @@index([requesterId])
+  @@index([categoryId])
+  @@index([relatedSystemId])
+}
+
+// Issue 41 — Files attached to a ticket
+model Attachment {
+  id        Int      @id @default(autoincrement())
+  filename  String
+  url       String
+  createdAt DateTime @default(now())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
 }
