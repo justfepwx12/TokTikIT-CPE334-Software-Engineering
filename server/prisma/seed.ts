@@ -44,9 +44,32 @@ async function seedRelatedSystems() {
   console.log(`Seeded ${relatedSystems.length} related systems.`)
 }
 
+async function seedRequesters() {
+  const requesters = [
+    { name: 'Anong Srisuk', email: 'anong.srisuk@toktikit.com', isActive: true },
+    { name: 'Weerapong Chaiyaporn', email: 'weerapong.chaiyaporn@toktikit.com', isActive: true },
+    { name: 'Kanya Boonmee', email: 'kanya.boonmee@toktikit.com', isActive: true },
+    { name: 'Sirichai Thongdee', email: 'sirichai.thongdee@toktikit.com', isActive: true },
+    { name: 'Napat Wongsawat', email: 'napat.wongsawat@toktikit.com', isActive: false },
+  ]
+
+  for (const requester of requesters) {
+    await prisma.requester.upsert({
+      where: { email: requester.email },
+      update: {},
+      create: requester,
+    })
+  }
+
+  const activeCount = requesters.filter((r) => r.isActive).length
+  const inactiveCount = requesters.length - activeCount
+  console.log(`Seeded ${requesters.length} requesters (${activeCount} active, ${inactiveCount} inactive).`)
+}
+
 async function main() {
   await seedCategories()
   await seedRelatedSystems()
+  await seedRequesters()
 }
 
 main()
