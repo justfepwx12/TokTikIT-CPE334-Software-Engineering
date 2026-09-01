@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-async function main() {
+async function seedCategories() {
   const categories = [
     'Account and Access',
     'Hardware',
@@ -17,6 +17,36 @@ async function main() {
       create: { name },
     })
   }
+
+  console.log(`Seeded ${categories.length} categories.`)
+}
+
+async function seedRelatedSystems() {
+  const relatedSystems = [
+    'Payroll Portal',
+    'VPN',
+    'Employee Email (Outlook)',
+    'HR Information System',
+    'Ticketing Platform',
+    'Wi-Fi / Network Infrastructure',
+    'Shared Drive / File Server',
+    'Video Conferencing (Zoom/Teams)',
+  ]
+
+  for (const name of relatedSystems) {
+    await prisma.relatedSystem.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    })
+  }
+
+  console.log(`Seeded ${relatedSystems.length} related systems.`)
+}
+
+async function main() {
+  await seedCategories()
+  await seedRelatedSystems()
 }
 
 main()
