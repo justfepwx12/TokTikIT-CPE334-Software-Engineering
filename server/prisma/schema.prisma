@@ -83,8 +83,9 @@ model Ticket {
   categoryId Int
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
-  systemId Int?
-  system   RelatedSystem? @relation(fields: [systemId], references: [id], onDelete: Restrict)
+  // BR-11: required field — Related System must always be selected at creation.
+  systemId Int
+  system   RelatedSystem @relation(fields: [systemId], references: [id], onDelete: Restrict)
 
   attachments Attachment[]
 

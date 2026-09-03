@@ -1,5 +1,17 @@
 -- CreateEnum
-CREATE TYPE "TicketStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED');
+CREATE TYPE "Status" AS ENUM ('PENDING', 'IN_PROGRESS', 'RESOLVED', 'CLOSED');
+
+-- CreateEnum
+CREATE TYPE "Priority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
+
+-- CreateTable
+CREATE TABLE "Category" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "RelatedSystem" (
@@ -25,14 +37,16 @@ CREATE TABLE "Requester" (
 -- CreateTable
 CREATE TABLE "Ticket" (
     "id" SERIAL NOT NULL,
+    "ticketNo" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
-    "status" "TicketStatus" NOT NULL DEFAULT 'OPEN',
+    "priority" "Priority" NOT NULL,
+    "status" "Status" NOT NULL DEFAULT 'PENDING',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "requesterId" INTEGER NOT NULL,
     "categoryId" INTEGER NOT NULL,
-    "relatedSystemId" INTEGER,
+    "systemId" INTEGER NOT NULL,
 
     CONSTRAINT "Ticket_pkey" PRIMARY KEY ("id")
 );
@@ -41,12 +55,21 @@ CREATE TABLE "Ticket" (
 CREATE TABLE "Attachment" (
     "id" SERIAL NOT NULL,
     "filename" TEXT NOT NULL,
-    "url" TEXT NOT NULL,
+    "filePath" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "size" INTEGER NOT NULL,
+    "isRemoved" BOOLEAN NOT NULL DEFAULT false,
+    "removedAt" TIMESTAMP(3),
+    "removalReason" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     "ticketId" INTEGER NOT NULL,
 
     CONSTRAINT "Attachment_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Category_name_key" ON "Category"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "RelatedSystem_name_key" ON "RelatedSystem"("name");
@@ -55,13 +78,16 @@ CREATE UNIQUE INDEX "RelatedSystem_name_key" ON "RelatedSystem"("name");
 CREATE UNIQUE INDEX "Requester_email_key" ON "Requester"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Ticket_ticketNo_key" ON "Ticket"("ticketNo");
+
+-- CreateIndex
 CREATE INDEX "Ticket_requesterId_idx" ON "Ticket"("requesterId");
 
 -- CreateIndex
 CREATE INDEX "Ticket_categoryId_idx" ON "Ticket"("categoryId");
 
 -- CreateIndex
-CREATE INDEX "Ticket_relatedSystemId_idx" ON "Ticket"("relatedSystemId");
+CREATE INDEX "Ticket_systemId_idx" ON "Ticket"("systemId");
 
 -- CreateIndex
 CREATE INDEX "Attachment_ticketId_idx" ON "Attachment"("ticketId");
@@ -73,7 +99,7 @@ ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_requesterId_fkey" FOREIGN KEY ("requ
 ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_relatedSystemId_fkey" FOREIGN KEY ("relatedSystemId") REFERENCES "RelatedSystem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_systemId_fkey" FOREIGN KEY ("systemId") REFERENCES "RelatedSystem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Attachment" ADD CONSTRAINT "Attachment_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "Ticket"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Attachment" ADD CONSTRAINT "Attachment_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "Ticket"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
