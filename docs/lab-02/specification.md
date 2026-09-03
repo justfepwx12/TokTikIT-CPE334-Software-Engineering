@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **Project** | TokTickIT — IT Service Desk |
 | **Sprint** | Lab 2: Requester Ticketing MVP with UI Foundation |
-| **Version** | v1.0 — baseline for implementation |
+| **Version** | v1.1 — clarifies Category/RelatedSystem "active" language (AD-13); no schema change |
 | **Date** | 2026-08-30 |
 | **Sources** | CPE 334 Lab 2 labsheet (course-provided handout, kept outside the repository) |
 | **Related docs** | `api-spec.md`, `ui-spec.md`, `tests.md` |
@@ -252,9 +252,12 @@ Full request/response shapes in `docs/lab-02/api-spec.md`. Endpoint summary:
 * **AD-10**: A single Playwright configuration covers the responsive screenshot matrix (desktop ≥992px, tablet 768–991px, mobile <768px), matching the labsheet §8.7 breakpoints exactly.
 * **AD-11**: Colors, breakpoints, and the "Account and Access" category name follow the labsheet's fixed values exactly (labsheet §5.3, §7, §8.7) rather than the team's earlier draft tokens — no deviation is justified here, since the labsheet fixes these values directly.
 * **AD-12 (Test File Organization)**: Automated test files are split by concern (e.g., `tickets.test.ts`, `attachments.test.ts`, `attachmentMetadata.test.ts`, `safeFilename.unit.test.ts`, `requesters.test.ts`, `categories.test.ts`) rather than using the single per-screen file names shown as the labsheet's example minimum structure (§12: `create-ticket.api.test.ts`, `my-tickets.api.test.ts`, `ticket-detail.api.test.ts`, `attachments.api.test.ts`). This finer split keeps each file traceable to one Acceptance-Criterion group in `tests.md` and easier to run in isolation; it still satisfies the same coverage the labsheet requires. The single Playwright E2E spec is likewise kept at `client/tests/lab-02/flow.spec.ts` rather than `e2e/lab-02/requester-ticket-flow.spec.ts`, to co-locate it with the rest of the Lab 2 frontend test suite. This is a deliberate deviation from the labsheet's example paths, not an omission.
+* **AD-13 (No `isActive` on Category/RelatedSystem)**: §8's endpoint names "Active Categories" / "Active Related Systems" describe the response, not a data-model flag — Category and RelatedSystem carry no `isActive` field (§7 confirms both are read-only, seeded-only reference data). Since §3 explicitly excludes admin management of Categories/Related Systems, there is no mechanism in Lab 2 to ever deactivate one; every seeded row is implicitly "active" by definition, so `GET /api/categories` and `GET /api/systems` simply return all seeded rows. If a future lab introduces admin-managed reference data, an `isActive` column can be added then without breaking this contract.
 
 ---
 
 *End of specification. This document is the engineering contract for the AI coding agent; changes require student approval and a version bump.*
 
 **Approval:** Reviewed and approved by the student on 2026-08-30. AD-01–AD-10 confirmed. This version is the implementation baseline (Spec-DD evidence for Issue #29 / #37).
+
+**v1.1 amendment:** AD-13 added and approved by the student on [DATE — fill in]. Clarifies that "Active Categories" / "Active Related Systems" in §8 refer to all seeded rows (no `isActive` field exists on these models); resolves an ambiguity surfaced during schema review on Issue #41. No schema or API behavior changed by this amendment.

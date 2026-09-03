@@ -23,14 +23,12 @@ async function seedCategories() {
 
 async function seedRelatedSystems() {
   const relatedSystems = [
-    'Payroll Portal',
-    'VPN',
-    'Employee Email (Outlook)',
-    'HR Information System',
-    'Ticketing Platform',
-    'Wi-Fi / Network Infrastructure',
-    'Shared Drive / File Server',
-    'Video Conferencing (Zoom/Teams)',
+    'Email Client',
+    'ERP Portal',
+    'VPN Service',
+    'HR Management System',
+    'Database Cluster',
+    'Shared Storage',
   ]
 
   for (const name of relatedSystems) {
