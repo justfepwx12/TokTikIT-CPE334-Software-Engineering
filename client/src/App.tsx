@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { checkSystem, type Category } from "./api.js";
 import Header from "./components/Header";
+import { RequesterProvider, useRequester } from "./context/RequesterContext";
+import RequesterSelection from "./pages/RequesterSelection";
+
 import "./App.css";
 
 function SystemStatusHome() {
@@ -73,7 +76,6 @@ function SystemStatusHome() {
   );
 }
 
-// Placeholder — replaced when the real screens ship in their own issues.
 function ComingSoon({ title }: { title: string }) {
   return (
     <div className="text-center p-5">
@@ -83,17 +85,38 @@ function ComingSoon({ title }: { title: string }) {
   );
 }
 
+// ป้องกัน Route: เด้งกลับไปหน้าเลือก Requester ทันทีถ้ายังไม่มี (FR-03)
+function ProtectedRoute({ children }: { children: JSX.Element }) {
+  const { requester, isLoading } = useRequester();
+  
+  if (isLoading) return null;
+  
+  if (!requester) {
+    return <Navigate to="/select-requester" replace />;
+  }
+  return children;
+}
+
 function App() {
   return (
-    <>
+    <RequesterProvider>
       <Header />
       <Routes>
         <Route path="/" element={<SystemStatusHome />} />
-        <Route path="/my-tickets" element={<ComingSoon title="My Tickets" />} />
-        <Route path="/create-ticket" element={<ComingSoon title="Create Ticket" />} />
-        <Route path="/select-requester" element={<ComingSoon title="Select Development Requester" />} />
+        <Route path="/select-requester" element={<RequesterSelection />} />
+        
+        <Route path="/my-tickets" element={
+          <ProtectedRoute>
+            <ComingSoon title="My Tickets" />
+          </ProtectedRoute>
+        } />
+        <Route path="/create-ticket" element={
+          <ProtectedRoute>
+            <ComingSoon title="Create Ticket" />
+          </ProtectedRoute>
+        } />
       </Routes>
-    </>
+    </RequesterProvider>
   );
 }
 

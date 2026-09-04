@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useRequester } from "../context/RequesterContext";
 
 export interface Requester {
   id: number;
@@ -7,15 +9,14 @@ export interface Requester {
   isActive: boolean;
 }
 
-interface RequesterSelectionProps {
-  onSelect: (requesterId: number) => void;
-}
-
-export default function RequesterSelection({ onSelect }: RequesterSelectionProps) {
+export default function RequesterSelection() {
   const [requesters, setRequesters] = useState<Requester[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
+
+  const { setRequester } = useRequester();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchRequesters = async () => {
@@ -39,8 +40,12 @@ export default function RequesterSelection({ onSelect }: RequesterSelectionProps
   }, []);
 
   const handleContinue = () => {
-    if (selectedId) {
-      onSelect(Number(selectedId));
+    const selected = requesters.find(r => String(r.id) === selectedId);
+    if (selected) {
+      // เซฟข้อมูลลง Context
+      setRequester({ id: selected.id, name: selected.name });
+      // กลับหน้าแรก
+      navigate("/");
     }
   };
 
@@ -88,10 +93,9 @@ export default function RequesterSelection({ onSelect }: RequesterSelectionProps
               value={selectedId}
               onChange={(e) => setSelectedId(e.target.value)}
             >
+              {/* นำ span ที่ครอบอยู่ออก ป้องกัน Warning ใน React */}
               {requesters.map((req) => (
-                <span key={req.id}>
-                   <option value={req.id}>{req.name}</option>
-                </span>
+                <option key={req.id} value={req.id}>{req.name}</option>
               ))}
             </select>
             
@@ -110,6 +114,7 @@ export default function RequesterSelection({ onSelect }: RequesterSelectionProps
             <div className="d-flex justify-content-end mt-4 gap-2">
               <button 
                 type="button" 
+                onClick={() => navigate("/")}
                 className="btn btn-light border px-4 fw-medium"
               >
                 Cancel

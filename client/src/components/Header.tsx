@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useRequester } from '../context/RequesterContext'
 import styles from './Header.module.css'
 
+
 const NAV_LINKS = [
   { label: 'My Tickets', href: '/my-tickets' },
   { label: 'Create Ticket', href: '/create-ticket' },
