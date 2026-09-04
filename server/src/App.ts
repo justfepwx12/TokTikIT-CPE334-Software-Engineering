@@ -35,4 +35,29 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
   }
 });
 
+// Issue 48 — Active Development Requester list
+app.get("/api/requesters", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const requesters = await prisma.requester.findMany({
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isActive: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+    res.json(requesters);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch requesters" });
+  }
+});
+
 export default app;
+
