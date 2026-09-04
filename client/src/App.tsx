@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { checkSystem, type Category } from "./api.js";
 import Header from "./components/Header";
 import { RequesterProvider, useRequester } from "./context/RequesterContext";
-import RequesterSelection from "./pฟges/RequesterSelection.js";
+import RequesterSelection from "./pages/RequesterSelection.js";
 
 import "./App.css";
 
