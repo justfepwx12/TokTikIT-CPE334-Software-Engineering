@@ -1,0 +1,276 @@
+
+/* Zen Green theme tokens (ui-spec.md §1) */
+.header {
+  --color-primary: #006B3C;
+  --color-secondary: #0B7A46;
+  --color-pale-green: #EAF6EF;
+  --color-on-primary: #FFFFFF;
+
+  background: var(--color-primary);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 64px;
+  padding: 0 16px;
+  gap: 12px;
+}
+
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex: 1;
+  min-width: 0;
+}
+
+.brand {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-on-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Desktop / tablet horizontal nav — hidden by default (mobile-first) */
+.nav {
+  display: none;
+}
+
+.navLink {
+  position: relative;
+  display: flex;      
+  align-items: center;    
+  height: 64px;        
+  padding: 0 4px;         
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.navLink:hover {
+  color: var(--color-on-primary);
+}
+
+.navLink:focus-visible {
+  outline: 2px solid var(--color-on-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.navLink[data-active='true'] {
+  color: var(--color-on-primary);
+  font-weight: 600;
+}
+
+.navLink[data-active='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;             
+  right: 0;             
+  bottom: 0;          
+  height: 3px;           
+  background: var(--color-on-primary);
+  border-radius: 3px 3px 0 0; 
+}
+
+/* Right section — simulated Requester context display (read-only) */
+.rightSection {
+  display: none;
+  align-items: center;
+  gap: 12px;
+}
+
+.requesterLabel {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-on-primary);
+  white-space: nowrap;
+}
+
+.changeRequesterButton {
+  padding: 6px 14px;
+  border: 1px solid var(--color-on-primary);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-on-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.changeRequesterButton:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.changeRequesterButton:focus-visible {
+  outline: 2px solid var(--color-on-primary);
+  outline-offset: 2px;
+}
+
+/* Hamburger toggle — visible by default (mobile), hidden at tablet+ */
+.menuToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.menuToggle:focus-visible {
+  outline: 2px solid var(--color-on-primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.menuIcon,
+.menuIcon::before,
+.menuIcon::after {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--color-on-primary);
+  border-radius: 2px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.menuIcon {
+  position: relative;
+}
+
+.menuIcon::before,
+.menuIcon::after {
+  content: '';
+  position: absolute;
+  left: 0;
+}
+
+.menuIcon::before {
+  top: -6px;
+}
+
+.menuIcon::after {
+  top: 6px;
+}
+
+.menuIcon[data-open='true'] {
+  background: transparent;
+}
+
+.menuIcon[data-open='true']::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+
+.menuIcon[data-open='true']::after {
+  top: 0;
+  transform: rotate(-45deg);
+}
+
+/* Mobile dropdown nav */
+.mobileNav {
+  display: none;
+  flex-direction: column;
+  padding: 8px 16px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.mobileNav[data-open='true'] {
+  display: flex;
+}
+
+.mobileNavLink {
+  padding: 12px 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.mobileNavLink[data-active='true'] {
+  color: var(--color-on-primary);
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 600;
+}
+
+.mobileNavLink:focus-visible {
+  outline: 2px solid var(--color-on-primary);
+  outline-offset: -2px;
+}
+
+.mobileRequesterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 12px 8px 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Simulation Mode banner (ui-spec.md §3.1) — Warning token: #B45309 on #FEF3C7 */
+.simulationBanner {
+  background: #FEF3C7;
+  color: #B45309;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-align: center;
+  padding: 10px 16px;
+}
+
+/* Tablet: 768px–991px */
+@media (min-width: 768px) {
+  .bar {
+    padding: 0 24px;
+  }
+
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .rightSection {
+    display: flex;
+  }
+
+  .menuToggle {
+    display: none;
+  }
+
+  .mobileNav {
+    display: none !important;
+  }
+}
+
+/* Desktop: 992px and up */
+@media (min-width: 992px) {
+  .bar {
+    padding: 0 32px;
+  }
+
+  .leftSection {
+    gap: 32px;
+  }
+
+  .nav {
+    gap: 28px;
+  }
+
+  .navLink {
+    font-size: 1rem;
+  }
+}

@@ -1,0 +1,78 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.label {
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1F2A24; /* dark charcoal-green */
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.asterisk {
+  color: #B3261E; /* Error red */
+  font-weight: bold;
+}
+
+.input {
+  font-family: inherit;
+  font-size: 0.9375rem;
+  color: #1F2A24; /* dark charcoal-green */
+  background-color: #FFFFFF;
+  border: 1px solid #D1D9D5; /* Editable-Field border */
+  border-radius: 6px;
+  padding: 10px 14px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+/* Focus State */
+.input:focus {
+  border-color: #0B7A46;
+  outline: 2px solid #0B7A46;
+  outline-offset: 2px;
+}
+
+/* Error State */
+.errorInput {
+  border-color: #B3261E !important;
+  color: #B3261E !important;
+  background-color: #FBEAEA !important;
+}
+
+.errorInput:focus {
+  outline: 2px solid #B3261E !important;
+  outline-offset: 2px;
+}
+
+/* Read-only State (distinct from Editable/Disabled) */
+.readOnlyInput {
+  background-color: #F1F0E9 !important; /* warm ivory background */
+  border-color: #E2E8F0 !important; /* slightly muted border */
+  cursor: default !important; /* non-interactive cursor */
+}
+
+.readOnlyInput:focus {
+  outline: none !important;
+}
+
+/* Disabled State */
+.input:disabled {
+  background-color: #F3F4F6 !important;
+  border-color: #E5E7EB !important;
+  color: #9CA3AF !important;
+  cursor: not-allowed !important;
+}
+
+.errorWrapper {
+  margin-top: 2px;
+}

@@ -76,7 +76,7 @@ TokTikIT-CPE334-Software-Engineering/
 Ensure you have the following installed on your local machine:
 
 * Node.js (v24 or higher)
-* pnpm (v11.20 or higher)
+* pnpm (v11.21.0 or higher)
 * PostgreSQL (Installed and running (for local PostgreSQL container))
 
 2. Installation

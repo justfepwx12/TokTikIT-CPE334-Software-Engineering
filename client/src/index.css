@@ -50,12 +50,11 @@
   }
 }
 
+/* Full-width app shell — the Vite starter template originally capped this
+   at 1126px with side borders; TokTickIT's header/nav need to span the
+   whole viewport (ui-spec.md §3.1, #31 App Shell scope). */
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  width: 100%;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
