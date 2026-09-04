@@ -8,8 +8,120 @@ datasource db {
 }
 
 // Issue 3 — Create and seed IT request categories
+// specification.md §7: read-only reference data in Lab 2; seeded only.
 model Category {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   createdAt DateTime @default(now())
+
+  tickets Ticket[]
 }
+
+// Issue 41 — Systems a ticket can be related to (e.g. "VPN Service")
+// read-only reference data in Lab 2; seeded only.
+model RelatedSystem {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  tickets Ticket[]
+}
+
+// Issue 41 — Development Requester: the simulated identity
+model Requester {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tickets Ticket[]
+}
+
+// displays; IN_PROGRESS/RESOLVED/CLOSED exist for forward-compatibility
+// only — no transition logic is implemented this sprint (AD-05).
+enum Status {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Issue 41 — Core IT ticket
+model Ticket {
+  id Int @id @default(autoincrement())
+
+  // BR-01: format TK-YYYYMMDD-XXXX, backend-generated, unique.
+  ticketNo String @unique
+
+  title       String
+  description String
+
+  // BR-11: required field, no default — the Requester must choose one.
+  // Note: there is only ONE priority field. A separate "IT Priority" is
+  // explicitly out of scope for Lab 2.
+  priority Priority
+
+  // BR-02 / AD-05: every new ticket starts PENDING; no other transition
+  // is implemented or exposed in Lab 2.
+  status Status @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requesterId Int
+  requester   Requester @relation(fields: [requesterId], references: [id], onDelete: Restrict)
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // BR-11: required field — Related System must always be selected at creation.
+  systemId Int
+  system   RelatedSystem @relation(fields: [systemId], references: [id], onDelete: Restrict)
+
+  attachments Attachment[]
+
+  @@index([requesterId])
+  @@index([categoryId])
+  @@index([systemId])
+}
+
+// Issue 41 — Files attached to a ticket
+model Attachment {
+  id Int @id @default(autoincrement())
+
+  // Original client-supplied filename — display metadata only, BR-20:
+  // never used to build a filesystem path.
+  filename String
+
+  // BR-20: server-generated, UUID-based storage name/path. The client
+  // filename never participates in path construction (blocks traversal).
+  filePath String
+
+  mimeType String
+  size     Int // bytes — enforced against BR-07 (5 MB max) at the API layer
+
+  // BR-08: soft removal only, never hard-deleted.
+  // removalReason is nullable at the DB level (no value until removed);
+  // the API layer must enforce 3-200 chars, required when isRemoved=true.
+  isRemoved     Boolean   @default(false)
+  removedAt     DateTime?
+  removalReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId])
+}
+
