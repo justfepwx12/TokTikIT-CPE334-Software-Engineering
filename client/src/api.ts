@@ -17,8 +17,15 @@ export interface Requester {
   isActive: boolean;
 }
 
+export interface SystemStatus {
+  online: boolean;
+  categories: Category[];
+}
+
 export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 export type Status = "PENDING" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+export type SortField = "createdAt" | "priority";
+export type SortOrder = "asc" | "desc";
 
 export interface Ticket {
   id: number;
@@ -42,9 +49,40 @@ export interface CreateTicketPayload {
   priority: Priority;
 }
 
-export interface SystemStatus {
-  online: boolean;
-  categories: Category[];
+export interface TicketSummary {
+  id: number;
+  ticketNo: string;
+  title: string;
+  description: string;
+  priority: Priority;
+  status: Status;
+  createdAt: string;
+  category: Category;
+  system: RelatedSystem;
+}
+
+export interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface TicketsResponse {
+  tickets: TicketSummary[];
+  pagination: Pagination;
+}
+
+export interface TicketQuery {
+  search?: string;
+  categoryId?: number;
+  systemId?: number;
+  status?: Status;
+  priority?: Priority;
+  sort?: SortField;
+  order?: SortOrder;
+  page?: number;
+  limit?: number;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -59,8 +97,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function checkSystem(): Promise<SystemStatus> {
-  const healthData = await request<{ status: string }>("/api/health");
-  const categories = await getCategories().catch(() => []);
+  const res = await fetch(`${API_URL}/api/health`);
+  if (!res.ok) {
+    throw new Error(`Health check failed with status: ${res.status}`);
+  }
+  const healthData = await res.json();
+  const catRes = await fetch(`${API_URL}/api/categories`);
+  const categories = catRes.ok ? await catRes.json() : [];
   return {
     online: healthData.status === "ok",
     categories,
@@ -86,5 +129,26 @@ export function createTicket(
       "x-requester-id": String(requesterId),
     },
     body: JSON.stringify(payload),
+  });
+}
+
+function buildQueryString(query: TicketQuery): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null || value === "") continue;
+    params.set(key, String(value));
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export function getTickets(
+  query: TicketQuery,
+  requesterId: number
+): Promise<TicketsResponse> {
+  return request<TicketsResponse>(`/api/tickets${buildQueryString(query)}`, {
+    headers: {
+      "x-requester-id": String(requesterId),
+    },
   });
 }

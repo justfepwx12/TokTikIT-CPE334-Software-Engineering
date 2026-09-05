@@ -4,6 +4,7 @@ import { checkSystem, type Category } from "./api.js";
 import Header from "./components/Header";
 import { RequesterProvider } from "./context/RequesterContext";
 import { useRequester } from "./hooks/useRequester";
+import MyTickets from "./pages/MyTickets";
 import RequesterSelection from "./pages/RequesterSelection.js";
 import CreateTicket from "./pages/CreateTicket";
 
@@ -109,15 +110,6 @@ function SystemStatusHome() {
   );
 }
 
-function ComingSoon({ title }: { title: string }) {
-  return (
-    <div className="text-center p-5">
-      <h2 className="fw-bold text-brand">{title}</h2>
-      <p className="text-secondary">This screen isn't implemented yet.</p>
-    </div>
-  );
-}
-
 // ป้องกัน Route: เด้งกลับไปหน้าเลือก Requester ทันทีถ้ายังไม่มี (FR-03)
 function ProtectedRoute({ children }: { children: React.JSX.Element }) {
   const { requester, isLoading } = useRequester();
@@ -142,7 +134,7 @@ function App() {
         
         <Route path="/my-tickets" element={
           <ProtectedRoute>
-            <ComingSoon title="My Tickets" />
+            <MyTickets />
           </ProtectedRoute>
         } />
         <Route path="/create-ticket" element={
