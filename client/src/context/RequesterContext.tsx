@@ -1,46 +1,34 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import {
+  RequesterContext,
+  type RequesterContextValue,
+  type SelectedRequester,
+} from './requester-context.js'
 
 // Lab 2 testing mechanism only — NOT authentication.
 // Holds which Development Requester is currently simulated as the logged-in user.
 // See ui-spec.md §3.1/§3.2.
 
-export interface SelectedRequester {
-  id: number
-  name: string
-}
-
-interface RequesterContextValue {
-  requester: SelectedRequester | null
-  /** true until the persisted selection (if any) has been read from storage */
-  isLoading: boolean
-  setRequester: (requester: SelectedRequester) => void
-  clearRequester: () => void
-}
-
 const STORAGE_KEY = 'toktickit.selectedRequester'
 
-const RequesterContext = createContext<RequesterContextValue | undefined>(undefined)
+function readStoredRequester(): SelectedRequester | null {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as SelectedRequester
+    if (parsed && typeof parsed.id === 'number' && typeof parsed.name === 'string') {
+      return parsed
+    }
+    return null
+  } catch {
+    return null
+  }
+}
 
 export function RequesterProvider({ children }: { children: ReactNode }) {
-  const [requester, setRequesterState] = useState<SelectedRequester | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  // Hydrate from localStorage on mount.
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as SelectedRequester
-        if (parsed && typeof parsed.id === 'number' && typeof parsed.name === 'string') {
-          setRequesterState(parsed)
-        }
-      }
-    } catch {
-      // Malformed/blocked storage — treat as no Requester selected.
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+  const [requester, setRequesterState] = useState<SelectedRequester | null>(() =>
+    readStoredRequester()
+  )
 
   const setRequester = (next: SelectedRequester) => {
     setRequesterState(next)
@@ -60,17 +48,12 @@ export function RequesterProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return (
-    <RequesterContext.Provider value={{ requester, isLoading, setRequester, clearRequester }}>
-      {children}
-    </RequesterContext.Provider>
-  )
-}
-
-export function useRequester() {
-  const ctx = useContext(RequesterContext)
-  if (!ctx) {
-    throw new Error('useRequester must be used within a <RequesterProvider>')
+  const value: RequesterContextValue = {
+    requester,
+    isLoading: false,
+    setRequester,
+    clearRequester,
   }
-  return ctx
+
+  return <RequesterContext.Provider value={value}>{children}</RequesterContext.Provider>
 }
