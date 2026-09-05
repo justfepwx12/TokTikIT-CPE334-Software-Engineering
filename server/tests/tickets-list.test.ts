@@ -81,6 +81,15 @@ describe("GET /api/tickets", () => {
     expect(res.status).toBe(401);
   });
 
+  it("returns HTTP 401 for numeric-yet-invalid headers (permissive parseInt bypass)", async () => {
+    for (const bad of ["12abc", "1.5", "abc", "", "0", "-5"]) {
+      const res = await request(app)
+        .get("/api/tickets")
+        .set("x-requester-id", bad as string);
+      expect(res.status).toBe(401);
+    }
+  });
+
   it("returns HTTP 403 for an inactive or unknown requester", async () => {
     const res = await request(app)
       .get("/api/tickets")

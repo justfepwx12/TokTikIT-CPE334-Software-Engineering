@@ -17,9 +17,9 @@ const listQuerySchema = z.object({
 
 function requesterIdFromHeader(req: Request): number | null {
   const raw = req.headers['x-requester-id'];
-  if (!raw) return null;
-  const id = parseInt(raw as string, 10);
-  return Number.isNaN(id) ? null : id;
+  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) return null;
+  const id = Number.parseInt(raw, 10);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
 export const listTickets = async (req: Request, res: Response) => {
