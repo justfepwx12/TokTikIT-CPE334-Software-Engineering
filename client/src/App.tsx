@@ -4,6 +4,7 @@ import { checkSystem, type Category } from "./api.js";
 import Header from "./components/Header";
 import { RequesterProvider } from "./context/RequesterContext";
 import { useRequester } from "./hooks/useRequester";
+import CreateTicket from "./pages/CreateTicket.js";
 import RequesterSelection from "./pages/RequesterSelection.js";
 
 import "./App.css";
@@ -144,7 +145,7 @@ function App() {
         } />
         <Route path="/create-ticket" element={
           <ProtectedRoute>
-            <ComingSoon title="Create Ticket" />
+            <CreateTicket />
           </ProtectedRoute>
         } />
       </Routes>

@@ -64,6 +64,28 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
   }
 });
 
+// Issue 43 — Related System list
+// GET /api/systems
+// Response shape per api-spec.md §3: [{ id, name }]. Ordered by id since this
+// feeds a user-facing Related System dropdown on Create Ticket.
+app.get("/api/systems", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const systems = await prisma.relatedSystem.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
+    });
+    res.json(systems);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch related systems" });
+  }
+});
+
 // Issue 52 — Create Ticket
 // POST /api/tickets
 app.post("/api/tickets", createTicket);
