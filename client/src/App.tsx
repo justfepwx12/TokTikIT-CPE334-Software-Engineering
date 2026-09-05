@@ -4,7 +4,7 @@ import { checkSystem, type Category } from "./api.js";
 import Header from "./components/Header";
 import { RequesterProvider } from "./context/RequesterContext";
 import { useRequester } from "./hooks/useRequester";
-import CreateTicket from "./pages/CreateTicket.js";
+import CreateTicket from "./pages/CreateTicket";
 import RequesterSelection from "./pages/RequesterSelection.js";
 
 import "./App.css";
