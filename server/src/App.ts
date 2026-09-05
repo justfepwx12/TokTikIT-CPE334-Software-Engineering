@@ -3,6 +3,7 @@ import cors from "cors";
 import { getPrisma } from "./prisma.js";
 import { createTicket } from "../controllers/ticket.controller.js";
 import { listTickets } from "../controllers/listTickets.controller.js";
+import { getTicketById } from "../controllers/ticketById.controller.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -92,6 +93,10 @@ app.get("/api/systems", async (_req: Request, res: Response) => {
 // GET /api/tickets
 // Paginated, searchable, filterable, sortable list owned by the active Requester.
 app.get("/api/tickets", listTickets);
+
+// Issue 61 — Ticket Detail
+// GET /api/tickets/:id — full details of one owned ticket incl. active attachments.
+app.get("/api/tickets/:id", getTicketById);
 
 // Issue 52 — Create Ticket
 // POST /api/tickets

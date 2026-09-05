@@ -4,7 +4,7 @@ All test files live under `server/tests/` and `client/tests/lab-02/` (E2E: `clie
 
 Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API, UI (component), UI Style, Responsive, and E2E**. Every AC in `specification.md` §9 (AC-01–AC-26) maps to at least one test below; see §2 for the AC → Test traceability matrix.
 
-**Current status (light = fully done):** server **6 files / 21 tests pass**, client **6 files / 33 tests pass** — API suite covers Health, Categories, Systems, Requesters, Create Ticket (POST), and My Tickets (GET); UI suite covers header/forms/requester selection, Create Ticket, and My Tickets screens. Unit, Perf, and E2E rows below remain `Planned`.
+**Current status (light = fully done):** server **7 files / 29 tests pass**, client **7 files / 38 tests pass** — API suite covers Health, Categories, Systems, Requesters, Create Ticket (POST), My Tickets (GET), and Ticket Detail (GET by id); UI suite covers header/forms/requester selection, Create Ticket, My Tickets, and Ticket Detail screens. Unit, Perf, and E2E rows below remain `Planned`.
 
 ---
 
@@ -67,6 +67,15 @@ Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API,
 | 53 | UI | Issue 55 | — | Vitest/RTL | `MyTickets.test.tsx` — error state + Retry refetch | Pass |
 | 54 | UI | Issue 53 | — | Vitest/RTL | `CreateTicket.test.tsx` — dropdowns load categories + systems | Pass |
 | 55 | API | Issue 43 | — | Supertest/Vitest | `systems.test.ts` — GET /api/systems seeded names in id order | Pass |
+| 56 | API | Issue 61 | AC-16 | Supertest/Vitest | `ticket-detail.test.ts` — GET owned ticket full shape incl. category/system/requester/attachments | Pass |
+| 57 | API | Issue 61 | AC-16 | Supertest/Vitest | `ticket-detail.test.ts` — 200 for owner, 403 for another requester | Pass |
+| 58 | API | Issue 61 | — | Supertest/Vitest | `ticket-detail.test.ts` — 401 malformed/missing header | Pass |
+| 59 | API | Issue 61 | — | Supertest/Vitest | `ticket-detail.test.ts` — 403 inactive/unknown requester | Pass |
+| 60 | API | Issue 61 | — | Supertest/Vitest | `ticket-detail.test.ts` — 404 nonexistent ticket, 400 non-numeric id | Pass |
+| 61 | UI | Issue 61 | AC-16 | Vitest/RTL | `TicketDetail.test.tsx` — renders metadata read-only with badges + attachments | Pass |
+| 62 | UI | Issue 61 | AC-10 | Vitest/RTL | `TicketDetail.test.tsx` — passes active requester id as ownership scope | Pass |
+| 63 | UI | Issue 61 | AC-16 | Vitest/RTL | `TicketDetail.test.tsx` — no-attachments message | Pass |
+| 64 | UI | Issue 61 | — | Vitest/RTL | `TicketDetail.test.tsx` — error state + Retry refetch | Pass |
 
 ---
 
@@ -83,13 +92,13 @@ Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API,
 | AC-07 | 5, 6 |
 | AC-08 | 24 |
 | AC-09 | 25 |
-| AC-10 | 22, 44, 50 |
+| AC-10 | 22, 44, 50, 62 |
 | AC-11 | 32, 47 |
 | AC-12 | 32, 48 |
 | AC-13 | 11, 49, 51 |
 | AC-14 | 12, 46, 52 |
 | AC-15 | 33 |
-| AC-16 | 35 |
+| AC-16 | 35, 56, 57, 61, 63 |
 | AC-17 | 9 |
 | AC-18 | 40 |
 | AC-19 | 15 |
@@ -101,7 +110,7 @@ Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API,
 | AC-25 | 38, 39 |
 | AC-26 | 34 |
 
-Rows 1–4, 17, 26, 36–37, 39, 41–42, 45, 53–55 are traced to labsheet requirements or specific BRs rather than a single numbered AC, since they verify preconditions, cross-cutting rules, or a required test *level* rather than one user-observable outcome.
+Rows 1–4, 17, 26, 36–37, 39, 41–42, 45, 53–55, 58–60, 64 are traced to labsheet requirements or specific BRs rather than a single numbered AC, since they verify preconditions, cross-cutting rules, or a required test *level* rather than one user-observable outcome.
 
 ---
 
@@ -118,10 +127,11 @@ $ vitest run   # cd server
  ✓ tests/systems.test.ts (1 test)
  ✓ tests/requesters.test.ts (2 tests)
  ✓ tests/tickets.test.ts (7 tests)
- ✓ tests/tickets-list.test.ts (9 tests)
+ ✓ tests/tickets-list.test.ts (10 tests)
+ ✓ tests/ticket-detail.test.ts (7 tests)
 
- Test Files  6 passed (6)
-      Tests 21 passed (21)
+ Test Files  7 passed (7)
+      Tests 29 passed (29)
 ```
 
 ### Client suite — full run
@@ -133,10 +143,11 @@ $ vitest run   # cd client
  ✓ tests/lab-02/RequesterSelection.test.tsx (2 tests)
  ✓ tests/lab-02/CreateTicket.test.tsx (3 tests)
  ✓ tests/lab-02/MyTickets.test.tsx (8 tests)
+ ✓ tests/lab-02/TicketDetail.test.tsx (5 tests)
  ✓ tests/lab-01/App.test.tsx (3 tests)
 
- Test Files  6 passed (6)
-      Tests 33 passed (33)
+ Test Files  7 passed (7)
+      Tests 38 passed (38)
 ```
 
 ### Issue 43: Create and seed IT request categories
@@ -217,5 +228,31 @@ $ vitest run   # cd client
    ✓ dynamically loads Categories and Related Systems into dropdowns
    ✓ shows field validation errors with red asterisks when submitting empty form
    ✓ shows a busy state on the Submit button during API processing
+```
+
+### Issue 61: Ticket Detail — GET /api/tickets/:id (read-only, owned)
+**Test File:** `server/tests/ticket-detail.test.ts`
+
+```text
+ ✓ tests/ticket-detail.test.ts (7)
+   ✓ returns HTTP 200 with full owned ticket shape incl. category/system/requester/attachments
+   ✓ returns HTTP 401 for a malformed x-requester-id
+   ✓ returns HTTP 401 when the header is missing
+   ✓ returns HTTP 403 for an inactive or unknown requester
+   ✓ returns HTTP 404 when the ticket does not exist
+   ✓ returns HTTP 403 when accessing another requester's ticket
+   ✓ returns HTTP 400 for a non-numeric ticket id
+```
+
+### Issue 61: Ticket Detail screen (UI)
+**Test File:** `client/tests/lab-02/TicketDetail.test.tsx`
+
+```text
+ ✓ tests/lab-02/TicketDetail.test.tsx (5)
+   ✓ fetches and renders owned ticket metadata read-only with badges and attachments
+   ✓ passes the active requester id as the ownership scope
+   ✓ shows the no-attachments message when the ticket has none
+   ✓ shows an error state with a Retry that refetches
+   ✓ shows an error for an invalid ticket id
 ```
 
