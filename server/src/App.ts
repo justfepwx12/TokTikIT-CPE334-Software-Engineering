@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { getPrisma } from "./prisma.js";
 import { createTicket } from "../controllers/ticket.controller.js";
+import { listTickets } from "../controllers/listTickets.controller.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -67,7 +68,8 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
 // Issue 43 — Related System list
 // GET /api/systems
 // Response shape per api-spec.md §3: [{ id, name }]. Ordered by id since this
-// feeds a user-facing Related System dropdown on Create Ticket.
+// feeds a user-facing Related System dropdown on Create Ticket (and the
+// My Tickets filter dropdown).
 app.get("/api/systems", async (_req: Request, res: Response) => {
   try {
     const prisma = getPrisma();
@@ -85,6 +87,11 @@ app.get("/api/systems", async (_req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch related systems" });
   }
 });
+
+// Issue 55 — My Tickets list
+// GET /api/tickets
+// Paginated, searchable, filterable, sortable list owned by the active Requester.
+app.get("/api/tickets", listTickets);
 
 // Issue 52 — Create Ticket
 // POST /api/tickets
