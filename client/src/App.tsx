@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { checkSystem, type Category } from "./api.js";
 import Header from "./components/Header";
 import { RequesterProvider } from "./context/RequesterContext";
@@ -118,11 +118,13 @@ function ComingSoon({ title }: { title: string }) {
 // ป้องกัน Route: เด้งกลับไปหน้าเลือก Requester ทันทีถ้ายังไม่มี (FR-03)
 function ProtectedRoute({ children }: { children: React.JSX.Element }) {
   const { requester, isLoading } = useRequester();
-  
+  const location = useLocation();
+
   if (isLoading) return null;
-  
+
   if (!requester) {
-    return <Navigate to="/select-requester" replace />;
+    const redirect = encodeURIComponent(location.pathname);
+    return <Navigate to={`/select-requester?redirect=${redirect}`} replace />;
   }
   return children;
 }
