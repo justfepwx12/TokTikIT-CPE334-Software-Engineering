@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { checkSystem, type Category } from "./api.js";
 import Header from "./components/Header";
-import { RequesterProvider, useRequester } from "./context/RequesterContext";
+import { RequesterProvider } from "./context/RequesterContext";
+import { useRequester } from "./hooks/useRequester";
 import RequesterSelection from "./pages/RequesterSelection.js";
 
 import "./App.css";
@@ -13,14 +14,14 @@ function SystemStatusHome() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCheckSystem = async () => {
+  const runCheck = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const status = await checkSystem();
       setIsOnline(status.online);
       setCategories(status.categories);
-    } catch (err) {
+    } catch {
       setIsOnline(false);
       setError("Unable to connect to TokTickIT API");
     } finally {
@@ -28,8 +29,37 @@ function SystemStatusHome() {
     }
   };
 
+  const handleCheckSystem = () => {
+    void runCheck();
+  };
+
   useEffect(() => {
-    handleCheckSystem();
+    let cancelled = false;
+
+    const initialCheck = async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const status = await checkSystem();
+        if (cancelled) return;
+        setIsOnline(status.online);
+        setCategories(status.categories);
+      } catch {
+        if (cancelled) return;
+        setIsOnline(false);
+        setError("Unable to connect to TokTickIT API");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    initialCheck();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

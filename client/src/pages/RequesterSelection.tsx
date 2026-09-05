@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { UserCog, Info, Shield, Home, ChevronRight } from 'lucide-react';
-import { useRequester } from "../context/RequesterContext";
+import { useRequester } from "../hooks/useRequester";
 
 export interface Requester {
   id: number;
@@ -18,6 +18,7 @@ export default function RequesterSelection() {
 
   const { setRequester } = useRequester();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const fetchRequesters = async () => {
@@ -30,7 +31,7 @@ export default function RequesterSelection() {
         if (data.length > 0) {
           setSelectedId(String(data[0].id));
         }
-      } catch (err) {
+      } catch {
         setError("Unable to load Development Requesters. Please try again later.");
       } finally {
         setIsLoading(false);
@@ -45,8 +46,12 @@ export default function RequesterSelection() {
     if (selected) {
       // เซฟข้อมูลลง Context
       setRequester({ id: selected.id, name: selected.name });
-      // กลับหน้าแรก
-      navigate("/");
+      // กลับไปหน้าที่ผู้ใช้ตั้งใจไว้ (จาก query param) หรือหน้าแรก
+      const redirectParam = new URLSearchParams(location.search).get("redirect") ?? "/";
+      const target = redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+        ? redirectParam
+        : "/";
+      navigate(target);
     }
   };
 

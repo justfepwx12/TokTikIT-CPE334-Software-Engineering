@@ -1,7 +1,6 @@
 /**
  * @vitest-environment jsdom
  */
-import { UserCog, Info, Shield, Home, ChevronRight } from 'lucide-react';
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
