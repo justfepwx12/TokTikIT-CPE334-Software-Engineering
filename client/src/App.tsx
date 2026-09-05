@@ -4,8 +4,10 @@ import { checkSystem, type Category } from "./api.js";
 import Header from "./components/Header";
 import { RequesterProvider } from "./context/RequesterContext";
 import { useRequester } from "./hooks/useRequester";
-import CreateTicket from "./pages/CreateTicket";
 import RequesterSelection from "./pages/RequesterSelection.js";
+import CreateTicket from "./pages/CreateTicket";
+
+import "./App.css";
 
 import "./App.css";
 
