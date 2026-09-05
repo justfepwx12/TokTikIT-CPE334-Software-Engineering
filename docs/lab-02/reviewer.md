@@ -8,9 +8,9 @@
 
 | PR | Branch | Reviewer | Reviewer verdict |
 |----|--------|----------|------------------|
-| #29 | feature/5-lab2-contract | Pawarisa Thongchua (@itspxsh) | Approved |
-| #30 | feature/6-db-models | Pawarisa Thongchua (@itspxsh) | Approved |
-| #31 | feature/7-app-shell | Pawarisa Thongchua (@itspxsh) & Lappawat Laohasoot (@MacOverlorD) | Approved |
+| #29 | feature/5-lab2-contract | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
+| #30 | feature/6-db-models | Lappawat Laohasoot (@MacOverlorD) | Approved & Merged |
+| #31 | feature/7-app-shell | Pawarisa Thongchua (@itspxsh) & Lappawat Laohasoot (@MacOverlorD) | Approved & Merged |
 | #32 | feature/8-requester-context | Pawarisa Thongchua (@itspxsh) | Waitting -> Approved |
 | #33 | feature/9-create-ticket | Pawarisa Thongchua (@itspxsh) | Pending |
 | #34 | feature/10-my-tickets | Pawarisa Thongchua (@itspxsh) | Pending |
@@ -84,5 +84,16 @@
 
 | PR | Branch | Verdict |
 |----|--------|---------|
-| | | |
+| #28 | feature/2-09-e2e-release | Approved & Merged |
+
+#### feature/2-09-e2e-release #28
+
+**PR Overview & Details:**  
+<img src="./images/mac-pr28-overview.png" width="600" />
+
+**My Review Comments & Author Response:**  
+<img src="./images/mac-pr28-review-comments.png" width="600" />
+
+**Merged & Closed:**  
+<img src="./images/mac-pr28-merged.png" width="600" />
 

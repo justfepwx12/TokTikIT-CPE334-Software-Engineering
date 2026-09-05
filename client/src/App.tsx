@@ -86,7 +86,7 @@ function ComingSoon({ title }: { title: string }) {
 }
 
 // ป้องกัน Route: เด้งกลับไปหน้าเลือก Requester ทันทีถ้ายังไม่มี (FR-03)
-function ProtectedRoute({ children }: { children: JSX.Element }) {
+function ProtectedRoute({ children }: { children: React.JSX.Element }) {
   const { requester, isLoading } = useRequester();
   
   if (isLoading) return null;

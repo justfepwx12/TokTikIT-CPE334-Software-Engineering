@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Clock, FileText, PlusCircle, UserCircle, Menu, X, UserCog, ChevronDown } from 'lucide-react'
+import { Clock, FileText, PlusCircle, UserCircle, Menu, X, ChevronDown } from 'lucide-react'
 import { useRequester } from '../context/RequesterContext'
 import styles from './Header.module.css'
 
