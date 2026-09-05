@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useRequester } from '../context/RequesterContext'
+import { useRequester } from './useRequester'
 
 /**
  * Use at the top of any Requester-facing page (My Tickets, Create Ticket,

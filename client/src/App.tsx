@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { checkSystem, type Category } from "./api.js";
 import Header from "./components/Header";
+import { RequesterProvider } from "./context/RequesterContext";
+import { useRequester } from "./hooks/useRequester";
+import RequesterSelection from "./pages/RequesterSelection.js";
+
 import "./App.css";
 
 function SystemStatusHome() {
@@ -10,14 +14,14 @@ function SystemStatusHome() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCheckSystem = async () => {
+  const runCheck = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const status = await checkSystem();
       setIsOnline(status.online);
       setCategories(status.categories);
-    } catch (err) {
+    } catch {
       setIsOnline(false);
       setError("Unable to connect to TokTickIT API");
     } finally {
@@ -25,8 +29,37 @@ function SystemStatusHome() {
     }
   };
 
+  const handleCheckSystem = () => {
+    void runCheck();
+  };
+
   useEffect(() => {
-    handleCheckSystem();
+    let cancelled = false;
+
+    const initialCheck = async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const status = await checkSystem();
+        if (cancelled) return;
+        setIsOnline(status.online);
+        setCategories(status.categories);
+      } catch {
+        if (cancelled) return;
+        setIsOnline(false);
+        setError("Unable to connect to TokTickIT API");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    initialCheck();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -73,7 +106,6 @@ function SystemStatusHome() {
   );
 }
 
-// Placeholder — replaced when the real screens ship in their own issues.
 function ComingSoon({ title }: { title: string }) {
   return (
     <div className="text-center p-5">
@@ -83,17 +115,40 @@ function ComingSoon({ title }: { title: string }) {
   );
 }
 
+// ป้องกัน Route: เด้งกลับไปหน้าเลือก Requester ทันทีถ้ายังไม่มี (FR-03)
+function ProtectedRoute({ children }: { children: React.JSX.Element }) {
+  const { requester, isLoading } = useRequester();
+  const location = useLocation();
+
+  if (isLoading) return null;
+
+  if (!requester) {
+    const redirect = encodeURIComponent(location.pathname);
+    return <Navigate to={`/select-requester?redirect=${redirect}`} replace />;
+  }
+  return children;
+}
+
 function App() {
   return (
-    <>
+    <RequesterProvider>
       <Header />
       <Routes>
         <Route path="/" element={<SystemStatusHome />} />
-        <Route path="/my-tickets" element={<ComingSoon title="My Tickets" />} />
-        <Route path="/create-ticket" element={<ComingSoon title="Create Ticket" />} />
-        <Route path="/select-requester" element={<ComingSoon title="Select Development Requester" />} />
+        <Route path="/select-requester" element={<RequesterSelection />} />
+        
+        <Route path="/my-tickets" element={
+          <ProtectedRoute>
+            <ComingSoon title="My Tickets" />
+          </ProtectedRoute>
+        } />
+        <Route path="/create-ticket" element={
+          <ProtectedRoute>
+            <ComingSoon title="Create Ticket" />
+          </ProtectedRoute>
+        } />
       </Routes>
-    </>
+    </RequesterProvider>
   );
 }
 

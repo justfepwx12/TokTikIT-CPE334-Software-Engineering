@@ -32,7 +32,7 @@ describe('Form Reusable UI Components', () => {
 
     it('handles disabled state with correct accessibility attributes', () => {
       const handleClick = vi.fn();
-      const { container } = render(
+      render(
         <Button disabled onClick={handleClick}>
           Disabled
         </Button>
