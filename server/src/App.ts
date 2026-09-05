@@ -1,6 +1,7 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import { getPrisma } from "./prisma.js";
+import { createTicket } from "../controllers/ticket.controller.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -36,6 +37,10 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
 });
 
 // Issue 48 — Active Development Requester list
+// GET /api/requesters
+// AC: "GET API retrieves only active Development Requesters from the database."
+// Response shape per api-spec.md §1: { id, name, email, isActive }.
+// Ordered by name (not id) since this feeds a user-facing selection dropdown.
 app.get("/api/requesters", async (_req: Request, res: Response) => {
   try {
     const prisma = getPrisma();
@@ -59,5 +64,30 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
   }
 });
 
-export default app;
+// Issue 43 — Related System list
+// GET /api/systems
+// Response shape per api-spec.md §3: [{ id, name }]. Ordered by id since this
+// feeds a user-facing Related System dropdown on Create Ticket.
+app.get("/api/systems", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const systems = await prisma.relatedSystem.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
+    });
+    res.json(systems);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch related systems" });
+  }
+});
 
+// Issue 52 — Create Ticket
+// POST /api/tickets
+app.post("/api/tickets", createTicket);
+
+export default app;
