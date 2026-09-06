@@ -4,20 +4,25 @@
 **Peer reviewer 1:** Pawarisa Thongchua — 67070501032 — GitHub: @itspxsh  
 **Peer reviewer 2:** Lappawat Laohasoot — 67070501039 — GitHub: @MacOverlorD  
 
-## Pull Requests I authored (reviewed by my partners)
+---
 
-| PR | Branch | Reviewer | Reviewer verdict |
-|----|--------|----------|------------------|
+## Pull Requests I Authored (Reviewed by My Partners)
+
+| PR | Branch | Reviewer | Reviewer Verdict |
+| :--- | :--- | :--- | :--- |
 | #29 | feature/5-lab2-contract | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 | #30 | feature/6-db-models | Lappawat Laohasoot (@MacOverlorD) | Approved & Merged |
 | #31 | feature/7-app-shell | Pawarisa Thongchua (@itspxsh) & Lappawat Laohasoot (@MacOverlorD) | Approved & Merged |
 | #32 | feature/8-requester-context | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 | #33 | feature/9-create-ticket | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 | #34 | feature/10-my-tickets | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
+| #74 | feature/11-ticket-detail | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
+| #75 | feature/12-e2e-release | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 
 ---
 
 ### feature/5-lab2-contract #68
+
 **Reviewed by:** Pawarisa Thongchua (@itspxsh)
 
 **PR Overview & Details:**  
@@ -32,6 +37,7 @@
 ---
 
 ### feature/6-db-models #69
+
 **Reviewed by:** Lappawat Laohasoot (@MacOverlorD)
 
 **PR Overview & Details:**  
@@ -46,6 +52,7 @@
 ---
 
 ### feature/7-app-shell #70
+
 **Reviewed by:** Pawarisa Thongchua (@itspxsh) & Lappawat Laohasoot (@MacOverlorD)
 
 **PR Overview & Details:**  
@@ -69,6 +76,7 @@
 ---
 
 ### feature/8-requester-context #32
+
 **Reviewed by:** Pawarisa Thongchua (@itspxsh)
 
 **PR Overview & Details:**  
@@ -86,6 +94,7 @@
 ---
 
 ### feature/9-create-ticket #33
+
 **Reviewed by:** Pawarisa Thongchua (@itspxsh)
 
 **PR Overview & Details:**  
@@ -100,6 +109,7 @@
 ---
 
 ### feature/10-my-tickets #34
+
 **Reviewed by:** Pawarisa Thongchua (@itspxsh)
 
 **PR Overview & Details:**  
@@ -115,20 +125,43 @@
 <img src="./images/feat10-approved.png" width="600" />
 
 **Merged & Closed:**  
-<img src="./images/feat10-merged.png" width="600" />
+ <img src="./images/feat10-merged.png" width="600" />
 
 ---
 
-## Pull Requests I reviewed for my partners
+### feature/12-e2e-release #75
+
+**Reviewed by:** Pawarisa Thongchua (@itspxsh)
+
+**PR Overview & Details:**  
+<img src="./images/feat12-overview.png" width="600" />
+
+**Reviewer changes requested:**  
+<img src="./images/feat12-changes-requested.png" width="600" />
+
+**How I responded:**  
+<img src="./images/feat12-responded.png" width="600" />
+
+**Reviewer approved comment:**  
+<img src="./images/feat12-approved.png" width="600" />
+
+---
+
+## Pull Requests I Reviewed for My Partners
 
 ### 1. Reviewed for Pawarisa Thongchua (@itspxsh)
 
 | PR | Branch | Verdict |
-|----|--------|---------|
+| :--- | :--- | :--- |
 | #12 | docs(lab-02): approve sprint engineering contract | Approved & Merged |
 | #21 | L2-02 - Create initial TokTick database and user seeds | Approved & Merged |
 | #22 | L2-03 - Build Zen Green app shell and reusable UI foundation | Approved & Merged |
 | #23 | L2-04 - Implement Development Requester context | Approved & Merged |
+| #24 | L2-05 - Implement Create Ticket workflow | Approved & Merged |
+| #25 | L2-06 - Implement My Tickets discovery workflow | Approved & Merged |
+| #26 | L2-07 - Implement Requester Ticket Detail | Approved & Merged |
+| #27 | L2-08 - Implement Attachment lifecycle | Approved & Merged |
+| #28 | L2-09 - Complete E2E evidence and release readiness | Approved & Merged |
 
 #### PR #12: docs(lab-02): approve sprint engineering contract
 
@@ -206,10 +239,81 @@
 
 ---
 
+#### PR #24: L2-05 - Implement Create Ticket workflow
+
+**PR Overview & Details:**  
+<img src="./images/posh-pr24-overview.png" width="600" />
+
+**Validation Update:**  
+<img src="./images/posh-pr24-validation-update.png" width="600" />
+
+**Reviewer Approved:**  
+<img src="./images/posh-pr24-approved.png" width="600" />
+
+**Completion:**  
+<img src="./images/posh-pr24-completed.png" width="600" />
+
+---
+
+#### PR #25: L2-06 - Implement My Tickets discovery workflow
+
+**PR Overview & Details:**  
+<img src="./images/posh-pr25-overview.png" width="600" />
+
+**Reviewer Approved:**  
+<img src="./images/posh-pr25-approved.png" width="600" />
+
+**Completion:**  
+<img src="./images/posh-pr25-completed.png" width="600" />
+
+---
+
+#### PR #26: L2-07 - Implement Requester Ticket Detail
+
+**PR Overview & Details:**  
+<img src="./images/posh-pr26-overview.png" width="600" />
+
+**Reviewer Approved:**  
+<img src="./images/posh-pr26-approved.png" width="600" />
+
+**Completion:**  
+<img src="./images/posh-pr26-completed.png" width="600" />
+
+---
+
+#### PR #27: L2-08 - Implement Attachment lifecycle
+
+**PR Overview & Details:**  
+<img src="./images/posh-pr27-overview.png" width="600" />
+
+**Reviewer Approved:**  
+<img src="./images/posh-pr27-approved.png" width="600" />
+
+**Completion:**  
+<img src="./images/posh-pr27-completed.png" width="600" />
+
+---
+
+#### PR #28: L2-09 - Complete E2E evidence and release readiness
+
+**PR Overview & Details:**  
+<img src="./images/posh-pr28-overview.png" width="600" />
+
+**Inline Review Comments:**  
+<img src="./images/posh-pr28-inline.png" width="600" />
+
+**Reviewer Approved:**  
+<img src="./images/posh-pr28-approved.png" width="600" />
+
+**Completion:**  
+<img src="./images/posh-pr28-completed.png" width="600" />
+
+---
+
 ### 2. Reviewed for Lappawat Laohasoot (@MacOverlorD)
 
 | PR | Branch | Verdict |
-|----|--------|---------|
+| :--- | :--- | :--- |
 | #28 | feature/2-09-e2e-release | Approved & Merged |
 | #29 | feature/2-09-release-evidence | Approved & Merged |
 | #30 | lab2-staging | Approved & Merged |

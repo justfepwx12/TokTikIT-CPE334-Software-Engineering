@@ -12,42 +12,42 @@ Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API,
 
 | # | Level | Related Issue | AC | Tool | Test | Result |
 |---|-------|---|---|------|------|--------|
-| 1 | Unit | Issue 52 | — | Vitest | `ticketNumber.unit.test.ts` — `generateTicketNo()` format | Planned |
-| 2 | Unit | Issue 60 | BR-20 | Vitest | `safeFilename.unit.test.ts` — safe storage-name generation | Planned |
-| 3 | Database/Seed | Issue 41–44 | — | Prisma/Vitest | `database.test.ts` — seed counts & names correct, idempotent | Planned |
+| 1 | Unit | Issue 52 | — | Vitest | `ticketNumber.unit.test.ts` — `generateTicketNo()` format | Pass |
+| 2 | Unit | Issue 60 | BR-20 | Vitest | `safeFilename.unit.test.ts` — safe storage-name generation | Pass |
+| 3 | Database/Seed | Issue 41–44 | — | Prisma/Vitest | `database.test.ts` — seed counts & names correct, idempotent | Pass |
 | 4 | Database/Seed | Issue 41–44 | — | Prisma/Vitest | `database.test.ts` — FK relationships resolve | Planned |
 | 5 | API | Issue 48 | AC-07 | Supertest | `requesters.test.ts` — GET returns 200 | Pass |
 | 6 | API | Issue 48 | AC-07 | Supertest | `requesters.test.ts` — excludes inactive | Pass |
 | 7 | API | Issue 43 | — | Supertest | `categories.test.ts` — exact 4 seeded names | Pass |
 | 8 | API | Issue 52 | AC-01 | Supertest/Vitest | `tickets.test.ts` — POST creates ticket, returns ticketNo | Pass |
-| 9 | API | Issue 52 | AC-17 | Supertest/Vitest | `tickets.test.ts` — 3 same-day tickets, sequential nos | Planned |
+| 9 | API | Issue 52 | AC-17 | Supertest/Vitest | `tickets.test.ts` — 3 same-day tickets, sequential nos | Pass |
 | 10 | API | Issue 52 | AC-02 | Supertest/Vitest | `tickets.test.ts` — title/description length → 400 | Pass |
-| 11 | API | Issue 56 | AC-13 | Supertest/Vitest | `tickets-list.test.ts` — default sort `createdAt desc` | Planned |
+| 11 | API | Issue 56 | AC-13 | Supertest/Vitest | `tickets-list.test.ts` — default sort `createdAt desc` | Pass |
 | 12 | API | Issue 56 | AC-14 | Supertest/Vitest | `tickets-list.test.ts` — invalid sort/page/limit → 400 | Pass |
 | 13 | API | Issue 60 | AC-20 | Supertest/Vitest | `attachments.test.ts` — file >5MB → 413 | Planned |
-| 14 | API | Issue 60 | AC-20 | Supertest/Vitest | `attachments.test.ts` — bad MIME type → 415 | Planned |
-| 15 | API | Issue 60 | AC-19 | Supertest/Vitest | `attachments.test.ts` — 6th active attachment → 400 | Planned |
-| 16 | API | Issue 60 | BR-20 | Supertest/Vitest | `attachments.test.ts` — duplicate filenames, no collision | Planned |
-| 17 | API | Issue 60 | — | Supertest/Vitest | `attachmentMetadata.test.ts` — metadata GET (200/404/403) | Planned |
+| 14 | API | Issue 60 | AC-20 | Supertest/Vitest | `attachments.test.ts` — bad MIME type → 415 | Pass |
+| 15 | API | Issue 60 | AC-19 | Supertest/Vitest | `attachments.test.ts` — 6th active attachment → 400 | Pass |
+| 16 | API | Issue 60 | BR-20 | Supertest/Vitest | `attachments.test.ts` — duplicate filenames, no collision | Pass |
+| 17 | API | Issue 60 | — | Supertest/Vitest | `attachmentMetadata.test.ts` — metadata GET (200/404/403) | Pass |
 | 18 | API | Issue 60 | AC-21 | Supertest/Vitest | `attachments.test.ts` — blank removalReason → 400 | Planned |
-| 19 | API | Issue 60 | AC-22 | Supertest/Vitest | `attachments.test.ts` — soft-remove sets isRemoved+reason | Planned |
-| 20 | API | Issue 60 | AC-23 | Supertest/Vitest | `attachments.test.ts` — download removed file → 410 | Planned |
+| 19 | API | Issue 60 | AC-22 | Supertest/Vitest | `attachments.test.ts` — soft-remove sets isRemoved+reason | Pass |
+| 20 | API | Issue 60 | AC-23 | Supertest/Vitest | `attachments.test.ts` — download removed file → 410 | Pass |
 | 21 | API | Issue 60 | AC-24 | Supertest/Vitest | `attachments.test.ts` — non-owner action → 403 | Planned |
 | 22 | API | Issue 55 | AC-10 | Supertest/Vitest | `tickets-list.test.ts` — cross-requester GET → own-list only / 403 | Pass |
-| 23 | UI | Issue 49, 51 | AC-06 | Vitest/RTL | `Header.test.tsx` — Simulation-Mode banner shows | Planned |
+| 23 | UI | Issue 49, 51 | AC-06 | Vitest/RTL | `Header.test.tsx` — Simulation-Mode banner shows | Pass |
 | 24 | UI | Issue 49, 50 | AC-08 | Vitest/RTL | `RequesterSelection.test.tsx` — renders + selects requester | Pass |
 | 25 | UI | Issue 50 | AC-09 | Vitest/RTL | `RequesterSelection.test.tsx` — persists via localStorage | Pass |
-| 26 | UI | Issue 48, 49 | — | Vitest/RTL | `RequesterSelection.test.tsx` — loading/empty/error states | Planned |
+| 26 | UI | Issue 48, 49 | — | Vitest/RTL | `RequesterSelection.test.tsx` — loading/empty/error states | Pass |
 | 27 | UI | Issue 53, 54 | AC-02 | Vitest/RTL | `CreateTicket.test.tsx` — inline error below field | Pass |
 | 28 | UI | Issue 55 | AC-03 | Vitest/RTL | `CreateTicket.test.tsx` — busy state, no double-submit | Pass |
-| 29 | UI | Issue 53, 55 | AC-04 | Vitest/RTL | `CreateTicket.test.tsx` — API failure preserves fields | Planned |
-| 30 | UI | Issue 62 | AC-05 | Vitest/RTL | `CreateTicket.test.tsx` — invalid file rejected pre-submit | Planned |
-| 31 | UI | Issue 55 | AC-01 | Vitest/RTL | `CreateTicket.test.tsx` — success shows ticket number | Planned |
+| 29 | UI | Issue 53, 55 | AC-04 | Vitest/RTL | `CreateTicket.test.tsx` — API failure preserves fields | Pass |
+| 30 | UI | Issue 62 | AC-05 | Vitest/RTL | `CreateTicket.test.tsx` — invalid file rejected pre-submit | Pass |
+| 31 | UI | Issue 55 | AC-01 | Vitest/RTL | `CreateTicket.test.tsx` — success shows ticket number | Pass |
 | 32 | UI | Issue 58 | AC-11, AC-12 | Vitest/RTL | `MyTickets.test.tsx` — search/filter query params | Pass |
 | 33 | UI | Issue 57 | AC-15 | Vitest/RTL | `MyTickets.test.tsx` — empty vs. no-results states | Pass |
-| 34 | UI | Issue 58 | AC-26 | Vitest/RTL | `MyTickets.test.tsx` — keyboard-operable controls | Planned |
-| 35 | UI | Issue 61 | AC-16 | Vitest/RTL | `RequesterTicketDetail.test.tsx` — read-only + badges | Planned |
-| 36 | UI Style | Issue 47, 53, 61 | — | Vitest/RTL (CSS) | `uiStyle.test.tsx` — read-only tokens, asterisks, badge text | Planned |
+| 34 | UI | Issue 58 | AC-26 | Vitest/RTL | `MyTickets.test.tsx` — keyboard-operable controls | Pass |
+| 35 | UI | Issue 61 | AC-16 | Vitest/RTL | `RequesterTicketDetail.test.tsx` — read-only + badges | Pass |
+| 36 | UI Style | Issue 47, 53, 61 | — | Vitest/RTL (CSS) | `uiStyle.test.tsx` — read-only tokens, asterisks, badge text | Pass |
 | 37 | UI Style | Issue 65 | — | Visual | captured directly into the report (Zen Green tokens / visual checklist) | Pass |
 | 38 | Responsive | Issue 57 | AC-25 | Vitest/RTL | `MyTickets.test.tsx` — table (desktop) vs. cards (mobile) | Pass |
 | 39 | Responsive | Issue 65 | AC-25 | Playwright | `flow.spec.ts` — full flow verified at desktop/tablet/mobile viewports | Pass |
@@ -272,5 +272,5 @@ $ pnpm exec playwright test   # cd client
 
 The same vitest run is untouched by the E2E spec (excluded via `test.exclude` in `vite.config.ts`); `client/tests/e2e/` is only executed under `pnpm exec playwright test` (`test:e2e`).
 
-> Issue 65 (visual checklist): desktop/tablet/mobile screenshots are captured directly into the final lab report rather than as test artifacts. The E2E run above still confirms the UI renders and behaves correctly at all three viewports.
+> Issue 65 (visual checklist): desktop/tablet/mobile screenshots are captured directly into the final lab report rather than as test artifacts. The E2E run above still confirms the UI renders and behaves correctly at all viewports.
 
