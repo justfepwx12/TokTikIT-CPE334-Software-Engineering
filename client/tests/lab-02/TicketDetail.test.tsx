@@ -15,6 +15,8 @@ vi.mock("lucide-react", () => ({
   AlertCircle: () => null,
   FileText: () => null,
   File: () => null,
+  Download: () => null,
+  X: () => null,
 }));
 
 vi.mock("../../src/components/Badge", () => ({
@@ -52,6 +54,7 @@ const fakeTicket: TicketDetailType = {
   attachments: [
     { id: 1, filename: "screenshot.png", mimeType: "image/png", size: 154200, isRemoved: false },
     { id: 2, filename: "report.pdf", mimeType: "application/pdf", size: 2048, isRemoved: false },
+    { id: 3, filename: "revoked.pdf", mimeType: "application/pdf", size: 4096, isRemoved: true },
   ],
 };
 
@@ -102,6 +105,105 @@ describe("TicketDetail", () => {
     expect(screen.getByTestId("attachment-list")).toBeDefined();
     expect(screen.getByText("screenshot.png")).toBeDefined();
     expect(screen.getByText("report.pdf")).toBeDefined();
+  });
+
+  it("shows an active attachment's Download button and disables it for removed attachments", async () => {
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
+
+    expect(screen.getByTestId("download-1")).toBeDefined();
+    expect(screen.getByTestId("remove-1")).toBeDefined();
+
+    // Removed attachment: metadata stays visible but download is hidden/disabled.
+    expect(screen.getByText("revoked.pdf")).toBeDefined();
+    expect(screen.getByTestId("removed-badge-3")).toBeDefined();
+    expect(screen.queryByTestId("download-3")).toBeNull();
+    expect(screen.queryByTestId("remove-3")).toBeNull();
+  });
+
+  it("downloads an active attachment and triggers the browser download", async () => {
+    const blob = new Blob(["fakepdf"], { type: "application/pdf" });
+    const downloadMock = vi.spyOn(api, "downloadAttachment").mockResolvedValue({
+      blob,
+      filename: "report.pdf",
+    });
+    const triggerMock = vi.spyOn(api, "triggerDownload").mockImplementation(() => {});
+
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
+
+    fireEvent.click(screen.getByTestId("download-2"));
+    await waitFor(() => expect(downloadMock).toHaveBeenCalledWith(2, 2));
+    expect(triggerMock).toHaveBeenCalledWith(blob, "report.pdf");
+    expect(screen.queryByTestId("download-error")).toBeNull();
+  });
+
+  it("shows an error message when a download fails", async () => {
+    vi.spyOn(api, "downloadAttachment").mockRejectedValue(new Error("410 Gone"));
+
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
+
+    fireEvent.click(screen.getByTestId("download-1"));
+    await waitFor(() => expect(screen.getByTestId("download-error")).toBeDefined());
+    expect(screen.getByText("410 Gone")).toBeDefined();
+  });
+
+  it("opens the removal modal and validates the mandatory reason length", async () => {
+    const removeAttemptSpy = vi
+      .spyOn(api, "removeAttachment")
+      .mockResolvedValue({
+        id: 1,
+        filename: "screenshot.png",
+        isRemoved: true,
+        removalReason: "short",
+        updatedAt: "2026-09-06T06:00:00.000Z",
+      });
+
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
+
+    fireEvent.click(screen.getByTestId("remove-1"));
+    await waitFor(() => expect(screen.getByTestId("removal-modal")).toBeDefined());
+    expect(screen.getByText("Reason for removal")).toBeDefined();
+
+    // Too-short reason is rejected client-side.
+    fireEvent.change(screen.getByTestId("removal-reason"), { target: { value: "ab" } });
+    fireEvent.click(screen.getByTestId("confirm-remove"));
+    await waitFor(() =>
+      expect(screen.getByText(/Reason must be between 3 and 200 characters/i)).toBeDefined()
+    );
+    expect(removeAttemptSpy).not.toHaveBeenCalled();
+
+    // Escape closes the modal without confirming.
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("removal-modal")).toBeNull());
+  });
+
+  it("soft-removes an attachment after a valid reason and flips it to Removed", async () => {
+    const removeMock = vi.spyOn(api, "removeAttachment").mockResolvedValue({
+      id: 1,
+      filename: "screenshot.png",
+      isRemoved: true,
+      removalReason: "Contains credentials",
+      updatedAt: "2026-09-06T06:00:00.000Z",
+    });
+
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
+
+    fireEvent.click(screen.getByTestId("remove-1"));
+    await waitFor(() => expect(screen.getByTestId("removal-modal")).toBeDefined());
+
+    fireEvent.change(screen.getByTestId("removal-reason"), {
+      target: { value: "Contains credentials" },
+    });
+    fireEvent.click(screen.getByTestId("confirm-remove"));
+
+    await waitFor(() => expect(removeMock).toHaveBeenCalledWith(1, "Contains credentials", 2));
+    await waitFor(() => expect(screen.queryByTestId("removal-modal")).toBeNull());
+    await waitFor(() => expect(screen.getByTestId("removed-badge-1")).toBeDefined());
+    expect(screen.queryByTestId("download-1")).toBeNull();
   });
 
   it("passes the active requester id as the ownership scope", async () => {

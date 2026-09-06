@@ -1,10 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, FileText, File } from "lucide-react";
-import { getTicket, type Status, type Priority, type TicketDetail } from "../api";
+import { ArrowLeft, FileText, File, Download, X } from "lucide-react";
+import {
+  getTicket,
+  downloadAttachment,
+  removeAttachment,
+  triggerDownload,
+  type Status,
+  type Priority,
+  type TicketDetail as TicketDetailType,
+  type TicketDetailAttachment,
+} from "../api";
 import { useRequester } from "../hooks/useRequester";
 import Badge from "../components/Badge";
 import Button from "../components/Button";
+import ValidationMessage from "../components/ValidationMessage";
+
+const REMOVAL_REASON_MIN = 3;
+const REMOVAL_REASON_MAX = 200;
 
 const STATUS_COLOR: Record<Status, "gray" | "blue" | "green"> = {
   PENDING: "gray",
@@ -32,8 +45,8 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function isImageMime(mime: string): boolean {
-  return mime.startsWith("image/");
+function isPreviewableMime(mime: string): boolean {
+  return mime.startsWith("image/") || mime === "application/pdf";
 }
 
 function ReadOnlyField({
@@ -59,19 +72,57 @@ function ReadOnlyField({
   );
 }
 
-function AttachmentRow({ attachment }: { attachment: TicketDetail["attachments"][number] }) {
-  const Icon =
-    isImageMime(attachment.mimeType) || attachment.mimeType === "application/pdf"
-      ? FileText
-      : File;
+function AttachmentRow({
+  attachment,
+  onDownload,
+  onRemove,
+}: {
+  attachment: TicketDetailAttachment;
+  onDownload: (attachmentId: number) => void;
+  onRemove: (attachment: TicketDetailAttachment) => void;
+}) {
+  const Icon = isPreviewableMime(attachment.mimeType) ? FileText : File;
+
   return (
-    <li className="list-group-item d-flex align-items-center gap-3 py-3">
+    <li
+      className="list-group-item d-flex align-items-center gap-3 py-3"
+      data-testid={`attachment-row-${attachment.id}`}
+    >
       <Icon size={20} className="text-secondary flex-shrink-0" />
       <div className="flex-grow-1 min-w-0">
         <div className="fw-semibold text-dark text-truncate">{attachment.filename}</div>
         <div className="text-secondary small">{formatSize(attachment.size)}</div>
       </div>
       <span className="small text-secondary text-nowrap">{attachment.mimeType}</span>
+      {attachment.isRemoved ? (
+        <span
+          className="badge text-bg-secondary"
+          data-testid={`removed-badge-${attachment.id}`}
+        >
+          Removed
+        </span>
+      ) : (
+        <div className="d-flex gap-2 align-items-center">
+          <button
+            type="button"
+            data-testid={`download-${attachment.id}`}
+            className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+            onClick={() => onDownload(attachment.id)}
+          >
+            <Download size={16} aria-hidden="true" />
+            Download
+          </button>
+          <button
+            type="button"
+            data-testid={`remove-${attachment.id}`}
+            aria-label={`Remove ${attachment.filename}`}
+            className="btn btn-sm btn-outline-danger d-inline-flex align-items-center"
+            onClick={() => onRemove(attachment)}
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </li>
   );
 }
@@ -80,14 +131,58 @@ export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
   const { requester } = useRequester();
 
-  const [ticket, setTicket] = useState<TicketDetail | null>(null);
+  const [ticket, setTicket] = useState<TicketDetailType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [retryKey, setRetryKey] = useState(0);
 
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [removalTarget, setRemovalTarget] = useState<TicketDetailAttachment | null>(null);
+  const [removalReason, setRemovalReason] = useState("");
+  const [removalError, setRemovalError] = useState<string | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const removalModalRef = useRef<HTMLDivElement>(null);
+
   const requesterId = requester?.id;
   const ticketId = Number(id);
   const idIsInvalid = !Number.isSafeInteger(ticketId) || ticketId <= 0;
+
+  const closeRemoveModal = useCallback(() => {
+    if (isRemoving) return;
+    setRemovalTarget(null);
+    setRemovalReason("");
+    setRemovalError(null);
+    setIsRemoving(false);
+  }, [isRemoving]);
+
+  useEffect(() => {
+    if (!removalTarget) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeRemoveModal();
+        return;
+      }
+      if (event.key === "Tab" && removalModalRef.current) {
+        const focusables = removalModalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], textarea, input, select:not([disabled])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [removalTarget, isRemoving, closeRemoveModal]);
 
   useEffect(() => {
     if (idIsInvalid || requesterId === undefined) return;
@@ -115,6 +210,61 @@ export default function TicketDetail() {
       cancelled = true;
     };
   }, [id, requesterId, retryKey, ticketId, idIsInvalid]);
+
+  const handleDownload = async (attachmentId: number) => {
+    if (requesterId === undefined) return;
+    setDownloadError(null);
+    try {
+      const { blob, filename } = await downloadAttachment(attachmentId, requesterId);
+      triggerDownload(blob, filename);
+    } catch (err) {
+      setDownloadError(
+        err instanceof Error ? err.message : "Failed to download attachment."
+      );
+    }
+  };
+
+  const openRemoveModal = (attachment: TicketDetailAttachment) => {
+    setRemovalTarget(attachment);
+    setRemovalReason("");
+    setRemovalError(null);
+    setIsRemoving(false);
+  };
+
+  const handleConfirmRemove = async () => {
+    if (!removalTarget || requesterId === undefined || isRemoving) return;
+
+    const reason = removalReason.trim();
+    if (reason.length < REMOVAL_REASON_MIN || reason.length > REMOVAL_REASON_MAX) {
+      setRemovalError(
+        `Reason must be between ${REMOVAL_REASON_MIN} and ${REMOVAL_REASON_MAX} characters.`
+      );
+      return;
+    }
+
+    setIsRemoving(true);
+    setRemovalError(null);
+    try {
+      await removeAttachment(removalTarget.id, reason, requesterId);
+      const removedId = removalTarget.id;
+      setTicket((prev) =>
+        prev
+          ? {
+              ...prev,
+              attachments: prev.attachments.map((a) =>
+                a.id === removedId ? { ...a, isRemoved: true } : a
+              ),
+            }
+          : prev
+      );
+      setRemovalTarget(null);
+      setRemovalReason("");
+      setIsRemoving(false);
+    } catch (err) {
+      setRemovalError(err instanceof Error ? err.message : "Failed to remove attachment.");
+      setIsRemoving(false);
+    }
+  };
 
   if (idIsInvalid) {
     return (
@@ -198,6 +348,11 @@ export default function TicketDetail() {
 
           <div className="mt-4">
             <h3 className="h6 fw-bold text-dark mb-3">Attachments ({ticket.attachments.length})</h3>
+            {downloadError && (
+              <div data-testid="download-error" role="alert" className="alert alert-danger py-2 small">
+                {downloadError}
+              </div>
+            )}
             {ticket.attachments.length === 0 ? (
               <p className="text-secondary small mb-0" data-testid="no-attachments">
                 No attachments.
@@ -205,13 +360,84 @@ export default function TicketDetail() {
             ) : (
               <ul className="list-group" data-testid="attachment-list">
                 {ticket.attachments.map((a) => (
-                  <AttachmentRow key={a.id} attachment={a} />
+                  <AttachmentRow
+                    key={a.id}
+                    attachment={a}
+                    onDownload={handleDownload}
+                    onRemove={openRemoveModal}
+                  />
                 ))}
               </ul>
             )}
           </div>
         </div>
       </div>
+
+      {removalTarget && (
+        <div
+          ref={removalModalRef}
+          className="modal d-block"
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="removal-modal-title"
+          data-testid="removal-modal"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h2 id="removal-modal-title" className="modal-title h6 fw-bold">
+                  Remove attachment
+                </h2>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label="Close"
+                  onClick={closeRemoveModal}
+                />
+              </div>
+              <div className="modal-body">
+                <p className="text-secondary small mb-3 text-break">{removalTarget.filename}</p>
+                <label htmlFor="removal-reason" className="form-label fw-bold small text-dark">
+                  Reason for removal
+                </label>
+                <textarea
+                  id="removal-reason"
+                  data-testid="removal-reason"
+                  className="form-control"
+                  rows={4}
+                  maxLength={REMOVAL_REASON_MAX}
+                  value={removalReason}
+                  onChange={(e) => {
+                    setRemovalReason(e.target.value);
+                    setRemovalError(null);
+                  }}
+                  aria-invalid={removalError ? "true" : "false"}
+                  autoFocus
+                />
+                <div className="form-text small">
+                  Required: {REMOVAL_REASON_MIN}-{REMOVAL_REASON_MAX} characters.
+                </div>
+                {removalError && <ValidationMessage>{removalError}</ValidationMessage>}
+              </div>
+              <div className="modal-footer">
+                <Button variant="secondary" onClick={closeRemoveModal} disabled={isRemoving}>
+                  Cancel
+                </Button>
+                <Button
+                  data-testid="confirm-remove"
+                  onClick={handleConfirmRemove}
+                  isLoading={isRemoving}
+                  loadingText="Removing..."
+                >
+                  Confirm Removal
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -76,6 +76,22 @@ export interface TicketDetailAttachment {
   isRemoved: boolean;
 }
 
+export interface AttachmentUploadResponse {
+  id: number;
+  filename: string;
+  mimeType: string;
+  size: number;
+  ticketId: number;
+}
+
+export interface AttachmentRemovalResponse {
+  id: number;
+  filename: string;
+  isRemoved: boolean;
+  removalReason: string;
+  updatedAt: string;
+}
+
 export interface TicketDetail {
   id: number;
   ticketNo: string;
@@ -108,13 +124,15 @@ export interface TicketQuery {
   limit?: number;
 }
 
+async function loadErrorMessage(res: Response): Promise<string> {
+  const body = await res.json().catch(() => null);
+  return body?.error?.message ?? body?.error ?? `Request failed with status ${res.status}`;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, init);
   if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    const message =
-      body?.error?.message ?? body?.error ?? `Request failed with status ${res.status}`;
-    throw new Error(message);
+    throw new Error(await loadErrorMessage(res));
   }
   return res.json() as Promise<T>;
 }
@@ -181,5 +199,80 @@ export function getTicket(ticketId: number, requesterId: number): Promise<Ticket
     headers: {
       "x-requester-id": String(requesterId),
     },
+  });
+}
+
+// POST /api/attachments/upload — multipart upload linked to an owned ticket.
+// Note: no Content-Type header is set; the browser supplies the boundary.
+export async function uploadAttachment(
+  ticketId: number,
+  file: File,
+  requesterId: number
+): Promise<AttachmentUploadResponse> {
+  const formData = new FormData();
+  formData.append("ticketId", String(ticketId));
+  formData.append("file", file);
+
+  const res = await fetch(`${API_URL}/api/attachments/upload`, {
+    method: "POST",
+    headers: {
+      "x-requester-id": String(requesterId),
+    },
+    body: formData,
+  });
+  if (!res.ok) {
+    throw new Error(await loadErrorMessage(res));
+  }
+  return res.json() as Promise<AttachmentUploadResponse>;
+}
+
+// GET /api/attachments/:id/download — returns the binary content. Callers
+// trigger a browser download via triggerDownload(blob, filename).
+export async function downloadAttachment(
+  attachmentId: number,
+  requesterId: number
+): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
+    headers: {
+      "x-requester-id": String(requesterId),
+    },
+  });
+  if (!res.ok) {
+    throw new Error(await loadErrorMessage(res));
+  }
+  return { blob: await res.blob(), filename: attachmentFilenameFromResponse(res) };
+}
+
+function attachmentFilenameFromResponse(res: Response): string {
+  const disposition = res.headers.get("Content-Disposition");
+  const match = disposition?.match(/filename="([^"]+)"/);
+  if (match?.[1]) return match[1];
+  return "download";
+}
+
+export function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+// PATCH /api/attachments/:id/remove — soft-removal with mandatory reason.
+export function removeAttachment(
+  attachmentId: number,
+  removalReason: string,
+  requesterId: number
+): Promise<AttachmentRemovalResponse> {
+  return request<AttachmentRemovalResponse>(`/api/attachments/${attachmentId}/remove`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "x-requester-id": String(requesterId),
+    },
+    body: JSON.stringify({ removalReason }),
   });
 }

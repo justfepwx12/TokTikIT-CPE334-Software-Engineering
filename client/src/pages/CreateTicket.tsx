@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, PlusCircle } from "lucide-react";
+import { CheckCircle2, PlusCircle, X } from "lucide-react";
 import {
   getCategories,
   getSystems,
   createTicket as apiCreateTicket,
+  uploadAttachment,
   type Category,
   type RelatedSystem,
   type Priority,
@@ -20,7 +21,17 @@ const TITLE_MAX = 100;
 const DESC_MIN = 10;
 const DESC_MAX = 1000;
 
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILES = 5;
+
 const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 interface FormErrors {
   title?: string;
@@ -60,6 +71,9 @@ export default function CreateTicket() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<Ticket | null>(null);
+
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +134,37 @@ export default function CreateTicket() {
     return next;
   };
 
+  const handleFilesSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setAttachmentError(null);
+    const incoming = Array.from(event.target.files ?? []);
+    event.target.value = "";
+
+    if (incoming.length === 0) return;
+
+    const next = [...stagedFiles];
+    for (const file of incoming) {
+      if (next.length >= MAX_FILES) {
+        setAttachmentError(`You can attach up to ${MAX_FILES} files per ticket.`);
+        break;
+      }
+      if (!ALLOWED_TYPES.includes(file.type as (typeof ALLOWED_TYPES)[number])) {
+        setAttachmentError(`${file.name}: type not allowed. Use JPEG, PNG, WEBP, or PDF.`);
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        setAttachmentError(`${file.name} exceeds the 5 MB limit.`);
+        continue;
+      }
+      next.push(file);
+    }
+    setStagedFiles(next);
+  };
+
+  const handleRemoveStaged = (index: number) => {
+    setStagedFiles((prev) => prev.filter((_, i) => i !== index));
+    setAttachmentError(null);
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!requester || isSubmitting || createdTicket) return;
@@ -141,6 +186,17 @@ export default function CreateTicket() {
         },
         requester.id
       );
+
+      // Upload staged attachments to the newly created ticket. The ticket is
+      // already created, so a failed individual upload must not lose it.
+      for (const file of stagedFiles) {
+        try {
+          await uploadAttachment(ticket.id, file, requester.id);
+        } catch {
+          // Best-effort: the ticket remains; the user can add the file later.
+        }
+      }
+
       setCreatedTicket(ticket);
     } catch (err) {
       setErrors((prev) => ({
@@ -156,6 +212,8 @@ export default function CreateTicket() {
     setValues(EMPTY_FORM);
     setErrors({});
     setCreatedTicket(null);
+    setStagedFiles([]);
+    setAttachmentError(null);
   };
 
   if (createdTicket) {
@@ -333,6 +391,50 @@ export default function CreateTicket() {
                 aria-invalid={errors.description ? "true" : "false"}
               />
               {errors.description && <ValidationMessage>{errors.description}</ValidationMessage>}
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label fw-bold small text-dark" htmlFor="ticket-attachments">
+                Attachments
+              </label>
+              <input
+                id="ticket-attachments"
+                data-testid="field-attachments"
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="form-control"
+                onChange={handleFilesSelected}
+                disabled={isSubmitting || stagedFiles.length >= MAX_FILES}
+              />
+              <div className="form-text">
+                Attach up to {MAX_FILES} files (JPEG, PNG, WEBP, PDF; max 5 MB each).
+              </div>
+              {attachmentError && <ValidationMessage>{attachmentError}</ValidationMessage>}
+              {stagedFiles.length > 0 && (
+                <ul className="list-group mt-2" data-testid="staged-attachments">
+                  {stagedFiles.map((file, index) => (
+                    <li
+                      key={`${file.name}-${index}`}
+                      className="list-group-item d-flex align-items-center gap-2 py-2"
+                    >
+                      <div className="flex-grow-1 min-w-0">
+                        <div className="text-truncate fw-semibold small">{file.name}</div>
+                        <div className="text-secondary small">{formatBytes(file.size)}</div>
+                      </div>
+                      <button
+                        type="button"
+                        data-testid={`remove-staged-${index}`}
+                        aria-label={`Remove ${file.name}`}
+                        className="btn btn-sm btn-outline-danger d-inline-flex align-items-center"
+                        onClick={() => handleRemoveStaged(index)}
+                      >
+                        <X size={16} aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {errors.submit && (

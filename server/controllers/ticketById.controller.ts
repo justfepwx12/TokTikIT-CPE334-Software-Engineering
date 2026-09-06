@@ -53,8 +53,9 @@ export const getTicketById = async (req: Request, res: Response) => {
         category: { select: { id: true, name: true } },
         system: { select: { id: true, name: true } },
         requester: { select: { id: true, name: true } },
+        // BR-08: soft-removed attachments keep their metadata visible in the
+        // detail response so the UI can render them (and disable download).
         attachments: {
-          where: { isRemoved: false },
           select: {
             id: true,
             filename: true,

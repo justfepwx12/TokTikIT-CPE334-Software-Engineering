@@ -4,6 +4,12 @@ import { getPrisma } from "./prisma.js";
 import { createTicket } from "../controllers/ticket.controller.js";
 import { listTickets } from "../controllers/listTickets.controller.js";
 import { getTicketById } from "../controllers/ticketById.controller.js";
+import {
+  attachmentUpload,
+  getAttachmentMeta,
+  downloadAttachment,
+  removeAttachment,
+} from "../controllers/attachment.controller.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -95,11 +101,25 @@ app.get("/api/systems", async (_req: Request, res: Response) => {
 app.get("/api/tickets", listTickets);
 
 // Issue 61 — Ticket Detail
-// GET /api/tickets/:id — full details of one owned ticket incl. active attachments.
+// GET /api/tickets/:id — full details of one owned ticket incl. attachments
+// (active and soft-removed) so the UI can render both states.
 app.get("/api/tickets/:id", getTicketById);
 
 // Issue 52 — Create Ticket
 // POST /api/tickets
 app.post("/api/tickets", createTicket);
+
+// Issue 60 — Attachments (api-spec §5, BR-05/BR-07/BR-08/BR-20)
+// POST /api/attachments/upload — upload one file linked to an owned ticket.
+app.post("/api/attachments/upload", attachmentUpload);
+
+// GET /api/attachments/:id — attachment metadata only (no binary content).
+app.get("/api/attachments/:id", getAttachmentMeta);
+
+// GET /api/attachments/:id/download — binary stream; 410 if soft-removed.
+app.get("/api/attachments/:id/download", downloadAttachment);
+
+// PATCH /api/attachments/:id/remove — soft-remove with mandatory reason.
+app.patch("/api/attachments/:id/remove", removeAttachment);
 
 export default app;

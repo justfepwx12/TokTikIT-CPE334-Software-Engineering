@@ -9,6 +9,9 @@ node_modules/
 dist/
 build/
 
+# Uploaded attachments (runtime artifacts)
+server/uploads/
+
 # OS / IDE
 .DS_Store
 .vscode/
