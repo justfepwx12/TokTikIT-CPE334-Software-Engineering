@@ -48,9 +48,9 @@ Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API,
 | 34 | UI | Issue 58 | AC-26 | Vitest/RTL | `MyTickets.test.tsx` — keyboard-operable controls | Planned |
 | 35 | UI | Issue 61 | AC-16 | Vitest/RTL | `RequesterTicketDetail.test.tsx` — read-only + badges | Planned |
 | 36 | UI Style | Issue 47, 53, 61 | — | Vitest/RTL (CSS) | `uiStyle.test.tsx` — read-only tokens, asterisks, badge text | Planned |
-| 37 | UI Style | Issue 65 | — | Playwright | awaited a dedicated style pass (Zen Green tokens) | Planned |
+| 37 | UI Style | Issue 65 | — | Visual | captured directly into the report (Zen Green tokens / visual checklist) | Pass |
 | 38 | Responsive | Issue 57 | AC-25 | Vitest/RTL | `MyTickets.test.tsx` — table (desktop) vs. cards (mobile) | Pass |
-| 39 | Responsive | Issue 65 | AC-25 | Playwright | `flow.spec.ts` — desktop/tablet/mobile screenshots | Pass |
+| 39 | Responsive | Issue 65 | AC-25 | Playwright | `flow.spec.ts` — full flow verified at desktop/tablet/mobile viewports | Pass |
 | 40 | E2E | Issue 64 | AC-18 | Playwright | `flow.spec.ts` — full select→create→list flow | Pass |
 | 41 | API | Issue 52 | — | Supertest/Vitest | `tickets.test.ts` — non-numeric header → 401 | Pass |
 | 42 | API | Issue 52 | — | Supertest/Vitest | `tickets.test.ts` — bad categoryId/systemId → 400 | Pass |
@@ -110,7 +110,7 @@ Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API,
 | AC-25 | 38, 39 |
 | AC-26 | 34 |
 
-Rows 1–4, 17, 26, 36–37, 39, 41–42, 45, 53–55, 58–60, 64 are traced to labsheet requirements or specific BRs rather than a single numbered AC, since they verify preconditions, cross-cutting rules, or a required test *level* rather than one user-observable outcome.
+Rows 1–4, 17, 26, 36–37, 41–42, 45, 53–55, 58–60, 64 are traced to labsheet requirements or specific BRs rather than a single numbered AC, since they verify preconditions, cross-cutting rules, or a required test *level* rather than one user-observable outcome.
 
 ---
 
@@ -271,4 +271,6 @@ $ pnpm exec playwright test   # cd client
 ```
 
 The same vitest run is untouched by the E2E spec (excluded via `test.exclude` in `vite.config.ts`); `client/tests/e2e/` is only executed under `pnpm exec playwright test` (`test:e2e`).
+
+> Issue 65 (visual checklist): desktop/tablet/mobile screenshots are captured directly into the final lab report rather than as test artifacts. The E2E run above still confirms the UI renders and behaves correctly at all three viewports.
 
