@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, FileText, File, Download, X } from "lucide-react";
 import {
@@ -142,6 +143,8 @@ export default function TicketDetail() {
   const [removalError, setRemovalError] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const removalModalRef = useRef<HTMLDivElement>(null);
+
+  const isModalOpen = removalTarget !== null;
 
   const requesterId = requester?.id;
   const ticketId = Number(id);
@@ -373,71 +376,74 @@ export default function TicketDetail() {
         </div>
       </div>
 
-      {removalTarget && (
-        <div
-          ref={removalModalRef}
-          className="modal d-block"
-          tabIndex={-1}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="removal-modal-title"
-          data-testid="removal-modal"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h2 id="removal-modal-title" className="modal-title h6 fw-bold">
-                  Remove attachment
-                </h2>
-                <button
-                  type="button"
-                  className="btn-close"
-                  aria-label="Close"
-                  onClick={closeRemoveModal}
-                />
-              </div>
-              <div className="modal-body">
-                <p className="text-secondary small mb-3 text-break">{removalTarget.filename}</p>
-                <label htmlFor="removal-reason" className="form-label fw-bold small text-dark">
-                  Reason for removal
-                </label>
-                <textarea
-                  id="removal-reason"
-                  data-testid="removal-reason"
-                  className="form-control"
-                  rows={4}
-                  maxLength={REMOVAL_REASON_MAX}
-                  value={removalReason}
-                  onChange={(e) => {
-                    setRemovalReason(e.target.value);
-                    setRemovalError(null);
-                  }}
-                  aria-invalid={removalError ? "true" : "false"}
-                  autoFocus
-                />
-                <div className="form-text small">
-                  Required: {REMOVAL_REASON_MIN}-{REMOVAL_REASON_MAX} characters.
+      {isModalOpen &&
+        removalTarget &&
+        createPortal(
+          <div
+            ref={removalModalRef}
+            className="modal d-block"
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="removal-modal-title"
+            data-testid="removal-modal"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          >
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h2 id="removal-modal-title" className="modal-title h6 fw-bold">
+                    Remove attachment
+                  </h2>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    aria-label="Close"
+                    onClick={closeRemoveModal}
+                  />
                 </div>
-                {removalError && <ValidationMessage>{removalError}</ValidationMessage>}
-              </div>
-              <div className="modal-footer">
-                <Button variant="secondary" onClick={closeRemoveModal} disabled={isRemoving}>
-                  Cancel
-                </Button>
-                <Button
-                  data-testid="confirm-remove"
-                  onClick={handleConfirmRemove}
-                  isLoading={isRemoving}
-                  loadingText="Removing..."
-                >
-                  Confirm Removal
-                </Button>
+                <div className="modal-body">
+                  <p className="text-secondary small mb-3 text-break">{removalTarget.filename}</p>
+                  <label htmlFor="removal-reason" className="form-label fw-bold small text-dark">
+                    Reason for removal
+                  </label>
+                  <textarea
+                    id="removal-reason"
+                    data-testid="removal-reason"
+                    className="form-control"
+                    rows={4}
+                    maxLength={REMOVAL_REASON_MAX}
+                    value={removalReason}
+                    onChange={(e) => {
+                      setRemovalReason(e.target.value);
+                      setRemovalError(null);
+                    }}
+                    aria-invalid={removalError ? "true" : "false"}
+                    autoFocus
+                  />
+                  <div className="form-text small">
+                    Required: {REMOVAL_REASON_MIN}-{REMOVAL_REASON_MAX} characters.
+                  </div>
+                  {removalError && <ValidationMessage>{removalError}</ValidationMessage>}
+                </div>
+                <div className="modal-footer">
+                  <Button variant="secondary" onClick={closeRemoveModal} disabled={isRemoving}>
+                    Cancel
+                  </Button>
+                  <Button
+                    data-testid="confirm-remove"
+                    onClick={handleConfirmRemove}
+                    isLoading={isRemoving}
+                    loadingText="Removing..."
+                  >
+                    Confirm Removal
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
