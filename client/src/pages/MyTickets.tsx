@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -93,7 +94,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-function DesktopTable({ tickets }: { tickets: TicketSummary[] }) {
+function DesktopTable({ tickets, onOpen }: { tickets: TicketSummary[]; onOpen: (id: number) => void }) {
   return (
     <div className="d-none d-md-block overflow-auto">
       <table className="table table-hover align-middle mb-0" data-testid="tickets-table">
@@ -109,8 +110,22 @@ function DesktopTable({ tickets }: { tickets: TicketSummary[] }) {
         </thead>
         <tbody>
           {tickets.map((t) => (
-            <tr key={t.id} data-testid="ticket-row">
-              <td className="fw-semibold text-dark">{t.ticketNo}</td>
+            <tr
+              key={t.id}
+              data-testid="ticket-row"
+              role="button"
+              tabIndex={0}
+              onClick={() => onOpen(t.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onOpen(t.id);
+                }
+              }}
+            >
+              <td className="fw-semibold text-decoration-underline text-brand" data-testid="ticket-row-ticket-no">
+                {t.ticketNo}
+              </td>
               <td className="text-dark">{t.title}</td>
               <td>{t.category.name}</td>
               <td>
@@ -128,18 +143,27 @@ function DesktopTable({ tickets }: { tickets: TicketSummary[] }) {
   );
 }
 
-function MobileCards({ tickets }: { tickets: TicketSummary[] }) {
+function MobileCards({ tickets, onOpen }: { tickets: TicketSummary[]; onOpen: (id: number) => void }) {
   return (
     <div className="d-md-none d-flex flex-column gap-3">
       {tickets.map((t) => (
         <div
           key={t.id}
           data-testid="ticket-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onOpen(t.id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onOpen(t.id);
+            }
+          }}
           className="card border-0 shadow-sm rounded-3 p-3"
         >
           <div className="d-flex justify-content-between align-items-start gap-2">
             <div>
-              <div className="fw-semibold text-dark small">{t.ticketNo}</div>
+              <div className="fw-semibold text-brand small text-decoration-underline">{t.ticketNo}</div>
               <div className="fw-bold text-dark">{t.title}</div>
               <div className="text-secondary small">{t.category.name}</div>
             </div>
@@ -223,6 +247,7 @@ function PaginationBar({
 }
 
 export default function MyTickets() {
+  const navigate = useNavigate();
   const { requester } = useRequester();
   const requesterId = requester?.id;
 
@@ -304,6 +329,10 @@ export default function MyTickets() {
     setDraftSearch("");
     setAppliedQuery(DEFAULT_QUERY);
     setPage(1);
+  };
+
+  const handleOpenTicket = (id: number) => {
+    navigate(`/tickets/${id}`);
   };
 
   const handleSortChange = (draftSort: SortField) => {
@@ -487,8 +516,8 @@ export default function MyTickets() {
       ) : !error ? (
         <>
           <div className="card shadow-sm border-0 rounded-3 overflow-hidden">
-            <DesktopTable tickets={tickets} />
-            <MobileCards tickets={tickets} />
+            <DesktopTable tickets={tickets} onOpen={handleOpenTicket} />
+            <MobileCards tickets={tickets} onOpen={handleOpenTicket} />
           </div>
           {pagination && (
             <PaginationBar

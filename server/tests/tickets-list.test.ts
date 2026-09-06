@@ -14,10 +14,11 @@ let testCategoryId: number;
 let testSystemId: number;
 let ticketIds: number[] = [];
 
-let ticketNoSeq = 1;
+let nonceSeq = 1;
 function makeTicketNo(): string {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  return `TK-${date}-${String(ticketNoSeq++).padStart(4, "0")}`;
+  const nonce = (Date.now() % 6000) + 1 + nonceSeq++;
+  return `TK-${date}-${String(nonce).padStart(4, "0")}`;
 }
 
 describe("GET /api/tickets", () => {

@@ -194,7 +194,7 @@ export default function CreateTicket() {
             <Button variant="secondary" onClick={handleCreateAnother}>
               Create Another
             </Button>
-            <Button onClick={() => navigate("/my-tickets")}>View Tickets</Button>
+            <Button onClick={() => navigate(`/tickets/${createdTicket.id}`)}>View Ticket</Button>
           </div>
         </div>
       </div>

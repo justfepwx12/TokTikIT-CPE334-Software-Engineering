@@ -68,6 +68,29 @@ export interface Pagination {
   totalPages: number;
 }
 
+export interface TicketDetailAttachment {
+  id: number;
+  filename: string;
+  mimeType: string;
+  size: number;
+  isRemoved: boolean;
+}
+
+export interface TicketDetail {
+  id: number;
+  ticketNo: string;
+  title: string;
+  description: string;
+  priority: Priority;
+  status: Status;
+  createdAt: string;
+  updatedAt: string;
+  category: Category;
+  system: RelatedSystem;
+  requester: { id: number; name: string };
+  attachments: TicketDetailAttachment[];
+}
+
 export interface TicketsResponse {
   tickets: TicketSummary[];
   pagination: Pagination;
@@ -147,6 +170,14 @@ export function getTickets(
   requesterId: number
 ): Promise<TicketsResponse> {
   return request<TicketsResponse>(`/api/tickets${buildQueryString(query)}`, {
+    headers: {
+      "x-requester-id": String(requesterId),
+    },
+  });
+}
+
+export function getTicket(ticketId: number, requesterId: number): Promise<TicketDetail> {
+  return request<TicketDetail>(`/api/tickets/${ticketId}`, {
     headers: {
       "x-requester-id": String(requesterId),
     },

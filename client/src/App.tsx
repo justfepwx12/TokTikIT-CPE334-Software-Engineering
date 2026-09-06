@@ -7,8 +7,7 @@ import { useRequester } from "./hooks/useRequester";
 import MyTickets from "./pages/MyTickets";
 import RequesterSelection from "./pages/RequesterSelection.js";
 import CreateTicket from "./pages/CreateTicket";
-
-import "./App.css";
+import TicketDetail from "./pages/TicketDetail";
 
 import "./App.css";
 
@@ -140,6 +139,11 @@ function App() {
         <Route path="/create-ticket" element={
           <ProtectedRoute>
             <CreateTicket />
+          </ProtectedRoute>
+        } />
+        <Route path="/tickets/:id" element={
+          <ProtectedRoute>
+            <TicketDetail />
           </ProtectedRoute>
         } />
       </Routes>
