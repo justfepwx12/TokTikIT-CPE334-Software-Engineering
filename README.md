@@ -76,7 +76,7 @@ TokTikIT-CPE334-Software-Engineering/
 Ensure you have the following installed on your local machine:
 
 * Node.js (v24 or higher)
-* pnpm (v11.20 or higher)
+* pnpm (v11.21.0 or higher)
 * PostgreSQL (Installed and running (for local PostgreSQL container))
 
 2. Installation
@@ -136,6 +136,9 @@ Run the backend server and frontend client in separate terminal windows:
 ## Tests
 
 ```sh
-cd server && pnpm test    # Supertest API tests (Vitest)
-cd client && pnpm test    # Vitest UI tests
+pnpm --filter server test                # Supertest API tests (Vitest)
+pnpm --filter client test                # Vitest UI tests
+pnpm --filter client test:e2e            # Playwright end-to-end (auto-boots API + Vite)
 ```
+
+> `test:e2e` spins up both the Express API and the Vite dev server via Playwright's `webServer`, then runs `client/tests/e2e/flow.spec.ts` across desktop / tablet / mobile viewports. The E2E spec is excluded from the normal Vitest run. Requires a running PostgreSQL (`docker compose up -d`).

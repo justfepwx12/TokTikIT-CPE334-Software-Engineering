@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-async function main() {
+async function seedCategories() {
   const categories = [
     'Account and Access',
     'Hardware',
@@ -17,6 +17,57 @@ async function main() {
       create: { name },
     })
   }
+
+  console.log(`Seeded ${categories.length} categories.`)
+}
+
+async function seedRelatedSystems() {
+  const relatedSystems = [
+    'Email Client',
+    'ERP Portal',
+    'VPN Service',
+    'HR Management System',
+    'Database Cluster',
+    'Shared Storage',
+  ]
+
+  for (const name of relatedSystems) {
+    await prisma.relatedSystem.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    })
+  }
+
+  console.log(`Seeded ${relatedSystems.length} related systems.`)
+}
+
+async function seedRequesters() {
+  const requesters = [
+    { name: 'Anong Srisuk', email: 'anong.srisuk@toktikit.com', isActive: true },
+    { name: 'Weerapong Chaiyaporn', email: 'weerapong.chaiyaporn@toktikit.com', isActive: true },
+    { name: 'Kanya Boonmee', email: 'kanya.boonmee@toktikit.com', isActive: true },
+    { name: 'Sirichai Thongdee', email: 'sirichai.thongdee@toktikit.com', isActive: true },
+    { name: 'Napat Wongsawat', email: 'napat.wongsawat@toktikit.com', isActive: false },
+  ]
+
+  for (const requester of requesters) {
+    await prisma.requester.upsert({
+      where: { email: requester.email },
+      update: {},
+      create: requester,
+    })
+  }
+
+  const activeCount = requesters.filter((r) => r.isActive).length
+  const inactiveCount = requesters.length - activeCount
+  console.log(`Seeded ${requesters.length} requesters (${activeCount} active, ${inactiveCount} inactive).`)
+}
+
+async function main() {
+  await seedCategories()
+  await seedRelatedSystems()
+  await seedRequesters()
 }
 
 main()

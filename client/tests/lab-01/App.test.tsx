@@ -2,8 +2,10 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import App from "../../src/App.js";
 import * as api from "../../src/api.js";
+import { RequesterProvider } from "../../src/context/RequesterContext"; // เพิ่ม Import นี้
 
 describe("App", () => {
   beforeEach(() => {
@@ -14,14 +16,22 @@ describe("App", () => {
     cleanup();
   });
 
-  it("renders the TokTickIT heading", () => {
+it("renders the TokTickIT heading", () => {
     vi.spyOn(api, "checkSystem").mockResolvedValue({
       online: true,
       categories: [],
     });
 
-    render(<App />);
-    expect(screen.getByText(/TokT.*kIT/i)).toBeDefined();
+    render(
+      <MemoryRouter>
+        <RequesterProvider>
+          <App />
+        </RequesterProvider>
+      </MemoryRouter>
+    );
+    
+    const elements = screen.getAllByText(/TokT.*kIT/i);
+    expect(elements.length).toBeGreaterThan(0);
   });
 
   it("shows Online and the seeded categories on success", async () => {
@@ -35,7 +45,13 @@ describe("App", () => {
       ],
     });
 
-    render(<App />);
+    render(
+      <MemoryRouter>
+        <RequesterProvider>
+          <App />
+        </RequesterProvider>
+      </MemoryRouter>
+    );
 
     const button = await screen.findByRole("button", { name: /check system/i });
     fireEvent.click(button);
@@ -50,7 +66,13 @@ describe("App", () => {
   it("shows an Offline error message when the API is unavailable", async () => {
     vi.spyOn(api, "checkSystem").mockRejectedValue(new Error("unavailable"));
 
-    render(<App />);
+    render(
+      <MemoryRouter>
+        <RequesterProvider>
+          <App />
+        </RequesterProvider>
+      </MemoryRouter>
+    );
 
     const button = await screen.findByRole("button", { name: /check system/i });
     fireEvent.click(button);

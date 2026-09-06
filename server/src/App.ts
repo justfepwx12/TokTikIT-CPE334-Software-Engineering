@@ -1,6 +1,9 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import { getPrisma } from "./prisma.js";
+import { createTicket } from "../controllers/ticket.controller.js";
+import { listTickets } from "../controllers/listTickets.controller.js";
+import { getTicketById } from "../controllers/ticketById.controller.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -34,5 +37,69 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch categories" });
   }
 });
+
+// Issue 48 — Active Development Requester list
+// GET /api/requesters
+// AC: "GET API retrieves only active Development Requesters from the database."
+// Response shape per api-spec.md §1: { id, name, email, isActive }.
+// Ordered by name (not id) since this feeds a user-facing selection dropdown.
+app.get("/api/requesters", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const requesters = await prisma.requester.findMany({
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isActive: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+    res.json(requesters);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch requesters" });
+  }
+});
+
+// Issue 43 — Related System list
+// GET /api/systems
+// Response shape per api-spec.md §3: [{ id, name }]. Ordered by id since this
+// feeds a user-facing Related System dropdown on Create Ticket (and the
+// My Tickets filter dropdown).
+app.get("/api/systems", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const systems = await prisma.relatedSystem.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
+    });
+    res.json(systems);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch related systems" });
+  }
+});
+
+// Issue 55 — My Tickets list
+// GET /api/tickets
+// Paginated, searchable, filterable, sortable list owned by the active Requester.
+app.get("/api/tickets", listTickets);
+
+// Issue 61 — Ticket Detail
+// GET /api/tickets/:id — full details of one owned ticket incl. active attachments.
+app.get("/api/tickets/:id", getTicketById);
+
+// Issue 52 — Create Ticket
+// POST /api/tickets
+app.post("/api/tickets", createTicket);
 
 export default app;

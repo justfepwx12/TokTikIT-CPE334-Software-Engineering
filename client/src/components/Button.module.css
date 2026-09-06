@@ -1,0 +1,97 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+/* Primary Button style */
+.primary {
+  background-color: #006B3C;
+  color: #FFFFFF;
+  border-color: #006B3C;
+}
+
+.primary:hover:not(:disabled) {
+  background-color: #0B7A46;
+  border-color: #0B7A46;
+}
+
+.primary:focus {
+  outline: 2px solid #0B7A46;
+  outline-offset: 2px;
+}
+
+.primary:focus-visible {
+  outline: 2px solid #0B7A46;
+  outline-offset: 2px;
+}
+
+/* Secondary Button style */
+.secondary {
+  background-color: transparent;
+  color: #006B3C;
+  border-color: #006B3C;
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: #EAF6EF;
+}
+
+.secondary:focus {
+  outline: 2px solid #0B7A46;
+  outline-offset: 2px;
+}
+
+.secondary:focus-visible {
+  outline: 2px solid #0B7A46;
+  outline-offset: 2px;
+}
+
+/* Disabled and Loading style */
+.button:disabled {
+  background-color: #9CA3AF !important;
+  color: #FFFFFF !important;
+  border-color: #9CA3AF !important;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+/* Loading-specific styles */
+.loadingWrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+  color: currentColor;
+}
+
+.spinnerTrack {
+  opacity: 0.25;
+}
+
+.spinnerHead {
+  opacity: 0.75;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

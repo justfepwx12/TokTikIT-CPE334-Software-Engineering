@@ -1,0 +1,42 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+/* Priority / Status Colors */
+.green {
+  background-color: #EAF6EF;
+  color: #0B7A46; /* Zen Green Secondary */
+  border-color: #A3D8BC;
+}
+
+.red {
+  background-color: #FBEAEA;
+  color: #B3261E; /* Error Red */
+  border-color: #F2B8B5;
+}
+
+.yellow {
+  background-color: #FEF3C7;
+  color: #B45309; /* Warning Orange */
+  border-color: #FDE68A;
+}
+
+.blue {
+  background-color: #E0F2FE;
+  color: #0284C7;
+  border-color: #BAE6FD;
+}
+
+.gray {
+  background-color: #F3F4F6;
+  color: #4B5563;
+  border-color: #D1D5DB;
+}
