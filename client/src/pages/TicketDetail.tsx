@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, FileText, Download, File } from "lucide-react";
+import { ArrowLeft, FileText, File } from "lucide-react";
 import { getTicket, type Status, type Priority, type TicketDetail } from "../api";
 import { useRequester } from "../hooks/useRequester";
 import Badge from "../components/Badge";
@@ -72,10 +72,6 @@ function AttachmentRow({ attachment }: { attachment: TicketDetail["attachments"]
         <div className="text-secondary small">{formatSize(attachment.size)}</div>
       </div>
       <span className="small text-secondary text-nowrap">{attachment.mimeType}</span>
-      <Button variant="secondary" className="flex-shrink-0" aria-label={`Download ${attachment.filename}`} data-testid={`attachment-download-${attachment.id}`}>
-        <Download size={16} className="me-1" />
-        Download
-      </Button>
     </li>
   );
 }
