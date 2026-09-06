@@ -15,7 +15,7 @@ Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API,
 | 1 | Unit | Issue 52 | — | Vitest | `ticketNumber.unit.test.ts` — `generateTicketNo()` format | Pass |
 | 2 | Unit | Issue 60 | BR-20 | Vitest | `safeFilename.unit.test.ts` — safe storage-name generation | Pass |
 | 3 | Database/Seed | Issue 41–44 | — | Prisma/Vitest | `database.test.ts` — seed counts & names correct, idempotent | Pass |
-| 4 | Database/Seed | Issue 41–44 | — | Prisma/Vitest | `database.test.ts` — FK relationships resolve | Planned |
+| 4 | Database/Seed | Issue 41–44 | — | Prisma/Vitest | `database.test.ts` — FK relationships resolve | Pass |
 | 5 | API | Issue 48 | AC-07 | Supertest | `requesters.test.ts` — GET returns 200 | Pass |
 | 6 | API | Issue 48 | AC-07 | Supertest | `requesters.test.ts` — excludes inactive | Pass |
 | 7 | API | Issue 43 | — | Supertest | `categories.test.ts` — exact 4 seeded names | Pass |
@@ -29,7 +29,7 @@ Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API,
 | 15 | API | Issue 60 | AC-19 | Supertest/Vitest | `attachments.test.ts` — 6th active attachment → 400 | Pass |
 | 16 | API | Issue 60 | BR-20 | Supertest/Vitest | `attachments.test.ts` — duplicate filenames, no collision | Pass |
 | 17 | API | Issue 60 | — | Supertest/Vitest | `attachmentMetadata.test.ts` — metadata GET (200/404/403) | Pass |
-| 18 | API | Issue 60 | AC-21 | Supertest/Vitest | `attachments.test.ts` — blank removalReason → 400 | Planned |
+| 18 | API | Issue 60 | AC-21 | Supertest/Vitest | `attachments.test.ts` — blank removalReason → 400 | Pass |
 | 19 | API | Issue 60 | AC-22 | Supertest/Vitest | `attachments.test.ts` — soft-remove sets isRemoved+reason | Pass |
 | 20 | API | Issue 60 | AC-23 | Supertest/Vitest | `attachments.test.ts` — download removed file → 410 | Pass |
 | 21 | API | Issue 60 | AC-24 | Supertest/Vitest | `attachments.test.ts` — non-owner action → 403 | Planned |
