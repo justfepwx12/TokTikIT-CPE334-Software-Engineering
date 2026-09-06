@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Search,
   FilterX,
+  PlusCircle,
 } from "lucide-react";
 import {
   getCategories,
@@ -62,7 +63,7 @@ function StatusBadge({ status }: { status: Status }) {
   return <Badge color={STATUS_COLOR[status]}>{status}</Badge>;
 }
 
-function EmptyState({ onReset, hasActiveFilters }: { onReset: () => void; hasActiveFilters: boolean }) {
+function EmptyState({ hasActiveFilters }: { hasActiveFilters: boolean }) {
   return (
     <div data-testid={hasActiveFilters ? "no-results" : "empty-state"} className="text-center py-5">
       <FilterX size={40} className="text-secondary mb-3" />
@@ -74,11 +75,6 @@ function EmptyState({ onReset, hasActiveFilters }: { onReset: () => void; hasAct
           ? "No tickets match your current search or filters."
           : "Tickets you create will appear here."}
       </p>
-      {hasActiveFilters && (
-        <Button variant="secondary" className="mt-3" onClick={onReset}>
-          Clear Filters
-        </Button>
-      )}
     </div>
   );
 }
@@ -193,6 +189,11 @@ function PaginationBar({
 
   return (
     <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 my-4">
+      <span className="small text-secondary" data-testid="pagination-summary">
+        Showing {pagination.total === 0 ? 0 : (page - 1) * limit + 1} to{" "}
+        {Math.min(page * limit, pagination.total)} of {pagination.total} tickets
+      </span>
+
       <button
         type="button"
         className="btn btn-outline-secondary btn-sm"
@@ -355,12 +356,24 @@ export default function MyTickets() {
 
   return (
     <div className="container py-4" style={{ maxWidth: "1080px" }}>
-      <div className="d-flex justify-content-between align-items-center mb-3">
+      <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
         <div>
           <h2 className="h4 fw-bold text-dark mb-0">My Tickets</h2>
           <p className="text-secondary small mb-0">
             {requester ? `Showing tickets for ${requester.name}` : "My tickets"}
           </p>
+        </div>
+        <div className="d-flex gap-2">
+          {hasActiveFilters && (
+            <Button variant="secondary" type="button" onClick={handleClearFilters} aria-label="Clear Filters">
+              <FilterX size={16} className="me-1" />
+              Clear Filters
+            </Button>
+          )}
+          <Button type="button" onClick={() => navigate("/create-ticket")} aria-label="Create Ticket">
+            <PlusCircle size={16} className="me-1" />
+            Create Ticket
+          </Button>
         </div>
       </div>
 
@@ -511,7 +524,7 @@ export default function MyTickets() {
         </div>
       ) : !error && tickets.length === 0 ? (
         <div className="card shadow-sm border-0 rounded-3">
-          <EmptyState onReset={handleClearFilters} hasActiveFilters={hasActiveFilters} />
+          <EmptyState hasActiveFilters={hasActiveFilters} />
         </div>
       ) : !error ? (
         <>

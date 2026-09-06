@@ -14,6 +14,7 @@ vi.mock("lucide-react", () => ({
   ChevronRight: () => null,
   Search: () => null,
   FilterX: () => null,
+  PlusCircle: () => null,
 }));
 
 const CATEGORIES = [
