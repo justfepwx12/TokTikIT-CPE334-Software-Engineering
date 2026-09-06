@@ -4,7 +4,7 @@ All test files live under `server/tests/` and `client/tests/lab-02/` (E2E: `clie
 
 Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API, UI (component), UI Style, Responsive, and E2E**. Every AC in `specification.md` §9 (AC-01–AC-26) maps to at least one test below; see §2 for the AC → Test traceability matrix.
 
-**Current status (light = fully done):** server **7 files / 30 tests pass**, client **7 files / 38 tests pass** — API suite covers Health, Categories, Systems, Requesters, Create Ticket (POST), My Tickets (GET), and Ticket Detail (GET by id); UI suite covers header/forms/requester selection, Create Ticket, My Tickets, and Ticket Detail screens. Unit, Perf, and E2E rows below remain `Planned`.
+**Current status (light = partially done, **bold = fully done):** server **7 files / 30 tests pass**, client **7 files / 38 tests pass** — API suite covers Health, Categories, Systems, Requesters, Create Ticket (POST), My Tickets (GET), and Ticket Detail (GET by id); UI suite covers header/forms/requester selection, Create Ticket, My Tickets, and Ticket Detail screens. **E2E now green** via Playwright (`flow.spec.ts`, 3 viewports, AC-18). Remaining mostly-`Planned` rows: Unit (1–2, 9), attachments API (13–21), a few UI edge cases (26, 29–31, 34–35, 37), DB/seed (3–4).
 
 ---
 
@@ -48,10 +48,10 @@ Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API,
 | 34 | UI | Issue 58 | AC-26 | Vitest/RTL | `MyTickets.test.tsx` — keyboard-operable controls | Planned |
 | 35 | UI | Issue 61 | AC-16 | Vitest/RTL | `RequesterTicketDetail.test.tsx` — read-only + badges | Planned |
 | 36 | UI Style | Issue 47, 53, 61 | — | Vitest/RTL (CSS) | `uiStyle.test.tsx` — read-only tokens, asterisks, badge text | Planned |
-| 37 | UI Style | Issue 65 | — | Playwright | `flow.spec.ts` (style pass) — Zen Green tokens render | Planned |
+| 37 | UI Style | Issue 65 | — | Playwright | awaited a dedicated style pass (Zen Green tokens) | Planned |
 | 38 | Responsive | Issue 57 | AC-25 | Vitest/RTL | `MyTickets.test.tsx` — table (desktop) vs. cards (mobile) | Pass |
-| 39 | Responsive | Issue 65 | AC-25 | Playwright | `flow.spec.ts` — desktop/tablet/mobile screenshots | Planned |
-| 40 | E2E | Issue 64 | AC-18 | Playwright | `flow.spec.ts` — full select→create→list flow | Planned |
+| 39 | Responsive | Issue 65 | AC-25 | Playwright | `flow.spec.ts` — desktop/tablet/mobile screenshots | Pass |
+| 40 | E2E | Issue 64 | AC-18 | Playwright | `flow.spec.ts` — full select→create→list flow | Pass |
 | 41 | API | Issue 52 | — | Supertest/Vitest | `tickets.test.ts` — non-numeric header → 401 | Pass |
 | 42 | API | Issue 52 | — | Supertest/Vitest | `tickets.test.ts` — bad categoryId/systemId → 400 | Pass |
 | 43 | API | Issue 52 | — | Supertest/Vitest | `tickets.test.ts` — inactive requester create → 403 | Pass |
@@ -256,4 +256,19 @@ $ vitest run   # cd client
    ✓ shows an error state with a Retry that refetches
    ✓ shows an error for an invalid ticket id
 ```
+
+### Issue 64: End-to-End flow — select user → create ticket → find in list (AC-18)
+**Test File:** `client/tests/e2e/flow.spec.ts` (Playwright, runs against a live server + client via `webServer`)
+
+```text
+$ pnpm exec playwright test   # cd client
+
+ ✓  1 [desktop] › flow.spec.ts › full flow: select requester -> create ticket -> find in list (AC-18)
+ ✓  2 [tablet]  › flow.spec.ts › full flow: select requester -> create ticket -> find in list (AC-18)
+ ✓  3 [mobile]  › flow.spec.ts › full flow: select requester -> create ticket -> find in list (AC-18)
+
+ 3 passed (19.8s)
+```
+
+The same vitest run is untouched by the E2E spec (excluded via `test.exclude` in `vite.config.ts`); `client/tests/e2e/` is only executed under `pnpm exec playwright test` (`test:e2e`).
 
