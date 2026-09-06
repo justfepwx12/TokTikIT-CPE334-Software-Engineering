@@ -4,7 +4,7 @@ All test files live under `server/tests/` and `client/tests/lab-02/` (E2E: `clie
 
 Per labsheet §9.2, planned coverage spans all six required levels: **Unit, API, UI (component), UI Style, Responsive, and E2E**. Every AC in `specification.md` §9 (AC-01–AC-26) maps to at least one test below; see §2 for the AC → Test traceability matrix.
 
-**Current status (light = fully done):** server **7 files / 29 tests pass**, client **7 files / 38 tests pass** — API suite covers Health, Categories, Systems, Requesters, Create Ticket (POST), My Tickets (GET), and Ticket Detail (GET by id); UI suite covers header/forms/requester selection, Create Ticket, My Tickets, and Ticket Detail screens. Unit, Perf, and E2E rows below remain `Planned`.
+**Current status (light = fully done):** server **7 files / 30 tests pass**, client **7 files / 38 tests pass** — API suite covers Health, Categories, Systems, Requesters, Create Ticket (POST), My Tickets (GET), and Ticket Detail (GET by id); UI suite covers header/forms/requester selection, Create Ticket, My Tickets, and Ticket Detail screens. Unit, Perf, and E2E rows below remain `Planned`.
 
 ---
 
@@ -128,10 +128,10 @@ $ vitest run   # cd server
  ✓ tests/requesters.test.ts (2 tests)
  ✓ tests/tickets.test.ts (7 tests)
  ✓ tests/tickets-list.test.ts (10 tests)
- ✓ tests/ticket-detail.test.ts (7 tests)
+ ✓ tests/ticket-detail.test.ts (8 tests)
 
  Test Files  7 passed (7)
-      Tests 29 passed (29)
+      Tests 30 passed (30)
 ```
 
 ### Client suite — full run
@@ -234,7 +234,7 @@ $ vitest run   # cd client
 **Test File:** `server/tests/ticket-detail.test.ts`
 
 ```text
- ✓ tests/ticket-detail.test.ts (7)
+ ✓ tests/ticket-detail.test.ts (8)
    ✓ returns HTTP 200 with full owned ticket shape incl. category/system/requester/attachments
    ✓ returns HTTP 401 for a malformed x-requester-id
    ✓ returns HTTP 401 when the header is missing
@@ -242,6 +242,7 @@ $ vitest run   # cd client
    ✓ returns HTTP 404 when the ticket does not exist
    ✓ returns HTTP 403 when accessing another requester's ticket
    ✓ returns HTTP 400 for a non-numeric ticket id
+   ✓ returns HTTP 400 for numeric-yet-invalid ticket ids (permissive parseInt bypass)
 ```
 
 ### Issue 61: Ticket Detail screen (UI)

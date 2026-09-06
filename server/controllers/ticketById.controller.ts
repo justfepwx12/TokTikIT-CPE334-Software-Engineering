@@ -17,7 +17,13 @@ export const getTicketById = async (req: Request, res: Response) => {
       });
     }
 
-    const ticketId = Number.parseInt(req.params.id, 10);
+    const raw = req.params.id;
+    if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
+      return res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Ticket id must be a positive integer' },
+      });
+    }
+    const ticketId = Number.parseInt(raw, 10);
     if (!Number.isSafeInteger(ticketId) || ticketId <= 0) {
       return res.status(400).json({
         error: { code: 'VALIDATION_ERROR', message: 'Ticket id must be a positive integer' },

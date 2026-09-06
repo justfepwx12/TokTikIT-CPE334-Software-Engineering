@@ -130,4 +130,13 @@ describe("GET /api/tickets/:id", () => {
       .set("x-requester-id", String(requesterA.id));
     expect(res.status).toBe(400);
   });
+
+  it("returns HTTP 400 for numeric-yet-invalid ticket ids (permissive parseInt bypass)", async () => {
+    for (const bad of ["12abc", "1.5", "0", "-5", "1e3"]) {
+      const res = await request(app)
+        .get(`/api/tickets/${bad}`)
+        .set("x-requester-id", String(requesterA.id));
+      expect(res.status).toBe(400);
+    }
+  });
 });
