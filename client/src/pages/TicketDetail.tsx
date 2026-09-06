@@ -387,9 +387,26 @@ export default function TicketDetail() {
             aria-modal="true"
             aria-labelledby="removal-modal-title"
             data-testid="removal-modal"
-            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+            onClick={() => {
+              if (!isRemoving) closeRemoveModal();
+            }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1055,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "1rem",
+              overflowY: "auto",
+              backgroundColor: "rgba(0,0,0,0.5)",
+            }}
           >
-            <div className="modal-dialog modal-dialog-centered">
+            <div
+              className="modal-dialog"
+              onClick={(e) => e.stopPropagation()}
+              style={{ margin: 0, width: "100%", maxWidth: "500px" }}
+            >
               <div className="modal-content">
                 <div className="modal-header">
                   <h2 id="removal-modal-title" className="modal-title h6 fw-bold">
