@@ -12,13 +12,11 @@
 | 4 | สั่งให้ร่าง `docs/lab-03/api-spec.md` ให้ครอบคลุม auth, staff queue, claim/assign, it-priority, status, resolve-intent, comments/notes และ admin user management พร้อม error codes | ได้สเปก REST ครบทุก endpoint พร้อม payload schema และกฎ 400/401/403/404/409 ที่ยึด BR-02/BR-06 |
 | 5 | สั่งให้ร่าง `docs/lab-03/ui-spec.md` ครอบคลุมทุกหน้าจอใหม่ + reuse token Zen Green เดิมจาก Lab 2 | ได้สเปก UI ครบ (Login, change-password, role-aware shell, queue, detail, comments/notes, admin) พร้อม state rules |
 | 6 | สั่งให้สร้าง `docs/lab-03/tests.md` ผูก AC-01–AC-33 กับ planned tests ตาม path ที่ Issue #89 กำหนด | ได้ traceability matrix 66 เทสต์ ครบ 6 ระดับ และ path `server/tests/lab-03/`, `client/src/__tests__/lab-03/`, `e2e/lab-03/` |
-| 7 | ให้ปิด detail: ตั้งชื่อ branch ตาม convention `feature/N-lab3-<slug>`, format ร่าง PR body ให้มี Summary/Checklist/Verification/AI-use และปิด Issue + sub-issue | ได้ branch `feature/1-lab3-spec-dd` และ PR #112 พร้อม checklist และ `Closes #77, #87, #88, #89` |
-| 8 | ตรวจความสอดคล้องข้ามไฟล์ (FR/BR/AC numbering, transition matrix ตรง BR-15, authz matrix ตรง BR-05/BR-07, ทุก AC อยู่ใน traceability) | ได้รับช่องโหว่ที่ต้องแก้ เช่น เพิ่ม decision log และเติม sub-issue mapping ให้ครบก่อนยืนยันฉบับสุดท้าย |
+| 7 | ตรวจความสอดคล้องข้ามไฟล์ (FR/BR/AC numbering, transition matrix ตรง BR-15, authz matrix ตรง BR-05/BR-07, ทุก AC อยู่ใน traceability) | ได้รับช่องโหว่ที่ต้องแก้ เช่น เพิ่ม decision log และเติม sub-issue mapping ให้ครบก่อนยืนยันฉบับสุดท้าย |
 
 ## Reflection
 
-> TBD — ปิดตอน Issue #108 (Reviewer Sign-off & AI Use Reflection) โดยสรุปว่า AI ช่วยร่างเอกสาร Lab 3 ได้เร็วแค่ไหน และจุดไหนต้องตรวจสอบย้อนกลับไปที่ labsheet/GitHub Issues จริง
+
 
 ---
 
-*สุดท้ายจัดทำความสมบูรณ์ที่ Issue #108.*
