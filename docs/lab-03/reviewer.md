@@ -8,22 +8,22 @@
 
 ## Pull Requests I Authored (Reviewed by My Partners)
 
-| PR | Branch | Issue | Reviewer | Reviewer Verdict |
-| :--- | :--- | :--- | :--- | :--- |
-| #112 | feature/1-lab3-spec-dd | #77 (Spec-DD) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
-| #TBD | feature/2-lab3-database | #78 (Database) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
-| #TBD | feature/3-lab3-auth | #79 (Auth) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
-| #TBD | feature/4-lab3-security | #80 (Security) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
-| #TBD | feature/5-lab3-staff-detail | #86 (IT-Staff Detail) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
-| #TBD | feature/6-lab3-queue | #81 (Queue) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
-| #TBD | feature/7-lab3-communication | #82 (Communication) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
-| #TBD | feature/8-lab3-admin | #83 (Admin) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
-| #TBD | feature/9-lab3-testing | #84 (Testing) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
-| #TBD | feature/10-lab3-release | #85 (Release) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| Issue / PR | Branch | Reviewer | Reviewer Verdict |
+| :--- | :--- | :--- | :--- |
+| #77 (PR #112) | feature/1-lab3-spec-dd | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #78 | feature/2-lab3-database | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #79 | feature/3-lab3-auth | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #80 | feature/4-lab3-security | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #86 | feature/5-lab3-staff-detail | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #81 | feature/6-lab3-queue | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #82 | feature/7-lab3-communication | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #83 | feature/8-lab3-admin | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #84 | feature/9-lab3-testing | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #85 | feature/10-lab3-release | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
 
 ---
 
-### feature/1-lab3-spec-dd #112 (Issue 1 — Spec-DD)
+### #77 (Issue 1 — Spec-DD · PR #112)
 
 **Reviewed by:** TBD
 
