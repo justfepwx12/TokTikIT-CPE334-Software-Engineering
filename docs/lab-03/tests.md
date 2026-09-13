@@ -79,52 +79,88 @@ All test files live under `server/tests/lab-03/`, `client/src/__tests__/lab-03/`
 
 ---
 
-## 2. Acceptance-Criterion Traceability
+## 2. Test Files by Directory
 
-| AC | Covered By Test # |
-|----|--------------------|
-| AC-01 | 5, 40 |
-| AC-02 | 6, 41 |
-| AC-03 | 7, 41 |
-| AC-04 | 8 |
-| AC-05 | 9 |
-| AC-06 | 10, 42 |
-| AC-07 | 11, 42 |
-| AC-08 | 12 |
-| AC-09 | 14 |
-| AC-10 | 15 |
-| AC-11 | 13 |
-| AC-12 | 16 |
-| AC-13 | 17 |
-| AC-14 | 18, 19, 44, 45 |
-| AC-15 | 21, 47 |
-| AC-16 | 22, 47 |
-| AC-17 | 23, 46 |
-| AC-18 | 24, 48, 63 |
-| AC-19 | 25, 48 |
-| AC-20 | 26, 52, 66 |
-| AC-21 | 27, 52 |
-| AC-22 | 29, 49, 54, 64 |
-| AC-23 | 30, 50, 64 |
-| AC-24 | 31 |
-| AC-25 | 32, 51 |
-| AC-26 | 33, 55, 65 |
-| AC-27 | 34, 56, 65 |
-| AC-28 | 35, 56, 65 |
-| AC-29 | 36, 56, 65 |
-| AC-30 | 37 |
-| AC-31 | 38, 57 |
-| AC-32 | 2 |
-| AC-33 | 1, 3, 4 |
+Full planned test paths, grouped per the Issue #89 acceptance criteria:
+
+### `server/tests/lab-03/` (API / Unit / Database-Seed — Supertest + Vitest)
+* `server/tests/lab-03/migration-seed.test.ts` — AC-32, AC-33; migration mapping + idempotent seed (rows 1–4)
+* `server/tests/lab-03/auth-api.test.ts` — AC-01–AC-08, AC-11; login/logout/me/change-password (rows 5–13, 39)
+* `server/tests/lab-03/identity-rbac.test.ts` — AC-09–AC-13; requesterId strip + role/ownership guards (rows 14–17)
+* `server/tests/lab-03/staff-queue-api.test.ts` — AC-14; GET /api/staff/tickets (rows 18–20)
+* `server/tests/lab-03/ownership-api.test.ts` — AC-15, AC-16; claim/assign (rows 21–22)
+* `server/tests/lab-03/priority-status-api.test.ts` — AC-17–AC-21; it-priority + workflow matrix + resolve-intent (rows 23–28)
+* `server/tests/lab-03/communication-api.test.ts` — AC-22–AC-25; comments/notes visibility + append-only (rows 29–32)
+* `server/tests/lab-03/admin-api.test.ts` — AC-26–AC-31; user management + safety guards (rows 33–38)
+
+### `client/src/__tests__/lab-03/` (UI component + UI style — Vitest + RTL)
+* `client/src/__tests__/lab-03/Login.test.tsx` — AC-01–AC-03; safe banner, validation, redirect (rows 40–41)
+* `client/src/__tests__/lab-03/ChangePassword.test.tsx` — AC-06, AC-07; mandatory flow (row 42)
+* `client/src/__tests__/lab-03/AppShell.test.tsx` — role-aware nav + logout, no dev selector (row 43)
+* `client/src/__tests__/lab-03/TicketQueue.test.tsx` — AC-14; table/cards + filters + states (rows 44–45)
+* `client/src/__tests__/lab-03/StaffTicketDetail.test.tsx` — AC-15–AC-19, AC-22, AC-23, AC-25 (rows 46–51)
+* `client/src/__tests__/lab-03/RequesterTicketDetail.test.tsx` — AC-20–AC-23; resolve-intent + comments (rows 52–54)
+* `client/src/__tests__/lab-03/AdminUsers.test.tsx` — AC-26–AC-29, AC-31; admin console + guards (rows 55–57)
+* `client/src/__tests__/lab-03/uiStyle.test.tsx` — tokens, read-only token, notes yellow/lock, 8 status badges (rows 58–59)
+
+### `e2e/lab-03/` (Playwright — End-to-End across 3 viewports)
+* `e2e/lab-03/auth-flow.spec.ts` — AC-01–AC-07; login → first-login change → home → logout (rows 60, 62)
+* `e2e/lab-03/staff-workflow.spec.ts` — AC-14–AC-19, AC-22, AC-23; claim → priority → status → comment/note (rows 63–64)
+* `e2e/lab-03/admin-flow.spec.ts` — AC-26–AC-29; create user, 409, self-deactivate blocked, reset (row 65)
+* `e2e/lab-03/requester-resolve.spec.ts` — AC-20, AC-21; RESOLVED then REOPENED flow (row 66)
+
+Responsive screenshot matrix (row 61) is captured directly into the final report under Issue #109, following the Lab 2 convention (visual checklist, not a test artifact).
+
+---
+
+## 3. Traceability Matrix (AC → API / UI / E2E test files)
+
+Every AC links to at least one test file at each applicable level (`—` = no test required at that level). Full paths are in §2; names below are file stems.
+
+| AC | API (`server/tests/lab-03/`) | UI (`client/src/__tests__/lab-03/`) | E2E (`e2e/lab-03/`) |
+|----|------------------------------|-------------------------------------|----------------------|
+| AC-01 | `auth-api.test.ts` | `Login.test.tsx` | `auth-flow.spec.ts` |
+| AC-02 | `auth-api.test.ts` | `Login.test.tsx` | `auth-flow.spec.ts` |
+| AC-03 | `auth-api.test.ts` | `Login.test.tsx` | `auth-flow.spec.ts` |
+| AC-04 | `auth-api.test.ts` | — | `auth-flow.spec.ts` |
+| AC-05 | `auth-api.test.ts` | — | `auth-flow.spec.ts` |
+| AC-06 | `auth-api.test.ts` | `ChangePassword.test.tsx` | `auth-flow.spec.ts` |
+| AC-07 | `auth-api.test.ts` | `ChangePassword.test.tsx` | `auth-flow.spec.ts` |
+| AC-08 | `auth-api.test.ts` | — | — |
+| AC-09 | `identity-rbac.test.ts` | — | — |
+| AC-10 | `identity-rbac.test.ts` | `RequesterTicketDetail.test.tsx` | — |
+| AC-11 | `auth-api.test.ts` | — | — |
+| AC-12 | `identity-rbac.test.ts` | — | — |
+| AC-13 | `identity-rbac.test.ts` | — | — |
+| AC-14 | `staff-queue-api.test.ts` | `TicketQueue.test.tsx` | `staff-workflow.spec.ts` |
+| AC-15 | `ownership-api.test.ts` | `StaffTicketDetail.test.tsx` | `staff-workflow.spec.ts` |
+| AC-16 | `ownership-api.test.ts` | `StaffTicketDetail.test.tsx` | — |
+| AC-17 | `priority-status-api.test.ts` | `StaffTicketDetail.test.tsx` | `staff-workflow.spec.ts` |
+| AC-18 | `priority-status-api.test.ts` | `StaffTicketDetail.test.tsx` | `staff-workflow.spec.ts` |
+| AC-19 | `priority-status-api.test.ts` | `StaffTicketDetail.test.tsx` | — |
+| AC-20 | `priority-status-api.test.ts` | `RequesterTicketDetail.test.tsx` | `requester-resolve.spec.ts` |
+| AC-21 | `priority-status-api.test.ts` | `RequesterTicketDetail.test.tsx` | `requester-resolve.spec.ts` |
+| AC-22 | `communication-api.test.ts` | `StaffTicketDetail.test.tsx` + `RequesterTicketDetail.test.tsx` | `staff-workflow.spec.ts` |
+| AC-23 | `communication-api.test.ts` | `StaffTicketDetail.test.tsx` + `RequesterTicketDetail.test.tsx` | `staff-workflow.spec.ts` |
+| AC-24 | `communication-api.test.ts` | — | — |
+| AC-25 | `communication-api.test.ts` | `StaffTicketDetail.test.tsx` | — |
+| AC-26 | `admin-api.test.ts` | `AdminUsers.test.tsx` | `admin-flow.spec.ts` |
+| AC-27 | `admin-api.test.ts` | `AdminUsers.test.tsx` | `admin-flow.spec.ts` |
+| AC-28 | `admin-api.test.ts` | `AdminUsers.test.tsx` | `admin-flow.spec.ts` |
+| AC-29 | `admin-api.test.ts` | `AdminUsers.test.tsx` | `admin-flow.spec.ts` |
+| AC-30 | `admin-api.test.ts` | `uiStyle.test.tsx` | — |
+| AC-31 | `admin-api.test.ts` | `AdminUsers.test.tsx` | — |
+| AC-32 | `migration-seed.test.ts` | — | — |
+| AC-33 | `migration-seed.test.ts` | — | — |
 
 Rows 4, 20, 28, 39, 43, 53, 58–61 are traced to specific BRs / required test levels rather than a single numbered AC (they verify preconditions, cross-cutting rules, or a mandatory level — matching the Lab 2 traceability convention).
 
 ---
 
-## 3. Evidence
+## 4. Evidence
 
 To be completed under Issue #105 (server suite), #106 (client/UI suite), and #107 (Playwright E2E). Paste full passing terminal output per suite here, plus responsive screenshot rows under Issue #109.
 
 ---
 
-*End of test plan. Traceability conforms to `specification.md` §11 (AC-01–AC-33) and §8/§10.*
+*End of test plan. Traceability conforms to `specification.md` §11 (AC-01–AC-33) and §8/§10; §2 lists all test paths and §3 maps each AC to API/UI/E2E test files (Issue #89 acceptance criteria).*
