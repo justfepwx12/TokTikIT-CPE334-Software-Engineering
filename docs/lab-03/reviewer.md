@@ -1,8 +1,8 @@
 # Lab 3 — Peer Review Record
 
 **Author:** Onsinee Chotchuangsakulchai — 67070501078 — GitHub: @justfepwx12  
-**Peer reviewer 1:** TBD — GitHub: @TBD  
-**Peer reviewer 2:** TBD — GitHub: @TBD
+**Peer reviewer 1:** Pawarisa Thongchua — 67070501032 — GitHub: @itspxsh  
+**Peer reviewer 2:** Lappawat Laohasoot — 67070501039 — GitHub: @MacOverlorD
 
 ---
 
@@ -10,16 +10,16 @@
 
 | PR | Branch | Issue | Reviewer | Reviewer Verdict |
 | :--- | :--- | :--- | :--- | :--- |
-| #112 | feature/1-lab3-spec-dd | #77 (Spec-DD) | TBD | Pending |
-| #TBD | feature/2-lab3-database | #78 (Database) | TBD | Pending |
-| #TBD | feature/3-lab3-auth | #79 (Auth) | TBD | Pending |
-| #TBD | feature/4-lab3-security | #80 (Security) | TBD | Pending |
-| #TBD | feature/5-lab3-staff-detail | #86 (IT-Staff Detail) | TBD | Pending |
-| #TBD | feature/6-lab3-queue | #81 (Queue) | TBD | Pending |
-| #TBD | feature/7-lab3-communication | #82 (Communication) | TBD | Pending |
-| #TBD | feature/8-lab3-admin | #83 (Admin) | TBD | Pending |
-| #TBD | feature/9-lab3-testing | #84 (Testing) | TBD | Pending |
-| #TBD | feature/10-lab3-release | #85 (Release) | TBD | Pending |
+| #112 | feature/1-lab3-spec-dd | #77 (Spec-DD) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #TBD | feature/2-lab3-database | #78 (Database) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #TBD | feature/3-lab3-auth | #79 (Auth) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #TBD | feature/4-lab3-security | #80 (Security) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #TBD | feature/5-lab3-staff-detail | #86 (IT-Staff Detail) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #TBD | feature/6-lab3-queue | #81 (Queue) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #TBD | feature/7-lab3-communication | #82 (Communication) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #TBD | feature/8-lab3-admin | #83 (Admin) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #TBD | feature/9-lab3-testing | #84 (Testing) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
+| #TBD | feature/10-lab3-release | #85 (Release) | Pawarisa Thongchua (@itspxsh) / Lappawat Laohasoot (@MacOverlorD) | Pending |
 
 ---
 
