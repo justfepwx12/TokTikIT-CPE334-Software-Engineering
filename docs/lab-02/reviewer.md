@@ -1,4 +1,4 @@
-# Lab 1 — Peer Review Record
+# Lab 2 — Peer Review Record
 
 **Author:** Onsinee Chotchuangsakulchai — 67070501078 — GitHub: @justfepwx12  
 **Peer reviewer 1:** Pawarisa Thongchua — 67070501032 — GitHub: @itspxsh  
