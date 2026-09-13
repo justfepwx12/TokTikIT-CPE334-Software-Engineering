@@ -4,15 +4,38 @@ node_modules/
 # Environment variables
 .env
 .env.local
+.env.*.local
+!.env.example
 
 # Build output
 dist/
 build/
+*.tsbuildinfo
 
 # Uploaded attachments (runtime artifacts)
 server/uploads/
 
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
+.eslintcache
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.py[cod]
+
 # OS / IDE
 .DS_Store
-.vscode/
+.idea/
+*.sln
+*.suo
+*.ntvs*
+*.njsproj
+*.sw?
+.vscode/*
+!.vscode/extensions.json
+
+# Misc
 *.log
