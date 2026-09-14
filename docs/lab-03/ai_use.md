@@ -16,7 +16,7 @@
 
 ## Reflection
 
-
+> **Deferred — out of scope for Issue #77 (PR #112).** The reflection will be completed under **Issue #108 (Reviewer Sign-off & AI Use Reflection)** after the Lab 3 implementation issues are done, following the Lab 2 convention. See `docs/lab-03/reviewer.md`.
 
 ---
 

@@ -1,8 +1,8 @@
 # Lab 3 – Test Plan and Evidence
 
-All test files live under `server/tests/lab-03/`, `client/src/__tests__/lab-03/`, and `e2e/lab-03/` (AD-12, Issue #89 acceptance). Coverage spans all six required levels — **Unit, API, UI (component), UI Style, Responsive, and E2E** — and every AC in `specification.md` §11 (AC-01–AC-33) maps to at least one test below (see §2).
+All test files live under `server/tests/lab-03/`, `client/src/__tests__/lab-03/`, and `e2e/lab-03/` (AD-12, Issue #89 acceptance). Coverage spans all six required levels — **Unit, API, UI (component), UI Style, Responsive, and E2E** — and every AC in `specification.md` §11 (AC-01–AC-33) maps to at least one test below (see §3).
 
-**Current status:** `Planned`. This issue is documentation; results are filled in per implementation issue as suites go green. Final full-run evidence (server + client + Playwright) is appended in §3 as Issues #105–#107 complete.
+**Current status:** `Planned`. This issue is documentation; results are filled in per implementation issue as suites go green. Final full-run evidence (server + client + Playwright) is appended in §4 as Issues #105–#107 complete.
 
 ---
 

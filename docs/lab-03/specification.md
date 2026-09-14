@@ -221,7 +221,7 @@ Full detail lives in `docs/lab-03/ui-spec.md`. Summary:
 
 * **Login screen**: full-screen route; email + password; safe combined error for bad credentials (BR-02/BR-06); loading state on submit; "Authentication coming in" notice removed (it is here now).
 * **Mandatory password-change screen**: shown only when `mustChangePassword === true`; cannot be skipped; current + new password fields with identical client/server validation; after success the user lands on their home screen (Requester → My Tickets, IT Staff/Admin → Ticket Queue).
-* **App shell**: Primary Green header with "TokTickIT" brand, role-aware navigation (Requester: My Tickets / Create Ticket; IT Staff & Admin: Ticket Queue / My Tickets / Create Ticket for Admin tools), the authenticated user's name + role with a Logout action. The Simulation-Mode banner and Development Requester selector are removed.
+* **App shell**: Primary Green header with "TokTickIT" brand, role-aware navigation consistent with the §7 authorization matrix (Requester: My Tickets / Create Ticket; IT Staff: Ticket Queue / My Tickets; Administrator: Ticket Queue / My Tickets / Users — ticket creation is Requester-only), the authenticated user's name + role with a Logout action. The Simulation-Mode banner and Development Requester selector are removed.
 * **IT Staff Ticket Queue**: Zen Green data table (cards on mobile) with search, filters, and pagination; shows Ticket No, Title, Requester, Category, System, Requested Priority, IT Priority, Status, Owner, Updated; distinct loading / empty / no-results / error states.
 * **Ticket Detail (IT/Admin)**: read-only requester-submitted fields (including Requested Priority), ownership controls (Claim / Reassign), IT Priority control, status workflow controls valid for the current state, and the Public Comments + Internal Notes sections (visually distinct, append-only editors).
 * **Ticket Detail (Requester)**: as Lab 2, plus the "Problem Appears Resolved" action when the state permits, the Public Comments section (read + post), and no visibility of Internal Notes.
@@ -249,7 +249,7 @@ Full detail lives in `docs/lab-03/ui-spec.md`. Summary:
 
 * Lab 2 `PENDING` → Lab 3 `NEW` (the only status Lab 2 ever produced).
 * Lab 2 single `priority` → both `requestedPriority` **and** `itPriority` (identical value), preserving the requester-submitted priority as the initial IT Priority (BR-14).
-* `Requester` rows → `User` rows with `role = REQUESTER`, `passwordHash` set to a placeholder generated password (must change on first login — `mustChangePassword = true`) or a seeded known value per AD-09; tickets' `requesterId` re-links to the migrated user.
+* `Requester` rows → `User` rows with `role = REQUESTER`, `passwordHash` set to the hash of a **single documented known initial password** (defined once, e.g. in the seed/migration config — AD-09) and `mustChangePassword = true`, so every migrated user must set their own password at first login (BR-03); tickets' `requesterId` re-links to the migrated user. No placeholder-random-per-row passwords; the initial credential is deterministic and shared/documented for the migration.
 * `ownerId` is null for all migrated Lab 2 tickets (no ownership existed).
 * All `ticketNo` values, categories, related systems, attachments (including soft-removed metadata), and timestamps are preserved byte-for-byte.
 
@@ -295,6 +295,7 @@ Full request/response shapes in `docs/lab-03/api-spec.md`. Endpoint summary (all
 
 **Contract decisions:**
 * All endpoints except `POST /auth/login` require a valid session; unauthenticated requests return 401 (BR-06).
+* Successful login **must** set the HTTP-only server-side session cookie (`SameSite=Lax`, `Secure` in production); it is never optional (AD-01, AD-06).
 * A client-supplied `requesterId` in any payload is ignored/stripped — identity always comes from `req.user.id` (BR-04).
 * Foreign resource → 403; truly missing resource → 404; foreign *list* endpoints simply scope (no existence leak).
 * Auth failures: wrong password and inactive account produce the **same** safe 401 message (BR-02, BR-06).
@@ -305,7 +306,7 @@ Full request/response shapes in `docs/lab-03/api-spec.md`. Endpoint summary (all
 ## 11. Acceptance Criteria
 
 **Authentication & sessions**
-* **AC-01**: Given an active user with a correct email/password, when they log in, then the API returns 200 with the user payload and sets an HTTP-only session cookie.
+* **AC-01**: Given an active user with a correct email/password, when they log in, then the API returns 200 with the user payload and **always** establishes an HTTP-only server-side session cookie via `Set-Cookie` (mandatory, AD-01/AD-06).
 * **AC-02**: Given a wrong password (any user), when login is attempted, then the API returns 401 with a safe, generic message that does not reveal account existence/state.
 * **AC-03**: Given an inactive account, when login is attempted, then the API returns 401 with the same safe generic message.
 * **AC-04**: Given a valid session, when the user calls `GET /api/auth/me`, then 200 returns the current user incl. role; when the session is missing/expired, 401 is returned.
@@ -382,7 +383,7 @@ Full request/response shapes in `docs/lab-03/api-spec.md`. Endpoint summary (all
 * **AD-03 (Transition Matrix)**: The §6 matrix (including `Cancelled` as terminal and no Requester `Cancelled` action) is the authoritative workflow contract for Issue 5 / #99.
 
 **Additional assumptions (agent-proposed, to be confirmed before implementation):**
-* **AD-04 (Migration Mapping)**: `PENDING → NEW`; single `priority` copies into both `requestedPriority` and `itPriority`; `Requester` rows move to `User` with role `REQUESTER`; migrated users get `mustChangePassword = true` with a placeholder hash or a known seeded initial password (see AD-09); migrated tickets get `ownerId = NULL`.
+* **AD-04 (Migration Mapping)**: `PENDING → NEW`; single `priority` copies into both `requestedPriority` and `itPriority`; `Requester` rows move to `User` with role `REQUESTER` and **`mustChangePassword = true`**, with `passwordHash` set from the single documented known initial password (see AD-09 — no placeholder-random option); migrated tickets get `ownerId = NULL`.
 * **AD-05 (Password Hashing)**: bcrypt (cost ≥ 10) for all password hashes; no plaintext anywhere; hashes never returned by any endpoint.
 * **AD-06 (Session & Cookie Defaults)**: HTTP-only, `SameSite=Lax`, secure in production, rolling expiration (idle timeout) as chosen by the student in Issue 3; session store persists in PostgreSQL so restarts do not log everyone out.
 * **AD-07 (Identity Transport Removal)**: The `x-requester-id` header and Development Requester selector are removed in Lab 3; the client sends no identity header/field (BR-04, BR-21 UI).
