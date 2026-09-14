@@ -36,10 +36,10 @@ Breakpoints: Mobile `< 768px` · Tablet `768–991px` · Desktop `≥ 992px` (id
 ### 2.1 Header Navbar
 *   Background Primary Green (`#006B3C`), white foreground.
 *   Left: "TokTickIT" brand.
-*   Center/left nav is **role-aware**:
+*   Center/left nav is **role-aware** (ticket creation is Requester-only — §7 authorization matrix, BR-05):
     *   **Requester**: "My Tickets", "Create Ticket".
-    *   **IT Staff**: "Ticket Queue", "My Tickets", "Create Ticket".
-    *   **Administrator**: "Ticket Queue", "My Tickets", "Create Ticket", "Users".
+    *   **IT Staff**: "Ticket Queue", "My Tickets".
+    *   **Administrator**: "Ticket Queue", "My Tickets", "Users".
 *   Right: authenticated user context — name, role pill (`REQUESTER`/`IT_STAFF`/`ADMIN`), and a **Logout** button. The Lab 2 "Change Requester" control and the Simulation-Mode banner are removed (FR-03).
 
 ### 2.2 Route guards

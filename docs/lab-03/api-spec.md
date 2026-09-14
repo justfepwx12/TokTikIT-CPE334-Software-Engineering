@@ -59,7 +59,7 @@ Authenticates an email + password and establishes the session cookie (BR-01, BR-
     }
   }
   ```
-  Optionally sets a `Set-Cookie` header for the session (implementation detail of Issue 3). `passwordHash` is never returned (BR-01).
+  On success the server **always** sets the session cookie via the `Set-Cookie` header — HTTP-only, `SameSite=Lax`, `Secure` in production, persisted server-side (AD-01, AD-06). The cookie is mandatory: a `200 OK` without an established session cookie is a server error. Clients must accept it (credentials mode `include`) and send it back to ride the session; session default TTL/rolling-renewal are Issue 3 implementation details. `passwordHash` is never returned (BR-01).
 
 ### POST /api/auth/logout
 Invalidates the session; requires an active session.
@@ -308,8 +308,7 @@ Creates a user with exactly one role and an initial password (BR-08, BR-09).
     "email": "somchai.jaidee@toktikit.com",
     "role": "REQUESTER",
     "password": "Temporary-123",
-    "isActive": true,
-    "mustChangePassword": true
+    "isActive": true
   }
   ```
   | Field | Type | Required | Validation |
@@ -319,7 +318,7 @@ Creates a user with exactly one role and an initial password (BR-08, BR-09).
   | `role` | String | Yes | One of `REQUESTER`, `IT_STAFF`, `ADMIN`. |
   | `password` | String | Yes | 8–128 chars; hashed with bcrypt (BR-01, AD-05); never returned. |
   | `isActive` | Boolean | No | Default `true`. |
-  | `mustChangePassword` | Boolean | No | Default `true`. |
+* **Contract note**: `mustChangePassword` is **not** a client-controlled field and is **never accepted** in the request body. The server **always** creates new users with `mustChangePassword = true` so they must change the password at first login (BR-03, AD-09); a body that includes the field is rejected with `400`.
 * **Status Codes**: `201 Created` (`{ "user": { ... } }` without `passwordHash`) · `400` · `401` · `403` · `409 Conflict` (duplicate email) · `500`
 
 ### PATCH /api/admin/users/:id
