@@ -48,12 +48,14 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
 // GET /api/requesters
 // AC: "GET API retrieves only active Development Requesters from the database."
 // Response shape per api-spec.md §1: { id, name, email, isActive }.
-// Ordered by name (not id) since this feeds a user-facing selection dropdown.
+// Lab 3: Requesters are Users with role REQUESTER. This dev-only endpoint
+// stays until Lab 3 auth (#92) replaces the selector (AD-07).
 app.get("/api/requesters", async (_req: Request, res: Response) => {
   try {
     const prisma = getPrisma();
-    const requesters = await prisma.requester.findMany({
+    const requesters = await prisma.user.findMany({
       where: {
+        role: "REQUESTER",
         isActive: true,
       },
       select: {

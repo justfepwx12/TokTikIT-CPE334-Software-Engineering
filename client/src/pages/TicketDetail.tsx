@@ -7,8 +7,8 @@ import {
   downloadAttachment,
   removeAttachment,
   triggerDownload,
-  type Status,
-  type Priority,
+  type TicketStatus,
+  type TicketPriority,
   type TicketDetail as TicketDetailType,
   type TicketDetailAttachment,
 } from "../api";
@@ -20,14 +20,18 @@ import ValidationMessage from "../components/ValidationMessage";
 const REMOVAL_REASON_MIN = 3;
 const REMOVAL_REASON_MAX = 200;
 
-const STATUS_COLOR: Record<Status, "gray" | "blue" | "green"> = {
-  PENDING: "gray",
+const STATUS_COLOR: Record<TicketStatus, "gray" | "blue" | "green"> = {
+  NEW: "gray",
+  OPEN: "blue",
   IN_PROGRESS: "blue",
+  WAITING_FOR_REQUESTER: "gray",
   RESOLVED: "green",
   CLOSED: "gray",
+  REOPENED: "blue",
+  CANCELLED: "gray",
 };
 
-const PRIORITY_COLOR: Record<Priority, "gray" | "yellow" | "red"> = {
+const PRIORITY_COLOR: Record<TicketPriority, "gray" | "yellow" | "red"> = {
   LOW: "gray",
   MEDIUM: "yellow",
   HIGH: "red",
@@ -329,8 +333,8 @@ export default function TicketDetail() {
               </div>
             </div>
             <div className="d-flex gap-2">
-              <Badge color={PRIORITY_COLOR[ticket.priority]} data-testid="ticket-priority">
-                {ticket.priority}
+              <Badge color={PRIORITY_COLOR[ticket.requestedPriority]} data-testid="ticket-priority">
+                {ticket.requestedPriority}
               </Badge>
               <Badge color={STATUS_COLOR[ticket.status]}>{ticket.status}</Badge>
             </div>

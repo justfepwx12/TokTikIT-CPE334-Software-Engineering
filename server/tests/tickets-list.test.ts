@@ -28,25 +28,58 @@ describe("GET /api/tickets", () => {
     testCategoryId = category!.id;
     testSystemId = system!.id;
 
-    requesterA = await prisma.requester.create({
-      data: { name: "List Test A", email: REQ_A_EMAIL, isActive: true },
+    requesterA = await prisma.user.create({
+      data: {
+        name: "List Test A",
+        email: REQ_A_EMAIL,
+        isActive: true,
+        role: "REQUESTER",
+        passwordHash: "test-hash",
+        mustChangePassword: true,
+      },
     });
-    requesterB = await prisma.requester.create({
-      data: { name: "List Test B", email: REQ_B_EMAIL, isActive: true },
+    requesterB = await prisma.user.create({
+      data: {
+        name: "List Test B",
+        email: REQ_B_EMAIL,
+        isActive: true,
+        role: "REQUESTER",
+        passwordHash: "test-hash",
+        mustChangePassword: true,
+      },
     });
 
     const rows = await prisma.$transaction(
       [
-        { title: "Alpha Login Failure", description: "Cannot sign in to the portal", priority: "HIGH", status: "PENDING" },
-        { title: "Beta Printer Jam", description: "Printer jams on the third floor", priority: "LOW", status: "IN_PROGRESS" },
-        { title: "Gamma VPN Dropping", description: "VPN drops every five minutes", priority: "URGENT", status: "RESOLVED" },
+        {
+          title: "Alpha Login Failure",
+          description: "Cannot sign in to the portal",
+          requestedPriority: "HIGH",
+          itPriority: "HIGH",
+          status: "NEW",
+        },
+        {
+          title: "Beta Printer Jam",
+          description: "Printer jams on the third floor",
+          requestedPriority: "LOW",
+          itPriority: "MEDIUM",
+          status: "IN_PROGRESS",
+        },
+        {
+          title: "Gamma VPN Dropping",
+          description: "VPN drops every five minutes",
+          requestedPriority: "URGENT",
+          itPriority: "URGENT",
+          status: "RESOLVED",
+        },
       ].map((r) =>
         prisma.ticket.create({
           data: {
             ticketNo: makeTicketNo(),
             title: r.title,
             description: r.description,
-            priority: r.priority,
+            requestedPriority: r.requestedPriority,
+            itPriority: r.itPriority,
             status: r.status,
             requesterId: requesterA.id,
             categoryId: testCategoryId,
@@ -62,8 +95,9 @@ describe("GET /api/tickets", () => {
         ticketNo: makeTicketNo(),
         title: "B Ticket Never Shown",
         description: "This ticket belongs to requester B only",
-        priority: "MEDIUM",
-        status: "PENDING",
+        requestedPriority: "MEDIUM",
+        itPriority: "MEDIUM",
+        status: "NEW",
         requesterId: requesterB.id,
         categoryId: testCategoryId,
         systemId: testSystemId,
@@ -74,7 +108,7 @@ describe("GET /api/tickets", () => {
   afterAll(async () => {
     await prisma.ticket.deleteMany({ where: { id: { in: ticketIds } } });
     await prisma.ticket.deleteMany({ where: { requesterId: requesterB.id } });
-    await prisma.requester.deleteMany({ where: { email: { in: [REQ_A_EMAIL, REQ_B_EMAIL] } } });
+    await prisma.user.deleteMany({ where: { email: { in: [REQ_A_EMAIL, REQ_B_EMAIL] } } });
   });
 
   it("returns HTTP 401 when the x-requester-id header is missing", async () => {
@@ -118,7 +152,7 @@ describe("GET /api/tickets", () => {
 
     const ticket = res.body.tickets[0];
     expect(Object.keys(ticket).sort()).toEqual(
-      ["category", "createdAt", "description", "id", "priority", "status", "system", "ticketNo", "title"].sort()
+      ["category", "createdAt", "description", "id", "itPriority", "requestedPriority", "status", "system", "ticketNo", "title"].sort()
     );
     expect(typeof ticket.category.id).toBe("number");
     expect(typeof ticket.category.name).toBe("string");
@@ -171,20 +205,20 @@ describe("GET /api/tickets", () => {
     expect(priorityRes.body.tickets[0].title).toBe("Alpha Login Failure");
   });
 
-  it("sorts by priority descending (heaviest first) and ascending", async () => {
+  it("sorts by requestedPriority descending (heaviest first) and ascending", async () => {
     const resDesc = await request(app)
-      .get("/api/tickets?sort=priority&order=desc")
+      .get("/api/tickets?sort=requestedPriority&order=desc")
       .set("x-requester-id", String(requesterA.id));
 
     expect(resDesc.status).toBe(200);
-    const descPriorities = resDesc.body.tickets.map((t: { priority: string }) => t.priority);
+    const descPriorities = resDesc.body.tickets.map((t: { requestedPriority: string }) => t.requestedPriority);
     // Postgres enum definition order: LOW < MEDIUM < HIGH < URGENT (heaviness).
     expect(descPriorities).toEqual(["URGENT", "HIGH", "LOW"]);
 
     const resAsc = await request(app)
-      .get("/api/tickets?sort=priority&order=asc")
+      .get("/api/tickets?sort=requestedPriority&order=asc")
       .set("x-requester-id", String(requesterA.id));
-    const ascPriorities = resAsc.body.tickets.map((t: { priority: string }) => t.priority);
+    const ascPriorities = resAsc.body.tickets.map((t: { requestedPriority: string }) => t.requestedPriority);
     expect(ascPriorities).toEqual(["LOW", "HIGH", "URGENT"]);
   });
 

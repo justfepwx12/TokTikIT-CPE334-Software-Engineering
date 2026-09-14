@@ -40,8 +40,9 @@ async function createTicket(requesterId: number, title: string): Promise<number>
       ticketNo: makeTicketNo(),
       title,
       description: "Attachment endpoint regression fixture",
-      priority: "MEDIUM",
-      status: "PENDING",
+      requestedPriority: "MEDIUM",
+      itPriority: "MEDIUM",
+      status: "NEW",
       requesterId,
       categoryId: testCategoryId,
       systemId: testSystemId,
@@ -66,7 +67,7 @@ describe("Attachments API (api-spec §5)", () => {
     await prisma.ticket.deleteMany({
       where: { requester: { is: { email: { in: [REQ_A_EMAIL, REQ_B_EMAIL] } } } },
     });
-    await prisma.requester.deleteMany({
+    await prisma.user.deleteMany({
       where: { email: { in: [REQ_A_EMAIL, REQ_B_EMAIL] } },
     });
 
@@ -75,11 +76,25 @@ describe("Attachments API (api-spec §5)", () => {
     testCategoryId = category!.id;
     testSystemId = system!.id;
 
-    requesterA = await prisma.requester.create({
-      data: { name: "Attachment Test A", email: REQ_A_EMAIL, isActive: true },
+    requesterA = await prisma.user.create({
+      data: {
+        name: "Attachment Test A",
+        email: REQ_A_EMAIL,
+        isActive: true,
+        role: "REQUESTER",
+        passwordHash: "test-hash",
+        mustChangePassword: true,
+      },
     });
-    requesterB = await prisma.requester.create({
-      data: { name: "Attachment Test B", email: REQ_B_EMAIL, isActive: true },
+    requesterB = await prisma.user.create({
+      data: {
+        name: "Attachment Test B",
+        email: REQ_B_EMAIL,
+        isActive: true,
+        role: "REQUESTER",
+        passwordHash: "test-hash",
+        mustChangePassword: true,
+      },
     });
 
     ownedTicketId = await createTicket(requesterA.id, "Owned Attachment Ticket");
@@ -103,7 +118,7 @@ describe("Attachments API (api-spec §5)", () => {
     await prisma.ticket.deleteMany({
       where: { requester: { is: { email: { in: [REQ_A_EMAIL, REQ_B_EMAIL] } } } },
     });
-    await prisma.requester.deleteMany({
+    await prisma.user.deleteMany({
       where: { email: { in: [REQ_A_EMAIL, REQ_B_EMAIL] } },
     });
   });

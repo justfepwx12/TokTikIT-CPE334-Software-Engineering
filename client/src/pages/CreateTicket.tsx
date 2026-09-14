@@ -8,7 +8,7 @@ import {
   uploadAttachment,
   type Category,
   type RelatedSystem,
-  type Priority,
+  type TicketPriority,
   type Ticket,
 } from "../api";
 import { useRequester } from "../hooks/useRequester";
@@ -25,7 +25,7 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_FILES = 5;
 
-const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+const PRIORITIES: TicketPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -182,7 +182,7 @@ export default function CreateTicket() {
           description: values.description.trim(),
           categoryId: Number(values.categoryId),
           systemId: Number(values.systemId),
-          priority: values.priority as Priority,
+          priority: values.priority as TicketPriority,
         },
         requester.id
       );
