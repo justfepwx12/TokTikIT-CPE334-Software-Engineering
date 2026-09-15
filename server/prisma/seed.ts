@@ -268,9 +268,6 @@ const SAMPLE_TICKETS: SampleTicket[] = [
 ]
 
 async function seedSampleTickets(userIds: Record<string, number>) {
-  const ticketIds: number[] = []
-  const seedAuthors = new Set(SEED_USERS.map((u) => u.email))
-
   for (const t of SAMPLE_TICKETS) {
     const category = await prisma.category.findUnique({ where: { name: t.categoryName } })
     const system = await prisma.relatedSystem.findUnique({ where: { name: t.systemName } })
@@ -295,19 +292,12 @@ async function seedSampleTickets(userIds: Record<string, number>) {
         systemId: system.id,
       },
     })
-    ticketIds.push(row.id)
   }
 
-  // Comments/notes have no unique business key. To stay idempotent (AC-33),
-  // remove only the previously seeded rows on these demo tickets (identified
-  // by author in the seed set) and re-create the canonical set.
-  await prisma.comment.deleteMany({
-    where: { ticketId: { in: ticketIds }, author: { email: { in: [...seedAuthors] } } },
-  })
-  await prisma.internalNote.deleteMany({
-    where: { ticketId: { in: ticketIds }, author: { email: { in: [...seedAuthors] } } },
-  })
-
+  // Comments/notes have no user-facing unique business key. Seeded demo rows
+  // carry a deterministic, ticket-scoped seedKey (`seed:<ticketNo>:<comment|note>:<index>`)
+  // and are upserted on (ticketId, seedKey) — inserting only missing canonical
+  // rows and never deleting user-authored comments/notes on re-run (AC-33).
   const rowByTicketNo = new Map(
     await Promise.all(
       SAMPLE_TICKETS.map(async (t) => [
@@ -322,15 +312,21 @@ async function seedSampleTickets(userIds: Record<string, number>) {
   for (const t of SAMPLE_TICKETS) {
     const row = rowByTicketNo.get(t.ticketNo)
     if (!row) continue
-    for (const c of t.comments ?? []) {
-      await prisma.comment.create({
-        data: { body: c.body, authorId: userIds[c.authorEmail], ticketId: row.id },
+    for (const [i, c] of (t.comments ?? []).entries()) {
+      const seedKey = `seed:${t.ticketNo}:comment:${i}`
+      await prisma.comment.upsert({
+        where: { ticketId_seedKey: { ticketId: row.id, seedKey } },
+        update: {},
+        create: { body: c.body, authorId: userIds[c.authorEmail], ticketId: row.id, seedKey },
       })
       commentCount++
     }
-    for (const n of t.notes ?? []) {
-      await prisma.internalNote.create({
-        data: { body: n.body, authorId: userIds[n.authorEmail], ticketId: row.id },
+    for (const [i, n] of (t.notes ?? []).entries()) {
+      const seedKey = `seed:${t.ticketNo}:note:${i}`
+      await prisma.internalNote.upsert({
+        where: { ticketId_seedKey: { ticketId: row.id, seedKey } },
+        update: {},
+        create: { body: n.body, authorId: userIds[n.authorEmail], ticketId: row.id, seedKey },
       })
       noteCount++
     }

@@ -28,20 +28,20 @@ model RelatedSystem {
 // Lab 3 §9.1 — every authenticated person. Lab 2 Requester rows migrate here
 // with role REQUESTER (AD-04). IT Staff and Administrators are seeded too.
 model User {
-  id            Int      @id @default(autoincrement())
-  name          String
-  email         String   @unique
-  passwordHash  String
-  role          Role
-  isActive      Boolean  @default(true)
+  id                 Int      @id @default(autoincrement())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  role               Role
+  isActive           Boolean  @default(true)
   // BR-03/AD-09: migrated users + newly created users must change their
   // initial password at first login; seeded demo accounts may be false.
-  mustChangePassword Boolean @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  mustChangePassword Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  ownedTickets   Ticket[]     @relation("Owner")
-  requesterGroup Ticket[]     @relation("Requester")
+  ownedTickets   Ticket[]       @relation("Owner")
+  requesterGroup Ticket[]       @relation("Requester")
   comments       Comment[]
   internalNotes  InternalNote[]
 
@@ -96,12 +96,12 @@ model Ticket {
   updatedAt DateTime @updatedAt
 
   requesterId Int
-  requester   User      @relation("Requester", fields: [requesterId], references: [id], onDelete: Restrict)
+  requester   User @relation("Requester", fields: [requesterId], references: [id], onDelete: Restrict)
 
   // BR-13: at most one primary Owner (active IT Staff/Admin); unassigned
   // initially. Nullable — migrated Lab 2 tickets have no owner (AD-04).
   ownerId Int?
-  owner   User?     @relation("Owner", fields: [ownerId], references: [id], onDelete: SetNull)
+  owner   User? @relation("Owner", fields: [ownerId], references: [id], onDelete: SetNull)
 
   categoryId Int
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -125,12 +125,18 @@ model Comment {
   body      String
   createdAt DateTime @default(now())
 
+  // Deterministic key for idempotent seed upserts (AC-33). Nullable so
+  // real user-authored comments never carry one and are never touched by
+  // re-runs of prisma db seed.
+  seedKey String?
+
   authorId Int
-  author   User   @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  author   User @relation(fields: [authorId], references: [id], onDelete: Restrict)
 
   ticketId Int
   ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
 
+  @@unique([ticketId, seedKey])
   @@index([ticketId])
 }
 
@@ -140,12 +146,18 @@ model InternalNote {
   body      String
   createdAt DateTime @default(now())
 
+  // Deterministic key for idempotent seed upserts (AC-33). Nullable so
+  // real user-authored notes never carry one and are never touched by
+  // re-runs of prisma db seed.
+  seedKey String?
+
   authorId Int
-  author   User   @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  author   User @relation(fields: [authorId], references: [id], onDelete: Restrict)
 
   ticketId Int
   ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
 
+  @@unique([ticketId, seedKey])
   @@index([ticketId])
 }
 

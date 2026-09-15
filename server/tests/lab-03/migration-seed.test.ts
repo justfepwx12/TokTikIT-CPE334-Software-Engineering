@@ -151,4 +151,42 @@ describe("Lab 3 migration & seed (AC-32, AC-33)", () => {
     expect(countsAfter.comments).toBe(countsBefore.comments);
     expect(countsAfter.notes).toBe(countsBefore.notes);
   });
+
+  it("re-seeding preserves user-authored comments and notes (AC-33 data preservation)", async () => {
+    const ticket = await prisma.ticket.findUniqueOrThrow({
+      where: { ticketNo: "TK-20260823-0005" },
+    });
+    const seedAuthor = await prisma.user.findUniqueOrThrow({
+      where: { email: "anong.srisuk@toktikit.com" },
+    });
+
+    // A real user adds a comment/note from one of the seeded accounts. These
+    // rows have no seedKey, so a re-run of prisma db seed must leave them intact.
+    const userComment = await prisma.comment.create({
+      data: { body: "user-authored comment", authorId: seedAuthor.id, ticketId: ticket.id },
+    });
+    const userNote = await prisma.internalNote.create({
+      data: { body: "user-authored note", authorId: seedAuthor.id, ticketId: ticket.id },
+    });
+
+    try {
+      execSync("pnpm --filter server exec prisma db seed", { stdio: "pipe" });
+
+      const [commentSurvived, noteSurvived, canonicalComments, canonicalNotes] = await Promise.all([
+        prisma.comment.findUnique({ where: { id: userComment.id } }),
+        prisma.internalNote.findUnique({ where: { id: userNote.id } }),
+        prisma.comment.count({ where: { ticketId: ticket.id, seedKey: { startsWith: "seed:" } } }),
+        prisma.internalNote.count({ where: { ticketId: ticket.id, seedKey: { startsWith: "seed:" } } }),
+      ]);
+
+      expect(commentSurvived).toBeTruthy();
+      expect(noteSurvived).toBeTruthy();
+      // Seed upserts by seedKey — canonical demo rows exist exactly once.
+      expect(canonicalComments).toBe(2);
+      expect(canonicalNotes).toBe(1);
+    } finally {
+      await prisma.comment.deleteMany({ where: { id: { in: [userComment.id] } } });
+      await prisma.internalNote.deleteMany({ where: { id: { in: [userNote.id] } } });
+    }
+  });
 });
