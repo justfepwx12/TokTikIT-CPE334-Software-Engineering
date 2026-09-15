@@ -13,8 +13,8 @@ import {
   getTickets,
   type Category,
   type RelatedSystem,
-  type Status,
-  type Priority,
+  type TicketStatus,
+  type TicketPriority,
   type SortField,
   type SortOrder,
   type TicketQuery,
@@ -31,18 +31,31 @@ const DEFAULT_QUERY: TicketQuery = {
   order: "desc",
 };
 
-const STATUSES: Status[] = ["PENDING", "IN_PROGRESS", "RESOLVED", "CLOSED"];
-const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+const STATUSES: TicketStatus[] = [
+  "NEW",
+  "OPEN",
+  "IN_PROGRESS",
+  "WAITING_FOR_REQUESTER",
+  "RESOLVED",
+  "CLOSED",
+  "REOPENED",
+  "CANCELLED",
+];
+const PRIORITIES: TicketPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const PAGE_SIZES = [10, 20, 50];
 
-const STATUS_COLOR: Record<Status, "gray" | "blue" | "green"> = {
-  PENDING: "gray",
+const STATUS_COLOR: Record<TicketStatus, "gray" | "blue" | "green"> = {
+  NEW: "gray",
+  OPEN: "blue",
   IN_PROGRESS: "blue",
+  WAITING_FOR_REQUESTER: "gray",
   RESOLVED: "green",
   CLOSED: "gray",
+  REOPENED: "blue",
+  CANCELLED: "gray",
 };
 
-const PRIORITY_COLOR: Record<Priority, "gray" | "yellow" | "red"> = {
+const PRIORITY_COLOR: Record<TicketPriority, "gray" | "yellow" | "red"> = {
   LOW: "gray",
   MEDIUM: "yellow",
   HIGH: "red",
@@ -55,11 +68,11 @@ function formatDate(value: string): string {
   return d.toLocaleDateString();
 }
 
-function PriorityBadge({ priority }: { priority: Priority }) {
+function PriorityBadge({ priority }: { priority: TicketPriority }) {
   return <Badge color={PRIORITY_COLOR[priority]}>{priority}</Badge>;
 }
 
-function StatusBadge({ status }: { status: Status }) {
+function StatusBadge({ status }: { status: TicketStatus }) {
   return <Badge color={STATUS_COLOR[status]}>{status}</Badge>;
 }
 
@@ -125,7 +138,7 @@ function DesktopTable({ tickets, onOpen }: { tickets: TicketSummary[]; onOpen: (
               <td className="text-dark">{t.title}</td>
               <td>{t.category.name}</td>
               <td>
-                <PriorityBadge priority={t.priority} />
+                <PriorityBadge priority={t.requestedPriority} />
               </td>
               <td>
                 <StatusBadge status={t.status} />
@@ -164,7 +177,7 @@ function MobileCards({ tickets, onOpen }: { tickets: TicketSummary[]; onOpen: (i
               <div className="text-secondary small">{t.category.name}</div>
             </div>
             <div className="d-flex flex-column gap-1 align-items-end">
-              <PriorityBadge priority={t.priority} />
+              <PriorityBadge priority={t.requestedPriority} />
               <StatusBadge status={t.status} />
             </div>
           </div>
@@ -440,15 +453,15 @@ export default function MyTickets() {
             <label className="form-label fw-bold small text-dark" htmlFor="filter-status">
               Status
             </label>
-            <select
-              id="filter-status"
-              data-testid="filter-status"
-              className="form-select"
-              value={appliedQuery.status ?? ""}
-              onChange={(e) =>
-                updateQuery({ status: (e.target.value || undefined) as Status | undefined })
-              }
-            >
+<select
+                id="filter-status"
+                data-testid="filter-status"
+                className="form-select"
+                value={appliedQuery.status ?? ""}
+                onChange={(e) =>
+                  updateQuery({ status: (e.target.value || undefined) as TicketStatus | undefined })
+                }
+              >
               <option value="">All</option>
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -467,9 +480,9 @@ export default function MyTickets() {
               data-testid="filter-priority"
               className="form-select"
               value={appliedQuery.priority ?? ""}
-              onChange={(e) =>
-                updateQuery({ priority: (e.target.value || undefined) as Priority | undefined })
-              }
+onChange={(e) =>
+                  updateQuery({ priority: (e.target.value || undefined) as TicketPriority | undefined })
+                }
             >
               <option value="">All</option>
               {PRIORITIES.map((p) => (
@@ -500,11 +513,11 @@ export default function MyTickets() {
               </button>
               <button
                 type="button"
-                className={`btn btn-sm ${appliedQuery.sort === "priority" ? "btn-brand text-white" : "btn-outline-secondary"}`}
+                className={`btn btn-sm ${appliedQuery.sort === "requestedPriority" ? "btn-brand text-white" : "btn-outline-secondary"}`}
                 data-testid="sort-priority"
-                onClick={() => handleSortChange("priority")}
+                onClick={() => handleSortChange("requestedPriority")}
               >
-                Priority {appliedQuery.sort === "priority" ? (appliedQuery.order === "asc" ? "↑" : "↓") : ""}
+                Priority {appliedQuery.sort === "requestedPriority" ? (appliedQuery.order === "asc" ? "↑" : "↓") : ""}
               </button>
             </div>
           </div>

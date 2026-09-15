@@ -28,8 +28,9 @@ async function createTicket(requesterId: number, title: string): Promise<number>
       ticketNo: makeTicketNo(),
       title,
       description: "Detail endpoint regression fixture",
-      priority: "MEDIUM",
-      status: "PENDING",
+      requestedPriority: "MEDIUM",
+      itPriority: "MEDIUM",
+      status: "NEW",
       requesterId,
       categoryId: testCategoryId,
       systemId: testSystemId,
@@ -43,7 +44,7 @@ describe("GET /api/tickets/:id", () => {
     await prisma.ticket.deleteMany({
       where: { requester: { is: { email: { in: [REQ_A_EMAIL, REQ_B_EMAIL] } } } },
     });
-    await prisma.requester.deleteMany({
+    await prisma.user.deleteMany({
       where: { email: { in: [REQ_A_EMAIL, REQ_B_EMAIL] } },
     });
 
@@ -52,11 +53,25 @@ describe("GET /api/tickets/:id", () => {
     testCategoryId = category!.id;
     testSystemId = system!.id;
 
-    requesterA = await prisma.requester.create({
-      data: { name: "Detail Test A", email: REQ_A_EMAIL, isActive: true },
+    requesterA = await prisma.user.create({
+      data: {
+        name: "Detail Test A",
+        email: REQ_A_EMAIL,
+        isActive: true,
+        role: "REQUESTER",
+        passwordHash: "test-hash",
+        mustChangePassword: true,
+      },
     });
-    requesterB = await prisma.requester.create({
-      data: { name: "Detail Test B", email: REQ_B_EMAIL, isActive: true },
+    requesterB = await prisma.user.create({
+      data: {
+        name: "Detail Test B",
+        email: REQ_B_EMAIL,
+        isActive: true,
+        role: "REQUESTER",
+        passwordHash: "test-hash",
+        mustChangePassword: true,
+      },
     });
 
     ownedTicketId = await createTicket(requesterA.id, "Owned Detail Ticket");
@@ -67,7 +82,7 @@ describe("GET /api/tickets/:id", () => {
     await prisma.ticket.deleteMany({
       where: { id: { in: [ownedTicketId, otherTicketId] } },
     });
-    await prisma.requester.deleteMany({
+    await prisma.user.deleteMany({
       where: { email: { in: [REQ_A_EMAIL, REQ_B_EMAIL] } },
     });
   });
@@ -81,8 +96,9 @@ describe("GET /api/tickets/:id", () => {
     expect(res.body.id).toBe(ownedTicketId);
     expect(res.body.ticketNo).toMatch(/^TK-\d{8}-\d{4}$/);
     expect(res.body.title).toBe("Owned Detail Ticket");
-    expect(res.body.priority).toBe("MEDIUM");
-    expect(res.body.status).toBe("PENDING");
+    expect(res.body.requestedPriority).toBe("MEDIUM");
+    expect(res.body.itPriority).toBe("MEDIUM");
+    expect(res.body.status).toBe("NEW");
     expect(res.body.category).toMatchObject({ id: testCategoryId });
     expect(res.body.system).toMatchObject({ id: testSystemId });
     expect(res.body.requester).toMatchObject({ id: requesterA.id });

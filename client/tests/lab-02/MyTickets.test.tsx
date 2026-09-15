@@ -32,8 +32,9 @@ const TICKETS: api.TicketSummary[] = [
     ticketNo: "TK-20260906-0001",
     title: "VPN drops every 5 minutes",
     description: "Cannot stay connected",
-    priority: "HIGH",
-    status: "PENDING",
+    requestedPriority: "HIGH",
+    itPriority: "HIGH",
+    status: "NEW",
     createdAt: "2026-09-06T04:18:20.000Z",
     category: { id: 3, name: "Network" },
     system: { id: 3, name: "VPN Service" },
@@ -43,7 +44,8 @@ const TICKETS: api.TicketSummary[] = [
     ticketNo: "TK-20260906-0002",
     title: "Printer jams on third floor",
     description: "Paper stuck",
-    priority: "LOW",
+    requestedPriority: "LOW",
+    itPriority: "MEDIUM",
     status: "IN_PROGRESS",
     createdAt: "2026-09-05T09:10:00.000Z",
     category: { id: 3, name: "Network" },
@@ -153,11 +155,11 @@ describe("MyTickets Component", () => {
     fireEvent.change(screen.getByTestId("ticket-search"), { target: { value: "VPN" } });
     fireEvent.click(screen.getByRole("button", { name: /apply/i }));
 
-    fireEvent.change(screen.getByTestId("filter-status"), { target: { value: "PENDING" } });
+    fireEvent.change(screen.getByTestId("filter-status"), { target: { value: "NEW" } });
 
     await waitFor(() => {
       const last = getTicketsMock.mock.calls[getTicketsMock.mock.calls.length - 1];
-      expect(last[0]).toEqual(expect.objectContaining({ search: "VPN", status: "PENDING" }));
+      expect(last[0]).toEqual(expect.objectContaining({ search: "VPN", status: "NEW" }));
     });
   });
 
@@ -172,7 +174,7 @@ describe("MyTickets Component", () => {
 
     await waitFor(() => {
       const last = getTicketsMock.mock.calls[getTicketsMock.mock.calls.length - 1];
-      expect(last[0]).toEqual(expect.objectContaining({ sort: "priority", order: "desc" }));
+      expect(last[0]).toEqual(expect.objectContaining({ sort: "requestedPriority", order: "desc" }));
     });
   });
 

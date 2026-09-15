@@ -9,6 +9,7 @@ const createTicketSchema = z.object({
   description: z.string().trim().min(10).max(1000),
   categoryId: z.number().int().positive(),
   systemId: z.number().int().positive(),
+  // BR-14: the Requester always expresses a Requested Priority at creation.
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
 });
 
@@ -32,8 +33,8 @@ export const createTicket = async (req: Request, res: Response) => {
 
     const prisma = getPrisma();
 
-    const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
-    if (!requester || !requester.isActive) {
+    const requester = await prisma.user.findUnique({ where: { id: requesterId } });
+    if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {
       return res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Requester is inactive or does not exist' },
       });
@@ -73,9 +74,12 @@ export const createTicket = async (req: Request, res: Response) => {
               description: validatedData.description,
               categoryId: validatedData.categoryId,
               systemId: validatedData.systemId,
-              priority: validatedData.priority,
+              // BR-14: the Requester-submitted priority becomes Requested
+              // Priority and seeds the IT Priority as an initial copy.
+              requestedPriority: validatedData.priority,
+              itPriority: validatedData.priority,
               requesterId,
-              status: 'PENDING',
+              status: 'NEW',
             },
           });
         });

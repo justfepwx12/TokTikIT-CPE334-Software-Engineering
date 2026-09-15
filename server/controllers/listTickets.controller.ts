@@ -7,9 +7,11 @@ const listQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   categoryId: z.coerce.number().int().positive().optional(),
   systemId: z.coerce.number().int().positive().optional(),
-  status: z.enum(['PENDING', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).optional(),
+  status: z
+    .enum(['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CLOSED', 'REOPENED', 'CANCELLED'])
+    .optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-  sort: z.enum(['createdAt', 'priority']).default('createdAt'),
+  sort: z.enum(['createdAt', 'requestedPriority']).default('createdAt'),
   order: z.enum(['asc', 'desc']).default('desc'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(10),
@@ -33,8 +35,8 @@ export const listTickets = async (req: Request, res: Response) => {
 
     const prisma = getPrisma();
 
-    const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
-    if (!requester || !requester.isActive) {
+    const requester = await prisma.user.findUnique({ where: { id: requesterId } });
+    if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {
       return res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Requester is inactive or does not exist' },
       });
@@ -55,11 +57,12 @@ export const listTickets = async (req: Request, res: Response) => {
       ...(query.categoryId ? { categoryId: query.categoryId } : {}),
       ...(query.systemId ? { systemId: query.systemId } : {}),
       ...(query.status ? { status: query.status } : {}),
-      ...(query.priority ? { priority: query.priority } : {}),
+      // The Requester filters by what they submitted (Requested Priority).
+      ...(query.priority ? { requestedPriority: query.priority } : {}),
     };
     const orderBy =
-      query.sort === 'priority'
-        ? { priority: query.order }
+      query.sort === 'requestedPriority'
+        ? { requestedPriority: query.order }
         : { createdAt: query.order };
 
     const skip = (query.page - 1) * query.limit;
@@ -75,7 +78,8 @@ export const listTickets = async (req: Request, res: Response) => {
           ticketNo: true,
           title: true,
           description: true,
-          priority: true,
+          requestedPriority: true,
+          itPriority: true,
           status: true,
           createdAt: true,
           category: { select: { id: true, name: true } },

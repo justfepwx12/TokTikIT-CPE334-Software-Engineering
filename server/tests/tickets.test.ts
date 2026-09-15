@@ -11,8 +11,8 @@ describe('Create Ticket API Tests (tickets.test.ts)', () => {
   let systemId: number;
 
   beforeAll(async () => {
-    const activeRequester = await prisma.requester.findFirst({
-      where: { isActive: true },
+    const activeRequester = await prisma.user.findFirst({
+      where: { role: 'REQUESTER', isActive: true },
     });
     const category = await prisma.category.findFirst();
     const system = await prisma.relatedSystem.findFirst();
@@ -50,7 +50,9 @@ describe('Create Ticket API Tests (tickets.test.ts)', () => {
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('ticketNo');
       expect(response.body.title).toBe(payload.title);
-      expect(response.body.status).toBe('PENDING');
+      expect(response.body.status).toBe('NEW');
+      expect(response.body.requestedPriority).toBe('MEDIUM');
+      expect(response.body.itPriority).toBe('MEDIUM');
       expect(response.body.requesterId).toBe(activeRequesterId);
     });
 
@@ -131,9 +133,9 @@ describe('Create Ticket API Tests (tickets.test.ts)', () => {
     });
 
     it('should return 403 Forbidden when the Requester is inactive', async () => {
-      const inactiveRequester = await prisma.requester.findFirst({
-        where: { isActive: false },
-      });
+const inactiveRequester = await prisma.user.findFirst({
+      where: { role: 'REQUESTER', isActive: false },
+    });
       if (!inactiveRequester) {
         throw new Error('Seed data missing an inactive requester.');
       }

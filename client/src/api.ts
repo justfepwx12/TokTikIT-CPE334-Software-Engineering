@@ -22,9 +22,17 @@ export interface SystemStatus {
   categories: Category[];
 }
 
-export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-export type Status = "PENDING" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
-export type SortField = "createdAt" | "priority";
+export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type TicketStatus =
+  | "NEW"
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "WAITING_FOR_REQUESTER"
+  | "RESOLVED"
+  | "CLOSED"
+  | "REOPENED"
+  | "CANCELLED";
+export type SortField = "createdAt" | "requestedPriority";
 export type SortOrder = "asc" | "desc";
 
 export interface Ticket {
@@ -32,8 +40,9 @@ export interface Ticket {
   ticketNo: string;
   title: string;
   description: string;
-  priority: Priority;
-  status: Status;
+  requestedPriority: TicketPriority;
+  itPriority: TicketPriority;
+  status: TicketStatus;
   categoryId: number;
   systemId: number;
   requesterId: number;
@@ -46,7 +55,9 @@ export interface CreateTicketPayload {
   description: string;
   categoryId: number;
   systemId: number;
-  priority: Priority;
+  // BR-14: the Requester always submits a Requested Priority; the server
+  // initializes IT Priority as a copy of it.
+  priority: TicketPriority;
 }
 
 export interface TicketSummary {
@@ -54,8 +65,9 @@ export interface TicketSummary {
   ticketNo: string;
   title: string;
   description: string;
-  priority: Priority;
-  status: Status;
+  requestedPriority: TicketPriority;
+  itPriority: TicketPriority;
+  status: TicketStatus;
   createdAt: string;
   category: Category;
   system: RelatedSystem;
@@ -97,8 +109,9 @@ export interface TicketDetail {
   ticketNo: string;
   title: string;
   description: string;
-  priority: Priority;
-  status: Status;
+  requestedPriority: TicketPriority;
+  itPriority: TicketPriority;
+  status: TicketStatus;
   createdAt: string;
   updatedAt: string;
   category: Category;
@@ -116,8 +129,8 @@ export interface TicketQuery {
   search?: string;
   categoryId?: number;
   systemId?: number;
-  status?: Status;
-  priority?: Priority;
+  status?: TicketStatus;
+  priority?: TicketPriority;
   sort?: SortField;
   order?: SortOrder;
   page?: number;
