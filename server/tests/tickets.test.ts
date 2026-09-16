@@ -60,7 +60,6 @@ describe("Create Ticket API Tests (tickets.test.ts)", () => {
 
       const response = await agent
         .post("/api/tickets")
-        .set("x-requester-id", String(activeRequesterId))
         .send(payload)
         .expect("Content-Type", /json/)
         .expect(201);
@@ -97,7 +96,6 @@ describe("Create Ticket API Tests (tickets.test.ts)", () => {
 
       await agent
         .post("/api/tickets")
-        .set("x-requester-id", String(activeRequesterId))
         .send(invalidPayload)
         .expect(400);
     });
@@ -113,7 +111,6 @@ describe("Create Ticket API Tests (tickets.test.ts)", () => {
 
       await agent
         .post("/api/tickets")
-        .set("x-requester-id", String(activeRequesterId))
         .send(payload)
         .expect(400);
     });
@@ -129,32 +126,26 @@ describe("Create Ticket API Tests (tickets.test.ts)", () => {
 
       await agent
         .post("/api/tickets")
-        .set("x-requester-id", String(activeRequesterId))
         .send(payload)
         .expect(400);
     });
 
-    it("should return 403 Forbidden when the Requester is inactive", async () => {
-      const inactiveRequester = await prisma.user.findFirst({
-        where: { role: "REQUESTER", isActive: false },
-      });
-      if (!inactiveRequester) {
-        throw new Error("Seed data missing an inactive requester.");
-      }
-
+    it("ignores x-requester-id: ticket belongs to the session user (BR-03)", async () => {
       const payload = {
         categoryId: testCategoryId,
         systemId: testSystemId,
         priority: "MEDIUM",
-        title: "Inactive Requester Test",
-        description: "Testing request from an inactive requester.",
+        title: "Spoofed Header Ignored Test",
+        description: "A forged header must not change ticket ownership.",
       };
 
-      await agent
+      // Even with another user's id in the header, the ticket is owned by
+      // the signed-in user. (Inactive accounts cannot sign in at all — AC-03.)
+      const response = await agent
         .post("/api/tickets")
-        .set("x-requester-id", String(inactiveRequester.id))
         .send(payload)
-        .expect(403);
+        .expect(201);
+      expect(response.body.requesterId).toBe(activeRequesterId);
     });
   });
 });

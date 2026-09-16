@@ -144,7 +144,6 @@ describe("GET /api/tickets", () => {
     const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets")
-      .set("x-requester-id", String(requesterA.id));
 
     expect(res.status).toBe(200);
     expect(res.body.tickets).toHaveLength(3);
@@ -158,7 +157,6 @@ describe("GET /api/tickets", () => {
     const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets")
-      .set("x-requester-id", String(requesterA.id));
 
     const ticket = res.body.tickets[0];
     expect(Object.keys(ticket).sort()).toEqual(
@@ -174,7 +172,6 @@ describe("GET /api/tickets", () => {
     const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets?limit=2&page=2")
-      .set("x-requester-id", String(requesterA.id));
 
     expect(res.status).toBe(200);
     expect(res.body.tickets).toHaveLength(1);
@@ -190,7 +187,6 @@ describe("GET /api/tickets", () => {
     const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets?search=VPN")
-      .set("x-requester-id", String(requesterA.id));
 
     expect(res.status).toBe(200);
     expect(res.body.pagination.total).toBe(1);
@@ -198,7 +194,6 @@ describe("GET /api/tickets", () => {
 
     const resLower = await agent
       .get("/api/tickets?search=vpn")
-      .set("x-requester-id", String(requesterA.id));
     expect(resLower.body.pagination.total).toBe(1);
   });
 
@@ -206,14 +201,12 @@ describe("GET /api/tickets", () => {
     const agentA = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const statusRes = await agentA
       .get("/api/tickets?status=RESOLVED")
-      .set("x-requester-id", String(requesterA.id));
     expect(statusRes.status).toBe(200);
     expect(statusRes.body.pagination.total).toBe(1);
     expect(statusRes.body.tickets[0].title).toBe("Gamma VPN Dropping");
 
     const priorityRes = await agentA
       .get("/api/tickets?priority=HIGH")
-      .set("x-requester-id", String(requesterA.id));
     expect(priorityRes.body.pagination.total).toBe(1);
     expect(priorityRes.body.tickets[0].title).toBe("Alpha Login Failure");
   });
@@ -222,7 +215,6 @@ describe("GET /api/tickets", () => {
     const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const resDesc = await agent
       .get("/api/tickets?sort=requestedPriority&order=desc")
-      .set("x-requester-id", String(requesterA.id));
 
     expect(resDesc.status).toBe(200);
     const descPriorities = resDesc.body.tickets.map((t: { requestedPriority: string }) => t.requestedPriority);
@@ -230,7 +222,6 @@ describe("GET /api/tickets", () => {
 
     const resAsc = await agent
       .get("/api/tickets?sort=requestedPriority&order=asc")
-      .set("x-requester-id", String(requesterA.id));
     const ascPriorities = resAsc.body.tickets.map((t: { requestedPriority: string }) => t.requestedPriority);
     expect(ascPriorities).toEqual(["LOW", "HIGH", "URGENT"]);
   });
@@ -239,17 +230,14 @@ describe("GET /api/tickets", () => {
     const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const badSort = await agent
       .get("/api/tickets?sort=unknown")
-      .set("x-requester-id", String(requesterA.id));
     expect(badSort.status).toBe(400);
 
     const badPage = await agent
       .get("/api/tickets?page=abc")
-      .set("x-requester-id", String(requesterA.id));
     expect(badPage.status).toBe(400);
 
     const badLimit = await agent
       .get("/api/tickets?limit=999")
-      .set("x-requester-id", String(requesterA.id));
     expect(badLimit.status).toBe(400);
   });
 });

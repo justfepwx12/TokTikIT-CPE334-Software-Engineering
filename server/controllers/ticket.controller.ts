@@ -18,31 +18,17 @@ const MAX_TICKET_NO_RETRIES = 5;
 
 export const createTicket = async (req: Request, res: Response) => {
   try {
-    const requesterIdHeader = req.headers['x-requester-id'];
-    if (!requesterIdHeader) {
+    // BR-03/BR-04: identity comes solely from the session. Any
+    // client-supplied requesterId (header or body) is ignored.
+    const sessionUser = (req as AuthRequest).user;
+    if (!sessionUser) {
       return res.status(401).json({
-        error: { code: 'UNAUTHORIZED', message: 'Missing x-requester-id header' },
+        error: { code: 'UNAUTHORIZED', message: 'Missing or invalid session' },
       });
     }
-
-    const requesterId = parseInt(requesterIdHeader as string, 10);
-    if (Number.isNaN(requesterId)) {
-      return res.status(401).json({
-        error: { code: 'UNAUTHORIZED', message: 'x-requester-id must be a valid integer' },
-      });
-    }
+    const requesterId = sessionUser.id;
 
     const prisma = getPrisma();
-
-    // Transitional BR-04 guard: the legacy x-requester-id header must match the
-    // authenticated session user. Prevents one logged-in user from spoofing
-    // another requester's identity until the header is fully removed.
-    const sessionUser = (req as AuthRequest).user;
-    if (sessionUser && sessionUser.id !== requesterId) {
-      return res.status(403).json({
-        error: { code: 'FORBIDDEN', message: 'Requester does not match the signed-in user' },
-      });
-    }
 
     const requester = await prisma.user.findUnique({ where: { id: requesterId } });
     if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {

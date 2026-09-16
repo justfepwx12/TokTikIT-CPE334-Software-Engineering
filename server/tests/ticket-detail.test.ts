@@ -92,7 +92,6 @@ describe("GET /api/tickets/:id", () => {
     const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get(`/api/tickets/${ownedTicketId}`)
-      .set("x-requester-id", String(requesterA.id));
 
     expect(res.status).toBe(200);
     expect(res.body.id).toBe(ownedTicketId);
@@ -116,7 +115,6 @@ describe("GET /api/tickets/:id", () => {
     const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets/99999999")
-      .set("x-requester-id", String(requesterA.id));
     expect(res.status).toBe(404);
   });
 
@@ -124,7 +122,6 @@ describe("GET /api/tickets/:id", () => {
     const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get(`/api/tickets/${otherTicketId}`)
-      .set("x-requester-id", String(requesterA.id));
     expect(res.status).toBe(403);
   });
 
@@ -132,7 +129,6 @@ describe("GET /api/tickets/:id", () => {
     const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets/abc")
-      .set("x-requester-id", String(requesterA.id));
     expect(res.status).toBe(400);
   });
 });

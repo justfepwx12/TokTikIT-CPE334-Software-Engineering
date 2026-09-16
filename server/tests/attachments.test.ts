@@ -61,7 +61,6 @@ async function upload(
 ) {
   return agent
     .post("/api/attachments/upload")
-    .set("x-requester-id", String(requesterId))
     .field("ticketId", String(ticketId))
     .attach("file", bytes, { filename, contentType: mimetype });
 }
@@ -169,15 +168,16 @@ describe("Attachments API (api-spec §5)", () => {
       expect(res.status).toBe(401);
     });
 
-    it("returns 403 for an inactive or unknown requester", async () => {
-      const res = await upload(agentA, 999999, ownedTicketId, "image/png", "x.png");
-      expect(res.status).toBe(403);
+    it("ignores a forged x-requester-id header (BR-03 — session owns)", async () => {
+      const ticketId = await createTicket(requesterA.id, "Forged Header Ticket");
+      const res = await upload(agentA, 999999, ticketId, "image/png", "x.png");
+      expect(res.status).toBe(201);
+      createdAttachmentIds.push(res.body.id);
     });
 
     it("returns 400 when a file is not provided", async () => {
       const res = await agentA
         .post("/api/attachments/upload")
-        .set("x-requester-id", String(requesterA.id))
         .field("ticketId", String(ownedTicketId));
       expect(res.status).toBe(400);
     });
@@ -185,7 +185,6 @@ describe("Attachments API (api-spec §5)", () => {
     it("returns 400 for a non-numeric ticketId", async () => {
       const res = await agentA
         .post("/api/attachments/upload")
-        .set("x-requester-id", String(requesterA.id))
         .field("ticketId", "abc")
         .attach("file", PNG_BYTES, { filename: "x.png", contentType: "image/png" });
       expect(res.status).toBe(400);
@@ -262,7 +261,6 @@ describe("Attachments API (api-spec §5)", () => {
     it("returns 200 with full metadata shape", async () => {
       const res = await agentA
         .get(`/api/attachments/${metaId}`)
-        .set("x-requester-id", String(requesterA.id));
       expect(res.status).toBe(200);
       expect(res.body).toMatchObject({
         id: metaId,
@@ -283,21 +281,18 @@ describe("Attachments API (api-spec §5)", () => {
     it("returns 403 for another requester's attachment", async () => {
       const res = await agentB
         .get(`/api/attachments/${metaId}`)
-        .set("x-requester-id", String(requesterB.id));
       expect(res.status).toBe(403);
     });
 
     it("returns 404 for a nonexistent attachment id", async () => {
       const res = await agentA
         .get("/api/attachments/99999999")
-        .set("x-requester-id", String(requesterA.id));
       expect(res.status).toBe(404);
     });
 
     it("returns 400 for a non-numeric id", async () => {
       const res = await agentA
         .get("/api/attachments/abc")
-        .set("x-requester-id", String(requesterA.id));
       expect(res.status).toBe(400);
     });
   });
@@ -330,7 +325,6 @@ describe("Attachments API (api-spec §5)", () => {
     it("streams the binary file with correct type and filename for an active attachment", async () => {
       const res = await agentA
         .get(`/api/attachments/${activeId}/download`)
-        .set("x-requester-id", String(requesterA.id));
       expect(res.status).toBe(200);
       expect(res.headers["content-type"]).toContain("application/pdf");
       expect(res.headers["content-disposition"]).toContain("manual.pdf");
@@ -341,21 +335,18 @@ describe("Attachments API (api-spec §5)", () => {
     it("returns 410 Gone for a soft-removed attachment", async () => {
       const res = await agentA
         .get(`/api/attachments/${removedId}/download`)
-        .set("x-requester-id", String(requesterA.id));
       expect(res.status).toBe(410);
     });
 
     it("returns 403 for another requester's attachment", async () => {
       const res = await agentA
         .get(`/api/attachments/${otherId}/download`)
-        .set("x-requester-id", String(requesterA.id));
       expect(res.status).toBe(403);
     });
 
     it("returns 404 for a nonexistent attachment id", async () => {
       const res = await agentA
         .get("/api/attachments/99999999/download")
-        .set("x-requester-id", String(requesterA.id));
       expect(res.status).toBe(404);
     });
   });
@@ -379,7 +370,6 @@ describe("Attachments API (api-spec §5)", () => {
     it("soft-removes with a mandatory reason and keeps metadata", async () => {
       const res = await agentA
         .patch(`/api/attachments/${targetId}/remove`)
-        .set("x-requester-id", String(requesterA.id))
         .send({ removalReason: "Contains sensitive database keys" });
       expect(res.status).toBe(200);
       expect(res.body).toMatchObject({
@@ -398,7 +388,6 @@ describe("Attachments API (api-spec §5)", () => {
     it("still returns metadata via detail and meta endpoints after removal", async () => {
       const detail = await agentA
         .get(`/api/tickets/${removeTicketId}`)
-        .set("x-requester-id", String(requesterA.id));
       expect(detail.status).toBe(200);
       const listed = detail.body.attachments.find((a: { id: number }) => a.id === targetId);
       expect(listed).toBeDefined();
@@ -406,7 +395,6 @@ describe("Attachments API (api-spec §5)", () => {
 
       const meta = await agentA
         .get(`/api/attachments/${targetId}`)
-        .set("x-requester-id", String(requesterA.id));
       expect(meta.status).toBe(200);
       expect(meta.body.isRemoved).toBe(true);
     });
@@ -414,7 +402,6 @@ describe("Attachments API (api-spec §5)", () => {
     it("returns 400 when the removal reason is missing", async () => {
       const res = await agentA
         .patch(`/api/attachments/${targetId}/remove`)
-        .set("x-requester-id", String(requesterA.id))
         .send({});
       expect(res.status).toBe(400);
     });
@@ -422,7 +409,6 @@ describe("Attachments API (api-spec §5)", () => {
     it("returns 400 for a whitespace-only reason", async () => {
       const res = await agentA
         .patch(`/api/attachments/${targetId}/remove`)
-        .set("x-requester-id", String(requesterA.id))
         .send({ removalReason: "   " });
       expect(res.status).toBe(400);
     });
@@ -430,7 +416,6 @@ describe("Attachments API (api-spec §5)", () => {
     it("returns 400 for a reason shorter than 3 characters", async () => {
       const res = await agentA
         .patch(`/api/attachments/${targetId}/remove`)
-        .set("x-requester-id", String(requesterA.id))
         .send({ removalReason: "ab" });
       expect(res.status).toBe(400);
     });
@@ -438,7 +423,6 @@ describe("Attachments API (api-spec §5)", () => {
     it("returns 400 for a reason longer than 200 characters", async () => {
       const res = await agentA
         .patch(`/api/attachments/${targetId}/remove`)
-        .set("x-requester-id", String(requesterA.id))
         .send({ removalReason: "x".repeat(201) });
       expect(res.status).toBe(400);
     });
@@ -446,7 +430,6 @@ describe("Attachments API (api-spec §5)", () => {
     it("returns 403 when trying to remove another requester's attachment", async () => {
       const res = await agentA
         .patch(`/api/attachments/${otherId}/remove`)
-        .set("x-requester-id", String(requesterA.id))
         .send({ removalReason: "Not mine to remove" });
       expect(res.status).toBe(403);
     });
@@ -454,7 +437,6 @@ describe("Attachments API (api-spec §5)", () => {
     it("returns 404 for a nonexistent attachment id", async () => {
       const res = await agentA
         .patch("/api/attachments/99999999/remove")
-        .set("x-requester-id", String(requesterA.id))
         .send({ removalReason: "Does not exist" });
       expect(res.status).toBe(404);
     });
