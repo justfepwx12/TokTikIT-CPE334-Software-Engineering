@@ -160,17 +160,17 @@ describe("Lab 3 Issue 3 — Auth API (AC-01 to AC-08, AC-11)", () => {
     try {
       const agent = await loginAs(user.email, TEST_PASSWORD);
 
-      const blocked = [
-        agent.get("/api/tickets"),
-        agent.get("/api/systems"),
-        agent.get("/api/requesters"),
-        agent.post("/api/tickets").send({ title: "test" }),
-      ];
-      for (const req of blocked) {
-        const res = await req;
+      // NOTE: await each request immediately — constructing multiple
+      // supertest Tests upfront on one agent breaks its shared ephemeral
+      // server (ECONNREFUSED on the 2nd+ request).
+      for (const p of ["/api/tickets", "/api/systems", "/api/requesters"]) {
+        const res = await agent.get(p);
         expect(res.status).toBe(403);
         expect(res.body.error.code).toBe("PASSWORD_CHANGE_REQUIRED");
       }
+      const created = await agent.post("/api/tickets").send({ title: "test" });
+      expect(created.status).toBe(403);
+      expect(created.body.error.code).toBe("PASSWORD_CHANGE_REQUIRED");
 
       // Logout is exempt
       const out = await agent.post("/api/auth/logout");

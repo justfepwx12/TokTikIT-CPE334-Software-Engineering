@@ -141,7 +141,7 @@ describe("GET /api/tickets", () => {
   });
 
   it("owns the list: requester A sees only their tickets", async () => {
-    const agent = await loginAs(REQ_A_EMAIL);
+    const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets")
       .set("x-requester-id", String(requesterA.id));
@@ -155,7 +155,7 @@ describe("GET /api/tickets", () => {
   });
 
   it("returns a stable response shape including category and system", async () => {
-    const agent = await loginAs(REQ_A_EMAIL);
+    const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets")
       .set("x-requester-id", String(requesterA.id));
@@ -171,7 +171,7 @@ describe("GET /api/tickets", () => {
   });
 
   it("paginates: limit + page + totalPages", async () => {
-    const agent = await loginAs(REQ_A_EMAIL);
+    const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets?limit=2&page=2")
       .set("x-requester-id", String(requesterA.id));
@@ -187,7 +187,7 @@ describe("GET /api/tickets", () => {
   });
 
   it("searches case-insensitively on title and description", async () => {
-    const agent = await loginAs(REQ_A_EMAIL);
+    const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets?search=VPN")
       .set("x-requester-id", String(requesterA.id));
@@ -203,7 +203,7 @@ describe("GET /api/tickets", () => {
   });
 
   it("filters by status and priority", async () => {
-    const agentA = await loginAs(REQ_A_EMAIL);
+    const agentA = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const statusRes = await agentA
       .get("/api/tickets?status=RESOLVED")
       .set("x-requester-id", String(requesterA.id));
@@ -219,7 +219,7 @@ describe("GET /api/tickets", () => {
   });
 
   it("sorts by requestedPriority descending (heaviest first) and ascending", async () => {
-    const agent = await loginAs(REQ_A_EMAIL);
+    const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const resDesc = await agent
       .get("/api/tickets?sort=requestedPriority&order=desc")
       .set("x-requester-id", String(requesterA.id));
@@ -236,7 +236,7 @@ describe("GET /api/tickets", () => {
   });
 
   it("rejects invalid sort, page, and limit with HTTP 400", async () => {
-    const agent = await loginAs(REQ_A_EMAIL);
+    const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const badSort = await agent
       .get("/api/tickets?sort=unknown")
       .set("x-requester-id", String(requesterA.id));

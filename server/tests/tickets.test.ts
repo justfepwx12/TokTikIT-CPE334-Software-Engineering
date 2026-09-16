@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import { app } from "../src/App.js";
 import { getPrisma } from "../src/prisma.js";
-import { TEST_PASSWORD_HASH, loginAs } from "./helpers.js";
+import { TEST_PASSWORD, TEST_PASSWORD_HASH, loginAs } from "./helpers.js";
 
 const prisma = getPrisma();
 
@@ -38,10 +38,12 @@ describe("Create Ticket API Tests (tickets.test.ts)", () => {
       },
     });
     activeRequesterId = requester.id;
-    agent = await loginAs(TEST_REQUESTER_EMAIL);
+    agent = await loginAs(TEST_REQUESTER_EMAIL, TEST_PASSWORD);
   });
 
   afterAll(async () => {
+    // Delete child tickets before the user to satisfy the FK constraint.
+    await prisma.ticket.deleteMany({ where: { requesterId: activeRequesterId } });
     await prisma.user.deleteMany({ where: { email: TEST_REQUESTER_EMAIL } });
     await prisma.$disconnect();
   });

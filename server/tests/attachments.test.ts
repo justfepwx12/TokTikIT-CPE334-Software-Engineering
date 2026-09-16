@@ -6,7 +6,7 @@ import { existsSync, unlinkSync } from "node:fs";
 import { app } from "../src/App.js";
 import { getPrisma } from "../src/prisma.js";
 import { UPLOADS_DIR } from "../controllers/attachment.controller.js";
-import { TEST_PASSWORD_HASH, loginAs } from "./helpers.js";
+import { TEST_PASSWORD, TEST_PASSWORD_HASH, loginAs } from "./helpers.js";
 
 const prisma = getPrisma();
 
@@ -104,8 +104,8 @@ describe("Attachments API (api-spec §5)", () => {
       },
     });
 
-    agentA = await loginAs(REQ_A_EMAIL);
-    agentB = await loginAs(REQ_B_EMAIL);
+    agentA = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
+    agentB = await loginAs(REQ_B_EMAIL, TEST_PASSWORD);
 
     ownedTicketId = await createTicket(requesterA.id, "Owned Attachment Ticket");
     otherTicketId = await createTicket(requesterB.id, "Other Users Attachment Ticket");

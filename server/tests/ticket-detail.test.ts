@@ -3,7 +3,7 @@ import request from "supertest";
 import { randomInt } from "node:crypto";
 import { app } from "../src/App.js";
 import { getPrisma } from "../src/prisma.js";
-import { TEST_PASSWORD_HASH, loginAs } from "./helpers.js";
+import { TEST_PASSWORD, TEST_PASSWORD_HASH, loginAs } from "./helpers.js";
 
 const prisma = getPrisma();
 
@@ -89,7 +89,7 @@ describe("GET /api/tickets/:id", () => {
   });
 
   it("returns HTTP 200 with full owned ticket shape incl. category/system/requester/attachments", async () => {
-    const agent = await loginAs(REQ_A_EMAIL);
+    const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get(`/api/tickets/${ownedTicketId}`)
       .set("x-requester-id", String(requesterA.id));
@@ -113,7 +113,7 @@ describe("GET /api/tickets/:id", () => {
   });
 
   it("returns HTTP 404 when the ticket does not exist", async () => {
-    const agent = await loginAs(REQ_A_EMAIL);
+    const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets/99999999")
       .set("x-requester-id", String(requesterA.id));
@@ -121,7 +121,7 @@ describe("GET /api/tickets/:id", () => {
   });
 
   it("returns HTTP 403 when accessing another requester's ticket", async () => {
-    const agent = await loginAs(REQ_A_EMAIL);
+    const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get(`/api/tickets/${otherTicketId}`)
       .set("x-requester-id", String(requesterA.id));
@@ -129,7 +129,7 @@ describe("GET /api/tickets/:id", () => {
   });
 
   it("returns HTTP 400 for a non-numeric ticket id", async () => {
-    const agent = await loginAs(REQ_A_EMAIL);
+    const agent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
     const res = await agent
       .get("/api/tickets/abc")
       .set("x-requester-id", String(requesterA.id));
