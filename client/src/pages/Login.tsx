@@ -5,10 +5,9 @@ import { useAuth } from "../hooks/useAuth";
 import TextInput from "../components/TextInput";
 import type { AuthUser } from "../api.js";
 
-// Role home (ui-spec §3): Requester → My Tickets. The IT Staff/Admin Ticket
-// Queue does not exist yet (Issue 6) — staff land on My Tickets for now.
-export function roleHome(_user: AuthUser): string {
-  return "/my-tickets";
+// Role home (ui-spec §3): Requester → My Tickets; IT Staff/Admin → Ticket Queue.
+export function roleHome(user: AuthUser): string {
+  return user.role === "REQUESTER" ? "/my-tickets" : "/queue";
 }
 
 function safeMessage(err: unknown): string {

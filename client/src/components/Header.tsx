@@ -1,15 +1,26 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Clock, FileText, PlusCircle, UserCircle, Menu, X, ChevronDown, LogOut } from 'lucide-react'
+import { Clock, FileText, PlusCircle, Inbox, UserCircle, Menu, X, ChevronDown, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import Badge from './Badge'
 import type { BadgeColor } from './Badge'
+import type { UserRole } from '../api.js'
 import styles from './Header.module.css'
 
-const NAV_LINKS = [
-  { label: 'My Tickets', href: '/my-tickets', icon: FileText },
-  { label: 'Create Ticket', href: '/create-ticket', icon: PlusCircle },
-]
+// Role-aware links (ui-spec §2.1): Requester gets creation; staff get the
+// queue; admin will additionally get Users (Issue 8).
+function navLinksFor(role: UserRole | undefined) {
+  if (role === 'IT_STAFF' || role === 'ADMIN') {
+    return [
+      { label: 'Ticket Queue', href: '/queue', icon: Inbox },
+      { label: 'My Tickets', href: '/my-tickets', icon: FileText },
+    ]
+  }
+  return [
+    { label: 'My Tickets', href: '/my-tickets', icon: FileText },
+    { label: 'Create Ticket', href: '/create-ticket', icon: PlusCircle },
+  ]
+}
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`)
@@ -43,6 +54,8 @@ export default function Header() {
     navigate('/login', { replace: true })
   }
 
+  const navLinks = navLinksFor(user?.role)
+
   return (
     <header className={styles.header}>
       <div className={styles.bar}>
@@ -53,9 +66,9 @@ export default function Header() {
             TokTickIT
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className={styles.nav} aria-label="Main navigation">
-            {NAV_LINKS.map((link) => {
+            {/* Desktop Navigation */}
+            <nav className={styles.nav} aria-label="Main navigation">
+              {navLinks.map((link) => {
               const Icon = link.icon
               const active = isActive(location.pathname, link.href)
               return (
@@ -127,9 +140,9 @@ export default function Header() {
         </button>
       </div>
 
-      {/* Mobile Navigation Dropdown */}
-      <nav id="mobile-nav" className={styles.mobileNav} data-open={menuOpen}>
-        {NAV_LINKS.map((link) => {
+        {/* Mobile Navigation Dropdown */}
+        <nav id="mobile-nav" className={styles.mobileNav} data-open={menuOpen}>
+          {navLinks.map((link) => {
           const Icon = link.icon
           return (
             <Link
