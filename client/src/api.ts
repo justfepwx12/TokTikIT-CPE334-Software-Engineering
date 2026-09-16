@@ -169,6 +169,60 @@ export function getStaffTickets(query: StaffTicketQuery): Promise<StaffTicketsRe
   return request<StaffTicketsResponse>(`/api/staff/tickets${buildQueryString(query)}`);
 }
 
+// ---------------------------------------------------------------------------
+// Staff ticket operations (api-spec §3, Issues #98–#100).
+// ---------------------------------------------------------------------------
+
+export interface StaffTicketDetail extends StaffTicket {
+  description: string;
+  attachments: TicketDetailAttachment[];
+}
+
+export function getStaffTicket(ticketId: number): Promise<StaffTicketDetail> {
+  return request<StaffTicketDetail>(`/api/staff/tickets/${ticketId}`);
+}
+
+export function claimTicket(ticketId: number): Promise<{
+  id: number;
+  ownerId: number;
+  owner: { id: number; name: string };
+}> {
+  return request(`/api/tickets/${ticketId}/claim`, { method: "POST" });
+}
+
+export function assignTicket(
+  ticketId: number,
+  ownerId: number
+): Promise<{ id: number; ownerId: number; owner: { id: number; name: string } }> {
+  return request(`/api/tickets/${ticketId}/assign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ownerId }),
+  });
+}
+
+export function setItPriority(
+  ticketId: number,
+  itPriority: TicketPriority
+): Promise<{ id: number; requestedPriority: TicketPriority; itPriority: TicketPriority }> {
+  return request(`/api/tickets/${ticketId}/it-priority`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ itPriority }),
+  });
+}
+
+export function setTicketStatus(
+  ticketId: number,
+  status: TicketStatus
+): Promise<{ id: number; status: TicketStatus }> {
+  return request(`/api/tickets/${ticketId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+}
+
 export interface TicketQuery {
   search?: string;
   categoryId?: number;

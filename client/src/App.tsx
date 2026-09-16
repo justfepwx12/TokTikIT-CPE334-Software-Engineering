@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import ChangePassword from "./pages/ChangePassword";
 import CreateTicket from "./pages/CreateTicket";
 import TicketDetail from "./pages/TicketDetail";
+import StaffTicketDetail from "./pages/StaffTicketDetail";
 import TicketQueue from "./pages/TicketQueue";
 import type { UserRole } from "./api.js";
 
@@ -150,6 +151,17 @@ function RequireRole({ roles, children }: { roles: UserRole[]; children: React.J
   return children;
 }
 
+// Ticket detail resolves by role: staff/admin get the operational view,
+// requesters get their read-only view (Issue #100).
+function TicketDetailRoute() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (user && (user.role === "IT_STAFF" || user.role === "ADMIN")) {
+    return <StaffTicketDetail />;
+  }
+  return <TicketDetail />;
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -177,7 +189,7 @@ function App() {
         } />
         <Route path="/tickets/:id" element={
           <ProtectedRoute>
-            <TicketDetail />
+            <TicketDetailRoute />
           </ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to="/" replace />} />

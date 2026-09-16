@@ -5,7 +5,7 @@ import { createTicket } from "../controllers/ticket.controller.js";
 import { listTickets } from "../controllers/listTickets.controller.js";
 import { getTicketById } from "../controllers/ticketById.controller.js";
 import { resolveIntent } from "../controllers/resolveIntent.controller.js";
-import { listStaffTickets } from "../controllers/staffTickets.controller.js";
+import { listStaffTickets, getStaffTicketById } from "../controllers/staffTickets.controller.js";
 import {
   claimTicket,
   assignTicket,
@@ -127,6 +127,13 @@ app.get(
   gateMustChangePassword,
   requireRole("IT_STAFF", "ADMIN"),
   listStaffTickets,
+);
+app.get(
+  "/api/staff/tickets/:id",
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+  getStaffTicketById,
 );
 
 // Ticket detail operations (api-spec §3, BR-13–BR-15).
