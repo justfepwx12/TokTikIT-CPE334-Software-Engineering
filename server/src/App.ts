@@ -5,6 +5,7 @@ import { createTicket } from "../controllers/ticket.controller.js";
 import { listTickets } from "../controllers/listTickets.controller.js";
 import { getTicketById } from "../controllers/ticketById.controller.js";
 import { resolveIntent } from "../controllers/resolveIntent.controller.js";
+import { listStaffTickets } from "../controllers/staffTickets.controller.js";
 import {
   attachmentUpload,
   getAttachmentMeta,
@@ -15,6 +16,7 @@ import { sessionMiddleware } from "./session.js";
 import {
   hydrateUser,
   requireAuth,
+  requireRole,
   gateMustChangePassword,
 } from "./auth.middleware.js";
 import {
@@ -110,6 +112,15 @@ app.post(
   requireAuth,
   gateMustChangePassword,
   resolveIntent,
+);
+
+// IT Staff/Admin operational queue (api-spec §2, BR-13/BR-17).
+app.get(
+  "/api/staff/tickets",
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+  listStaffTickets,
 );
 
 // Protected attachment routes
