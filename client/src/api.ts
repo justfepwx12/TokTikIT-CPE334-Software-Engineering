@@ -145,8 +145,7 @@ async function loadErrorMessage(res: Response): Promise<string> {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   // Session cookie auth (BR-04): the server identifies the user from the
   // HTTP-only session cookie, so every request must include credentials.
-  // The legacy x-requester-id header is still sent by callers for now and
-  // will be dropped once the server stops requiring it (Issue #95).
+  // No identity header is sent — the legacy x-requester-id is gone (Issue #95).
   const res = await fetch(`${API_URL}${path}`, { credentials: "include", ...init });
   if (!res.ok) {
     throw new Error(await loadErrorMessage(res));
@@ -216,15 +215,11 @@ export function getSystems(): Promise<RelatedSystem[]> {
   return request<RelatedSystem[]>("/api/systems");
 }
 
-export function createTicket(
-  payload: CreateTicketPayload,
-  requesterId: number
-): Promise<Ticket> {
+export function createTicket(payload: CreateTicketPayload): Promise<Ticket> {
   return request<Ticket>("/api/tickets", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-requester-id": String(requesterId),
     },
     body: JSON.stringify(payload),
   });
@@ -240,31 +235,19 @@ function buildQueryString(query: TicketQuery): string {
   return qs ? `?${qs}` : "";
 }
 
-export function getTickets(
-  query: TicketQuery,
-  requesterId: number
-): Promise<TicketsResponse> {
-  return request<TicketsResponse>(`/api/tickets${buildQueryString(query)}`, {
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
-  });
+export function getTickets(query: TicketQuery): Promise<TicketsResponse> {
+  return request<TicketsResponse>(`/api/tickets${buildQueryString(query)}`);
 }
 
-export function getTicket(ticketId: number, requesterId: number): Promise<TicketDetail> {
-  return request<TicketDetail>(`/api/tickets/${ticketId}`, {
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
-  });
+export function getTicket(ticketId: number): Promise<TicketDetail> {
+  return request<TicketDetail>(`/api/tickets/${ticketId}`);
 }
 
 // POST /api/attachments/upload — multipart upload linked to an owned ticket.
 // Note: no Content-Type header is set; the browser supplies the boundary.
 export async function uploadAttachment(
   ticketId: number,
-  file: File,
-  requesterId: number
+  file: File
 ): Promise<AttachmentUploadResponse> {
   const formData = new FormData();
   formData.append("ticketId", String(ticketId));
@@ -273,9 +256,6 @@ export async function uploadAttachment(
   const res = await fetch(`${API_URL}/api/attachments/upload`, {
     method: "POST",
     credentials: "include",
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
     body: formData,
   });
   if (!res.ok) {
@@ -287,14 +267,10 @@ export async function uploadAttachment(
 // GET /api/attachments/:id/download — returns the binary content. Callers
 // trigger a browser download via triggerDownload(blob, filename).
 export async function downloadAttachment(
-  attachmentId: number,
-  requesterId: number
+  attachmentId: number
 ): Promise<{ blob: Blob; filename: string }> {
   const res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
     credentials: "include",
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
   });
   if (!res.ok) {
     throw new Error(await loadErrorMessage(res));
@@ -323,14 +299,12 @@ export function triggerDownload(blob: Blob, filename: string): void {
 // PATCH /api/attachments/:id/remove — soft-removal with mandatory reason.
 export function removeAttachment(
   attachmentId: number,
-  removalReason: string,
-  requesterId: number
+  removalReason: string
 ): Promise<AttachmentRemovalResponse> {
   return request<AttachmentRemovalResponse>(`/api/attachments/${attachmentId}/remove`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      "x-requester-id": String(requesterId),
     },
     body: JSON.stringify({ removalReason }),
   });

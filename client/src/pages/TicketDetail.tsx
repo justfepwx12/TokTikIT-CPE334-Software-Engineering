@@ -134,7 +134,9 @@ function AttachmentRow({
 
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
-  const { user: requester } = useAuth();
+  // Session owns the identity (BR-04) — user is only used as a signed-in
+  // gate; all API calls scope to the session server-side.
+  const { user } = useAuth();
 
   const [ticket, setTicket] = useState<TicketDetailType | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -150,7 +152,6 @@ export default function TicketDetail() {
 
   const isModalOpen = removalTarget !== null;
 
-  const requesterId = requester?.id;
   const ticketId = Number(id);
   const idIsInvalid = !Number.isSafeInteger(ticketId) || ticketId <= 0;
 
@@ -192,7 +193,7 @@ export default function TicketDetail() {
   }, [removalTarget, isRemoving, closeRemoveModal]);
 
   useEffect(() => {
-    if (idIsInvalid || requesterId === undefined) return;
+    if (idIsInvalid || !user) return;
 
     let cancelled = false;
 
@@ -200,7 +201,7 @@ export default function TicketDetail() {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await getTicket(ticketId, requesterId);
+        const data = await getTicket(ticketId);
         if (cancelled) return;
         setTicket(data);
       } catch (err) {
@@ -216,13 +217,13 @@ export default function TicketDetail() {
     return () => {
       cancelled = true;
     };
-  }, [id, requesterId, retryKey, ticketId, idIsInvalid]);
+  }, [id, user, retryKey, ticketId, idIsInvalid]);
 
   const handleDownload = async (attachmentId: number) => {
-    if (requesterId === undefined) return;
+    if (!user) return;
     setDownloadError(null);
     try {
-      const { blob, filename } = await downloadAttachment(attachmentId, requesterId);
+      const { blob, filename } = await downloadAttachment(attachmentId);
       triggerDownload(blob, filename);
     } catch (err) {
       setDownloadError(
@@ -239,7 +240,7 @@ export default function TicketDetail() {
   };
 
   const handleConfirmRemove = async () => {
-    if (!removalTarget || requesterId === undefined || isRemoving) return;
+    if (!removalTarget || !user || isRemoving) return;
 
     const reason = removalReason.trim();
     if (reason.length < REMOVAL_REASON_MIN || reason.length > REMOVAL_REASON_MAX) {
@@ -252,7 +253,7 @@ export default function TicketDetail() {
     setIsRemoving(true);
     setRemovalError(null);
     try {
-      await removeAttachment(removalTarget.id, reason, requesterId);
+      await removeAttachment(removalTarget.id, reason);
       const removedId = removalTarget.id;
       setTicket((prev) =>
         prev

@@ -107,7 +107,7 @@ describe("TicketDetail", () => {
     expect(screen.getByText("HIGH")).toBeDefined();
     expect(screen.getByText("IN_PROGRESS")).toBeDefined();
 
-    expect(api.getTicket).toHaveBeenCalledWith(42, 2);
+    expect(api.getTicket).toHaveBeenCalledWith(42);
 
     expect(screen.getByTestId("attachment-list")).toBeDefined();
     expect(screen.getByText("screenshot.png")).toBeDefined();
@@ -140,7 +140,7 @@ describe("TicketDetail", () => {
     await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
 
     fireEvent.click(screen.getByTestId("download-2"));
-    await waitFor(() => expect(downloadMock).toHaveBeenCalledWith(2, 2));
+    await waitFor(() => expect(downloadMock).toHaveBeenCalledWith(2));
     expect(triggerMock).toHaveBeenCalledWith(blob, "report.pdf");
     expect(screen.queryByTestId("download-error")).toBeNull();
   });
@@ -207,16 +207,16 @@ describe("TicketDetail", () => {
     });
     fireEvent.click(screen.getByTestId("confirm-remove"));
 
-    await waitFor(() => expect(removeMock).toHaveBeenCalledWith(1, "Contains credentials", 2));
+    await waitFor(() => expect(removeMock).toHaveBeenCalledWith(1, "Contains credentials"));
     await waitFor(() => expect(screen.queryByTestId("removal-modal")).toBeNull());
     await waitFor(() => expect(screen.getByTestId("removed-badge-1")).toBeDefined());
     expect(screen.queryByTestId("download-1")).toBeNull();
   });
 
-  it("passes the active requester id as the ownership scope", async () => {
+  it("scopes the fetch server-side: ticket id only, no identity param (BR-04)", async () => {
     renderDetail();
     await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
-    expect(api.getTicket).toHaveBeenCalledWith(42, 2);
+    expect(api.getTicket).toHaveBeenCalledWith(42);
   });
 
   it("shows the no-attachments message when the ticket has none", async () => {

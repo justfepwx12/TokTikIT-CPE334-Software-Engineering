@@ -103,14 +103,15 @@ describe("MyTickets Component", () => {
     expect(screen.getAllByText("TK-20260906-0001").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("passes the selected requester id as the ownership scope", async () => {
+  it("scopes the list server-side: no identity param is sent (BR-04)", async () => {
     renderPage();
 
     await waitFor(() => {
       expect(getTicketsMock).toHaveBeenCalled();
     });
-    const [, requesterId] = getTicketsMock.mock.calls[getTicketsMock.mock.calls.length - 1];
-    expect(requesterId).toBe(2);
+    const last = getTicketsMock.mock.calls[getTicketsMock.mock.calls.length - 1];
+    // Only the query object — identity comes from the session cookie.
+    expect(last).toHaveLength(1);
   });
 
   it("shows the empty state when there are no tickets and no filters", async () => {

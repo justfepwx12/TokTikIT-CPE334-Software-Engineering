@@ -262,8 +262,9 @@ function PaginationBar({
 
 export default function MyTickets() {
   const navigate = useNavigate();
-  const { user: requester } = useAuth();
-  const requesterId = requester?.id;
+  // Session owns the identity (BR-04) — the server scopes the list to the
+  // signed-in user, so no id is passed. Name is only for display.
+  const { user } = useAuth();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [systems, setSystems] = useState<RelatedSystem[]>([]);
@@ -301,7 +302,7 @@ export default function MyTickets() {
   }, []);
 
   useEffect(() => {
-    if (requesterId === undefined) return;
+    if (!user) return;
     let cancelled = false;
 
     const load = async () => {
@@ -309,7 +310,7 @@ export default function MyTickets() {
       setError(null);
       const query: TicketQuery = { ...appliedQuery, page, limit };
       try {
-        const res = await getTickets(query, requesterId);
+        const res = await getTickets(query);
         if (cancelled) return;
         setTickets(res.tickets);
         setPagination(res.pagination);
@@ -327,7 +328,7 @@ export default function MyTickets() {
     return () => {
       cancelled = true;
     };
-  }, [requesterId, appliedQuery, page, limit, retryKey]);
+  }, [user, appliedQuery, page, limit, retryKey]);
 
   const updateQuery = (patch: Partial<TicketQuery>) => {
     setAppliedQuery((prev) => ({ ...prev, ...patch }));
@@ -373,7 +374,7 @@ export default function MyTickets() {
         <div>
           <h2 className="h4 fw-bold text-dark mb-0">My Tickets</h2>
           <p className="text-secondary small mb-0">
-            {requester ? `Showing tickets for ${requester.name}` : "My tickets"}
+            {user ? `Showing tickets for ${user.name}` : "My tickets"}
           </p>
         </div>
         <div className="d-flex gap-2">
