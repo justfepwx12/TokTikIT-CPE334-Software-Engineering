@@ -30,7 +30,10 @@ export const createTicket = async (req: Request, res: Response) => {
 
     const prisma = getPrisma();
 
-    const requester = await prisma.user.findUnique({ where: { id: requesterId } });
+    const requester = await prisma.user.findUnique({
+      where: { id: requesterId },
+      select: { id: true, role: true, isActive: true },
+    });
     if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {
       return res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Requester is inactive or does not exist' },

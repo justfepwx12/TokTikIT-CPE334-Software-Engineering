@@ -21,7 +21,7 @@ import {
   type Pagination,
 } from "../api";
 import { useAuth } from "../hooks/useAuth";
-import Badge from "../components/Badge";
+import { PriorityBadge, StatusBadge } from "../components/TicketBadges";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
 
@@ -48,36 +48,10 @@ const SORT_FIELDS: Array<{ value: QueueSortField; label: string }> = [
   { value: "priority", label: "Priority" },
 ];
 
-const STATUS_COLOR: Record<TicketStatus, "gray" | "blue" | "green" | "yellow"> = {
-  NEW: "gray",
-  OPEN: "blue",
-  IN_PROGRESS: "blue",
-  WAITING_FOR_REQUESTER: "yellow",
-  RESOLVED: "green",
-  CLOSED: "gray",
-  REOPENED: "blue",
-  CANCELLED: "gray",
-};
-
-const PRIORITY_COLOR: Record<TicketPriority, "gray" | "yellow" | "red" | "green"> = {
-  LOW: "gray",
-  MEDIUM: "yellow",
-  HIGH: "red",
-  URGENT: "red",
-};
-
 function formatDate(value: string): string {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleDateString();
-}
-
-function PriorityBadge({ priority }: { priority: TicketPriority }) {
-  return <Badge color={PRIORITY_COLOR[priority]}>{priority}</Badge>;
-}
-
-function StatusBadge({ status }: { status: TicketStatus }) {
-  return <Badge color={STATUS_COLOR[status]}>{status}</Badge>;
 }
 
 function EmptyState({ hasActiveFilters }: { hasActiveFilters: boolean }) {
@@ -231,17 +205,40 @@ export default function TicketQueue() {
   }, []);
 
   // Debounced search (ui-spec §5): typing refetches without a submit click.
+  // Page reset happens outside the state updater (updaters must stay pure —
+  // StrictMode double-invokes them).
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      const next = draftSearch.trim() || undefined;
       setAppliedQuery((prev) => {
-        const next = draftSearch.trim() || undefined;
         if ((prev.search ?? undefined) === next) return prev;
-        setPage(1);
         return { ...prev, search: next };
       });
     }, 400);
     return () => window.clearTimeout(timer);
   }, [draftSearch]);
+
+  // Reset to page 1 whenever the applied filters change.
+  const appliedSearch = appliedQuery.search;
+  const appliedCategoryId = appliedQuery.categoryId;
+  const appliedSystemId = appliedQuery.systemId;
+  const appliedStatus = appliedQuery.status;
+  const appliedPriority = appliedQuery.priority;
+  const appliedOwnerId = appliedQuery.ownerId;
+  const appliedSort = appliedQuery.sort;
+  const appliedOrder = appliedQuery.order;
+  useEffect(() => {
+    setPage(1);
+  }, [
+    appliedSearch,
+    appliedCategoryId,
+    appliedSystemId,
+    appliedStatus,
+    appliedPriority,
+    appliedOwnerId,
+    appliedSort,
+    appliedOrder,
+  ]);
 
   useEffect(() => {
     if (!user) return;
@@ -273,13 +270,13 @@ export default function TicketQueue() {
   }, [user, appliedQuery, page, limit, retryKey]);
 
   const updateQuery = (patch: Partial<StaffTicketQuery>) => {
+    // Page reset to 1 is handled by the effect above.
     setAppliedQuery((prev) => ({ ...prev, ...patch }));
-    setPage(1);
   };
 
   const handleClearFilters = () => {
     setDraftSearch("");
-    setAppliedQuery(DEFAULT_QUERY);
+    setAppliedQuery({ ...DEFAULT_QUERY });
     setPage(1);
   };
 
@@ -565,7 +562,7 @@ export default function TicketQueue() {
 
       <div className="d-flex align-items-center gap-2 text-secondary small mt-2">
         <Search size={14} />
-        <span>Quick actions (Claim, IT Priority, status) arrive with the operational endpoints.</span>
+        <span>For Claim, IT Priority and Status actions, open the ticket detail screen.</span>
       </div>
     </div>
   );

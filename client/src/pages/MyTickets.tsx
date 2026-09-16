@@ -22,7 +22,7 @@ import {
   type Pagination,
 } from "../api";
 import { useAuth } from "../hooks/useAuth";
-import Badge from "../components/Badge";
+import { PriorityBadge, StatusBadge } from "../components/TicketBadges";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
 
@@ -44,36 +44,10 @@ const STATUSES: TicketStatus[] = [
 const PRIORITIES: TicketPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const PAGE_SIZES = [10, 20, 50];
 
-const STATUS_COLOR: Record<TicketStatus, "gray" | "blue" | "green"> = {
-  NEW: "gray",
-  OPEN: "blue",
-  IN_PROGRESS: "blue",
-  WAITING_FOR_REQUESTER: "gray",
-  RESOLVED: "green",
-  CLOSED: "gray",
-  REOPENED: "blue",
-  CANCELLED: "gray",
-};
-
-const PRIORITY_COLOR: Record<TicketPriority, "gray" | "yellow" | "red"> = {
-  LOW: "gray",
-  MEDIUM: "yellow",
-  HIGH: "red",
-  URGENT: "red",
-};
-
 function formatDate(value: string): string {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleDateString();
-}
-
-function PriorityBadge({ priority }: { priority: TicketPriority }) {
-  return <Badge color={PRIORITY_COLOR[priority]}>{priority}</Badge>;
-}
-
-function StatusBadge({ status }: { status: TicketStatus }) {
-  return <Badge color={STATUS_COLOR[status]}>{status}</Badge>;
 }
 
 function EmptyState({ hasActiveFilters }: { hasActiveFilters: boolean }) {
@@ -342,7 +316,7 @@ export default function MyTickets() {
 
   const handleClearFilters = () => {
     setDraftSearch("");
-    setAppliedQuery(DEFAULT_QUERY);
+    setAppliedQuery({ ...DEFAULT_QUERY });
     setPage(1);
   };
 

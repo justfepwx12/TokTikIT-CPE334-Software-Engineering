@@ -183,7 +183,10 @@ export interface TicketQuery {
 
 async function loadErrorMessage(res: Response): Promise<string> {
   const body = await res.json().catch(() => null);
-  return body?.error?.message ?? body?.error ?? `Request failed with status ${res.status}`;
+  const err = body?.error;
+  if (typeof err === "string") return err;
+  if (err && typeof err.message === "string") return err.message;
+  return `Request failed with status ${res.status}`;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

@@ -14,6 +14,21 @@ function safeMessage(err: unknown): string {
   return err instanceof Error && err.message ? err.message : "Invalid email or password.";
 }
 
+// Post-login redirects must stay inside the app's known routes — never follow
+// an attacker-supplied path (open-redirect hardening).
+const ALLOWED_REDIRECTS = [/^\/my-tickets$/, /^\/queue$/, /^\/create-ticket$/, /^\/tickets\/\d+$/, /^\/change-password$/, /^\/$/];
+
+function safeRedirect(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (ALLOWED_REDIRECTS.some((re) => re.test(decoded))) return decoded;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function Login() {
   const { user, isLoading: authLoading, login } = useAuth();
   const navigate = useNavigate();
@@ -45,11 +60,7 @@ export default function Login() {
     setBanner(null);
     try {
       const signedIn = await login(email.trim(), password);
-      const redirectParam = new URLSearchParams(location.search).get("redirect");
-      const redirect =
-        redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
-          ? redirectParam
-          : null;
+      const redirect = safeRedirect(new URLSearchParams(location.search).get("redirect"));
       if (signedIn.mustChangePassword) {
         navigate("/change-password", { replace: true });
       } else {

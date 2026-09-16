@@ -164,7 +164,7 @@ export default function Header() {
               <span className={styles.requesterLabel}>{user.name}</span>
               <Badge color={ROLE_BADGE_COLOR[user.role] ?? 'gray'}>{roleLabel(user.role)}</Badge>
             </div>
-            <button type="button" className={styles.changeRequesterButton} onClick={handleLogout}>
+            <button type="button" className={styles.logoutButton} onClick={handleLogout}>
               Log out
             </button>
           </div>
