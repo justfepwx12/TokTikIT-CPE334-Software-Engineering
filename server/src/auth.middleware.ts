@@ -92,7 +92,7 @@ export function gateMustChangePassword(req: AuthRequest, res: Response, next: Ne
   if (req.user?.mustChangePassword) {
     res.status(403).json({
       error: {
-        code: "MUST_CHANGE_PASSWORD",
+        code: "PASSWORD_CHANGE_REQUIRED",
         message: "You must change your password before continuing.",
       },
     });

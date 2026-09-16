@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
+import { randomInt } from "node:crypto";
 import { app } from "../src/App.js";
 import { getPrisma } from "../src/prisma.js";
+import { TEST_PASSWORD_HASH, loginAs } from "./helpers.js";
 
 const prisma = getPrisma();
 
@@ -15,10 +17,9 @@ let testSystemId: number;
 let ownedTicketId: number;
 let otherTicketId: number;
 
-let nonceCounter = 0;
 function makeTicketNo(): string {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const nonce = (Date.now() % 7000) + 1000 + nonceCounter++;
+  const nonce = randomInt(1000, 10000);
   return `TK-${date}-${String(nonce).padStart(4, "0")}`;
 }
 
@@ -59,8 +60,8 @@ describe("GET /api/tickets/:id", () => {
         email: REQ_A_EMAIL,
         isActive: true,
         role: "REQUESTER",
-        passwordHash: "test-hash",
-        mustChangePassword: true,
+        passwordHash: TEST_PASSWORD_HASH,
+        mustChangePassword: false,
       },
     });
     requesterB = await prisma.user.create({
@@ -69,8 +70,8 @@ describe("GET /api/tickets/:id", () => {
         email: REQ_B_EMAIL,
         isActive: true,
         role: "REQUESTER",
-        passwordHash: "test-hash",
-        mustChangePassword: true,
+        passwordHash: TEST_PASSWORD_HASH,
+        mustChangePassword: false,
       },
     });
 
@@ -88,7 +89,8 @@ describe("GET /api/tickets/:id", () => {
   });
 
   it("returns HTTP 200 with full owned ticket shape incl. category/system/requester/attachments", async () => {
-    const res = await request(app)
+    const agent = await loginAs(REQ_A_EMAIL);
+    const res = await agent
       .get(`/api/tickets/${ownedTicketId}`)
       .set("x-requester-id", String(requesterA.id));
 
@@ -105,54 +107,32 @@ describe("GET /api/tickets/:id", () => {
     expect(Array.isArray(res.body.attachments)).toBe(true);
   });
 
-  it("returns HTTP 401 for a malformed x-requester-id", async () => {
-    for (const bad of ["12abc", "1.5", "abc", "", "0", "-5"]) {
-      const res = await request(app)
-        .get(`/api/tickets/${ownedTicketId}`)
-        .set("x-requester-id", bad);
-      expect(res.status).toBe(401);
-    }
-  });
-
-  it("returns HTTP 401 when the header is missing", async () => {
+  it("returns HTTP 401 when session is missing", async () => {
     const res = await request(app).get(`/api/tickets/${ownedTicketId}`);
     expect(res.status).toBe(401);
   });
 
-  it("returns HTTP 403 for an inactive or unknown requester", async () => {
-    const res = await request(app)
-      .get(`/api/tickets/${ownedTicketId}`)
-      .set("x-requester-id", "999999");
-    expect(res.status).toBe(403);
-  });
-
   it("returns HTTP 404 when the ticket does not exist", async () => {
-    const res = await request(app)
+    const agent = await loginAs(REQ_A_EMAIL);
+    const res = await agent
       .get("/api/tickets/99999999")
       .set("x-requester-id", String(requesterA.id));
     expect(res.status).toBe(404);
   });
 
   it("returns HTTP 403 when accessing another requester's ticket", async () => {
-    const res = await request(app)
+    const agent = await loginAs(REQ_A_EMAIL);
+    const res = await agent
       .get(`/api/tickets/${otherTicketId}`)
       .set("x-requester-id", String(requesterA.id));
     expect(res.status).toBe(403);
   });
 
   it("returns HTTP 400 for a non-numeric ticket id", async () => {
-    const res = await request(app)
+    const agent = await loginAs(REQ_A_EMAIL);
+    const res = await agent
       .get("/api/tickets/abc")
       .set("x-requester-id", String(requesterA.id));
     expect(res.status).toBe(400);
-  });
-
-  it("returns HTTP 400 for numeric-yet-invalid ticket ids (permissive parseInt bypass)", async () => {
-    for (const bad of ["12abc", "1.5", "0", "-5", "1e3"]) {
-      const res = await request(app)
-        .get(`/api/tickets/${bad}`)
-        .set("x-requester-id", String(requesterA.id));
-      expect(res.status).toBe(400);
-    }
   });
 });

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Prisma, Ticket } from '@prisma/client';
 import { getPrisma } from '../src/prisma.js';
 import { generateTicketNo } from '../services/ticketNumber.service.js';
+import type { AuthRequest } from '../src/auth.middleware.js';
 
 const createTicketSchema = z.object({
   title: z.string().trim().min(5).max(100),
@@ -32,6 +33,16 @@ export const createTicket = async (req: Request, res: Response) => {
     }
 
     const prisma = getPrisma();
+
+    // Transitional BR-04 guard: the legacy x-requester-id header must match the
+    // authenticated session user. Prevents one logged-in user from spoofing
+    // another requester's identity until the header is fully removed.
+    const sessionUser = (req as AuthRequest).user;
+    if (sessionUser && sessionUser.id !== requesterId) {
+      return res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'Requester does not match the signed-in user' },
+      });
+    }
 
     const requester = await prisma.user.findUnique({ where: { id: requesterId } });
     if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {
