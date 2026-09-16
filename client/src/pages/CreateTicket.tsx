@@ -11,7 +11,7 @@ import {
   type TicketPriority,
   type Ticket,
 } from "../api";
-import { useRequester } from "../hooks/useRequester";
+import { useAuth } from "../hooks/useAuth";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
 import ValidationMessage from "../components/ValidationMessage";
@@ -59,7 +59,7 @@ const EMPTY_FORM: FormValues = {
 };
 
 export default function CreateTicket() {
-  const { requester } = useRequester();
+  const { user: requester } = useAuth();
   const navigate = useNavigate();
 
   const [categories, setCategories] = useState<Category[]>([]);

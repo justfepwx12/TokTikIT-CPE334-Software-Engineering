@@ -21,7 +21,7 @@ import {
   type TicketSummary,
   type Pagination,
 } from "../api";
-import { useRequester } from "../hooks/useRequester";
+import { useAuth } from "../hooks/useAuth";
 import Badge from "../components/Badge";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
@@ -262,7 +262,7 @@ function PaginationBar({
 
 export default function MyTickets() {
   const navigate = useNavigate();
-  const { requester } = useRequester();
+  const { user: requester } = useAuth();
   const requesterId = requester?.id;
 
   const [categories, setCategories] = useState<Category[]>([]);

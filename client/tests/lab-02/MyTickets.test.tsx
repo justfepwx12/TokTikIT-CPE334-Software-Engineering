@@ -7,7 +7,7 @@ import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/re
 import { BrowserRouter } from "react-router-dom";
 import * as api from "../../src/api";
 import MyTickets from "../../src/pages/MyTickets";
-import { RequesterProvider } from "../../src/context/RequesterContext";
+import { AuthProvider } from "../../src/context/AuthContext";
 
 vi.mock("lucide-react", () => ({
   ChevronLeft: () => null,
@@ -64,6 +64,17 @@ describe("MyTickets Component", () => {
     vi.spyOn(api, "getCategories").mockResolvedValue(CATEGORIES);
     vi.spyOn(api, "getSystems").mockResolvedValue(SYSTEMS);
     vi.spyOn(api, "getTickets").mockImplementation(getTicketsMock);
+    // Authenticated session fixture (replaces the Lab 2 simulated selector).
+    vi.spyOn(api, "getSessionUser").mockResolvedValue({
+      user: {
+        id: 2,
+        name: "Weerapong Chaiyaporn",
+        email: "weerapong.chaiyaporn@toktikit.com",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+      },
+    });
     window.localStorage.clear();
   });
 
@@ -72,15 +83,11 @@ describe("MyTickets Component", () => {
   });
 
   const renderPage = () => {
-    window.localStorage.setItem(
-      "toktickit.selectedRequester",
-      JSON.stringify({ id: 2, name: "Weerapong Chaiyaporn" })
-    );
     return render(
       <BrowserRouter>
-        <RequesterProvider>
+        <AuthProvider>
           <MyTickets />
-        </RequesterProvider>
+        </AuthProvider>
       </BrowserRouter>
     );
   };

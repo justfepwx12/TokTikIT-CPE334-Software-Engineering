@@ -5,11 +5,12 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import App from "../../src/App.js";
 import * as api from "../../src/api.js";
-import { RequesterProvider } from "../../src/context/RequesterContext"; // เพิ่ม Import นี้
 
 describe("App", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // No session in these tests — AuthProvider restores to signed-out.
+    vi.spyOn(api, "getSessionUser").mockRejectedValue(new Error("Not signed in."));
   });
 
   afterEach(() => {
@@ -24,9 +25,7 @@ it("renders the TokTickIT heading", () => {
 
     render(
       <MemoryRouter>
-        <RequesterProvider>
-          <App />
-        </RequesterProvider>
+        <App />
       </MemoryRouter>
     );
     
@@ -47,9 +46,7 @@ it("renders the TokTickIT heading", () => {
 
     render(
       <MemoryRouter>
-        <RequesterProvider>
-          <App />
-        </RequesterProvider>
+        <App />
       </MemoryRouter>
     );
 
@@ -68,9 +65,7 @@ it("renders the TokTickIT heading", () => {
 
     render(
       <MemoryRouter>
-        <RequesterProvider>
-          <App />
-        </RequesterProvider>
+        <App />
       </MemoryRouter>
     );
 

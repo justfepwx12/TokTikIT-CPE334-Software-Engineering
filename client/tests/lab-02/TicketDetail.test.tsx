@@ -5,7 +5,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
-import { RequesterProvider } from "../../src/context/RequesterContext";
+import { AuthProvider } from "../../src/context/AuthContext";
 import TicketDetail from "../../src/pages/TicketDetail";
 import * as api from "../../src/api";
 import type { TicketDetail as TicketDetailType } from "../../src/api";
@@ -61,14 +61,14 @@ const fakeTicket: TicketDetailType = {
 
 function renderDetail() {
   return render(
-    <RequesterProvider>
+    <AuthProvider>
       <MemoryRouter initialEntries={["/tickets/42"]}>
         <Routes>
           <Route path="/tickets/:id" element={<TicketDetail />} />
           <Route path="/my-tickets" element={<div>My Tickets Page</div>} />
         </Routes>
       </MemoryRouter>
-    </RequesterProvider>
+    </AuthProvider>
   );
 }
 
@@ -76,11 +76,17 @@ beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
 
-  localStorage.clear();
-  localStorage.setItem(
-    "toktickit.selectedRequester",
-    JSON.stringify({ id: 2, name: "Jane Doe" })
-  );
+  // Authenticated session fixture (replaces the Lab 2 simulated selector).
+  vi.spyOn(api, "getSessionUser").mockResolvedValue({
+    user: {
+      id: 2,
+      name: "Jane Doe",
+      email: "jane@toktikit.com",
+      role: "REQUESTER",
+      isActive: true,
+      mustChangePassword: false,
+    },
+  });
 
   vi.spyOn(api, "getTicket").mockResolvedValue(fakeTicket);
 });
@@ -236,13 +242,13 @@ describe("TicketDetail", () => {
 
   it("shows an error for an invalid ticket id", async () => {
     render(
-      <RequesterProvider>
+      <AuthProvider>
         <MemoryRouter initialEntries={["/tickets/abc"]}>
           <Routes>
             <Route path="/tickets/:id" element={<TicketDetail />} />
           </Routes>
         </MemoryRouter>
-      </RequesterProvider>
+      </AuthProvider>
     );
     await waitFor(() => expect(screen.getByTestId("ticket-detail-error")).toBeDefined());
     expect(screen.getByText("Invalid ticket id.")).toBeDefined();

@@ -143,7 +143,11 @@ async function loadErrorMessage(res: Response): Promise<string> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, init);
+  // Session cookie auth (BR-04): the server identifies the user from the
+  // HTTP-only session cookie, so every request must include credentials.
+  // The legacy x-requester-id header is still sent by callers for now and
+  // will be dropped once the server stops requiring it (Issue #95).
+  const res = await fetch(`${API_URL}${path}`, { credentials: "include", ...init });
   if (!res.ok) {
     throw new Error(await loadErrorMessage(res));
   }
@@ -151,17 +155,57 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function checkSystem(): Promise<SystemStatus> {
-  const res = await fetch(`${API_URL}/api/health`);
+  const res = await fetch(`${API_URL}/api/health`, { credentials: "include" });
   if (!res.ok) {
     throw new Error(`Health check failed with status: ${res.status}`);
   }
   const healthData = await res.json();
-  const catRes = await fetch(`${API_URL}/api/categories`);
+  const catRes = await fetch(`${API_URL}/api/categories`, { credentials: "include" });
   const categories = catRes.ok ? await catRes.json() : [];
   return {
     online: healthData.status === "ok",
     categories,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Authentication API (Lab 3 Issue 3, api-spec §1). Session-cookie based
+// (BR-04): identity comes from the server session, never from a header.
+// ---------------------------------------------------------------------------
+
+export type UserRole = "REQUESTER" | "IT_STAFF" | "ADMIN";
+
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  mustChangePassword: boolean;
+}
+
+export function getSessionUser(): Promise<{ user: AuthUser }> {
+  return request<{ user: AuthUser }>("/api/auth/me");
+}
+
+export function loginUser(email: string, password: string): Promise<{ user: AuthUser }> {
+  return request<{ user: AuthUser }>("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function logoutUser(): Promise<{ message: string }> {
+  return request<{ message: string }>("/api/auth/logout", { method: "POST" });
+}
+
+export function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+  return request<{ message: string }>("/api/auth/change-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
 }
 
 export function getCategories(): Promise<Category[]> {
@@ -228,6 +272,7 @@ export async function uploadAttachment(
 
   const res = await fetch(`${API_URL}/api/attachments/upload`, {
     method: "POST",
+    credentials: "include",
     headers: {
       "x-requester-id": String(requesterId),
     },
@@ -246,6 +291,7 @@ export async function downloadAttachment(
   requesterId: number
 ): Promise<{ blob: Blob; filename: string }> {
   const res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
+    credentials: "include",
     headers: {
       "x-requester-id": String(requesterId),
     },

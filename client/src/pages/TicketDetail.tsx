@@ -12,7 +12,7 @@ import {
   type TicketDetail as TicketDetailType,
   type TicketDetailAttachment,
 } from "../api";
-import { useRequester } from "../hooks/useRequester";
+import { useAuth } from "../hooks/useAuth";
 import Badge from "../components/Badge";
 import Button from "../components/Button";
 import ValidationMessage from "../components/ValidationMessage";
@@ -134,7 +134,7 @@ function AttachmentRow({
 
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
-  const { requester } = useRequester();
+  const { user: requester } = useAuth();
 
   const [ticket, setTicket] = useState<TicketDetailType | null>(null);
   const [error, setError] = useState<string | null>(null);
