@@ -3,7 +3,11 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { KeyRound } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import TextInput from "../components/TextInput";
-import { roleHome } from "../utils/roleHome.js";
+import { roleHome } from "../utils/navigation.js";
+
+// Must mirror the server contract (api-spec §1): 8–128 chars after trim.
+const NEW_PASSWORD_MIN = 8;
+const NEW_PASSWORD_MAX = 128;
 
 // Mandatory first-login password change (ui-spec §4, BR-03). No cancel —
 // header Logout is the only exit. Server validation is authoritative.
@@ -26,8 +30,12 @@ export default function ChangePassword() {
     e.preventDefault();
     const errors: { current?: string; next?: string; confirm?: string } = {};
     if (!currentPassword) errors.current = "Current password is required.";
-    if (newPassword.trim().length < 8) errors.next = "New password must be at least 8 characters.";
-    if (newPassword === currentPassword && newPassword) errors.next = "New password must be different.";
+    const trimmed = newPassword.trim();
+    if (trimmed.length < NEW_PASSWORD_MIN || trimmed.length > NEW_PASSWORD_MAX) {
+      errors.next = `New password must be between ${NEW_PASSWORD_MIN} and ${NEW_PASSWORD_MAX} characters.`;
+    } else if (trimmed === currentPassword.trim()) {
+      errors.next = "New password must be different.";
+    }
     if (confirmPassword !== newPassword) errors.confirm = "Passwords do not match.";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;

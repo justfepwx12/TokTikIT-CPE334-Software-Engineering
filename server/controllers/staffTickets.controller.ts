@@ -2,50 +2,39 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { getPrisma } from '../src/prisma.js';
-import type { AuthRequest } from '../src/auth.middleware.js';
 
-const listQuerySchema = z.object({
+// GET /api/staff/tickets — operational queue for IT Staff/Admin (api-spec §2,
+// BR-13/BR-17). All tickets regardless of requester. Role guard runs in App.ts
+// via requireRole('IT_STAFF', 'ADMIN'); Requester → 403 there.
+const queueQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
-  categoryId: z.coerce.number().int().positive().optional(),
-  systemId: z.coerce.number().int().positive().optional(),
   status: z
     .enum(['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CLOSED', 'REOPENED', 'CANCELLED'])
     .optional(),
+  // Matches the IT Priority (not the Requested Priority).
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-  sort: z.enum(['createdAt', 'requestedPriority']).default('createdAt'),
+  categoryId: z.coerce.number().int().positive().optional(),
+  systemId: z.coerce.number().int().positive().optional(),
+  // Filter by owner; sentinel 0 = unassigned (ownerId null).
+  ownerId: z.coerce.number().int().min(0).optional(),
+  sort: z.enum(['updatedAt', 'status', 'priority']).default('updatedAt'),
   order: z.enum(['asc', 'desc']).default('desc'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(10),
 });
 
-export const listTickets = async (req: Request, res: Response) => {
+export const listStaffTickets = async (req: Request, res: Response) => {
   try {
-    // BR-03/BR-04: identity comes solely from the session. Any
-    // client-supplied requesterId (header or query) is ignored.
-    const sessionUser = (req as AuthRequest).user;
-    if (!sessionUser) {
-      return res.status(401).json({
-        error: { code: 'UNAUTHORIZED', message: 'Missing or invalid session' },
-      });
-    }
-    const requesterId = sessionUser.id;
+    const query = queueQuerySchema.parse(req.query);
 
-    const prisma = getPrisma();
-
-    const requester = await prisma.user.findUnique({
-      where: { id: requesterId },
-      select: { id: true, role: true, isActive: true },
-    });
-    if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {
-      return res.status(403).json({
-        error: { code: 'FORBIDDEN', message: 'Requester is inactive or does not exist' },
-      });
-    }
-
-    const query = listQuerySchema.parse(req.query);
+    const orderBy: Prisma.TicketOrderByWithRelationInput =
+      query.sort === 'priority'
+        ? { itPriority: query.order }
+        : query.sort === 'status'
+          ? { status: query.order }
+          : { updatedAt: query.order };
 
     const where: Prisma.TicketWhereInput = {
-      requesterId,
       ...(query.search
         ? {
             OR: [
@@ -54,17 +43,18 @@ export const listTickets = async (req: Request, res: Response) => {
             ],
           }
         : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.priority ? { itPriority: query.priority } : {}),
       ...(query.categoryId ? { categoryId: query.categoryId } : {}),
       ...(query.systemId ? { systemId: query.systemId } : {}),
-      ...(query.status ? { status: query.status } : {}),
-      // The Requester filters by what they submitted (Requested Priority).
-      ...(query.priority ? { requestedPriority: query.priority } : {}),
+      ...(query.ownerId !== undefined
+        ? query.ownerId === 0
+          ? { ownerId: null }
+          : { ownerId: query.ownerId }
+        : {}),
     };
-    const orderBy =
-      query.sort === 'requestedPriority'
-        ? { requestedPriority: query.order }
-        : { createdAt: query.order };
 
+    const prisma = getPrisma();
     const skip = (query.page - 1) * query.limit;
 
     const [tickets, total] = await prisma.$transaction([
@@ -77,13 +67,15 @@ export const listTickets = async (req: Request, res: Response) => {
           id: true,
           ticketNo: true,
           title: true,
-          description: true,
           requestedPriority: true,
           itPriority: true,
           status: true,
           createdAt: true,
+          updatedAt: true,
           category: { select: { id: true, name: true } },
           system: { select: { id: true, name: true } },
+          requester: { select: { id: true, name: true } },
+          owner: { select: { id: true, name: true } },
         },
       }),
       prisma.ticket.count({ where }),

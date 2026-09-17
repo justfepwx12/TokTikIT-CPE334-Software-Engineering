@@ -7,36 +7,17 @@ import {
   downloadAttachment,
   removeAttachment,
   triggerDownload,
-  type TicketStatus,
-  type TicketPriority,
   type TicketDetail as TicketDetailType,
   type TicketDetailAttachment,
 } from "../api";
 import { useAuth } from "../hooks/useAuth";
 import Badge from "../components/Badge";
+import { STATUS_COLOR, PRIORITY_COLOR } from "../utils/badgeColors.js";
 import Button from "../components/Button";
 import ValidationMessage from "../components/ValidationMessage";
 
 const REMOVAL_REASON_MIN = 3;
 const REMOVAL_REASON_MAX = 200;
-
-const STATUS_COLOR: Record<TicketStatus, "gray" | "blue" | "green"> = {
-  NEW: "gray",
-  OPEN: "blue",
-  IN_PROGRESS: "blue",
-  WAITING_FOR_REQUESTER: "gray",
-  RESOLVED: "green",
-  CLOSED: "gray",
-  REOPENED: "blue",
-  CANCELLED: "gray",
-};
-
-const PRIORITY_COLOR: Record<TicketPriority, "gray" | "yellow" | "red"> = {
-  LOW: "gray",
-  MEDIUM: "yellow",
-  HIGH: "red",
-  URGENT: "red",
-};
 
 function formatDate(value: string): string {
   const d = new Date(value);

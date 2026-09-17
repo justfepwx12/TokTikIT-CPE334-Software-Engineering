@@ -51,9 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     await apiChangePassword(currentPassword, newPassword)
     // Server clears mustChangePassword but keeps the session — refresh the
-    // user so the gate unblocks immediately without a reload.
-    const { user } = await getSessionUser()
-    setUser(user)
+    // user so the gate unblocks immediately without a reload. If the refresh
+    // itself fails (network blip), clear the flag locally: the password IS
+    // changed, and the next /me will confirm it.
+    try {
+      const { user } = await getSessionUser()
+      setUser(user)
+    } catch {
+      setUser((prev) => (prev ? { ...prev, mustChangePassword: false } : prev))
+    }
   }, [])
 
   return (

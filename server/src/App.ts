@@ -5,6 +5,7 @@ import { createTicket } from "../controllers/ticket.controller.js";
 import { listTickets } from "../controllers/listTickets.controller.js";
 import { getTicketById } from "../controllers/ticketById.controller.js";
 import { resolveIntent } from "../controllers/resolveIntent.controller.js";
+import { listStaffTickets } from "../controllers/staffTickets.controller.js";
 import {
   attachmentUpload,
   getAttachmentMeta,
@@ -15,6 +16,7 @@ import { sessionMiddleware } from "./session.js";
 import {
   hydrateUser,
   requireAuth,
+  requireRole,
   gateMustChangePassword,
 } from "./auth.middleware.js";
 import {
@@ -26,7 +28,16 @@ import {
 
 export const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+// CORS must allow credentials for the session cookie. In production the
+// frontend origin is explicit (FRONTEND_URL); in dev we echo the request
+// origin. Never reflect arbitrary origins with credentials in production.
+const isProduction = process.env.NODE_ENV === "production";
+app.use(
+  cors({
+    origin: isProduction ? (process.env.FRONTEND_URL ?? false) : true,
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(sessionMiddleware);
 app.use(hydrateUser);
@@ -58,7 +69,9 @@ app.get(
       });
       res.json(categories);
     } catch {
-      res.status(500).json({ error: "Failed to fetch categories" });
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Failed to fetch categories" },
+      });
     }
   },
 );
@@ -77,7 +90,9 @@ app.get(
       });
       res.json(requesters);
     } catch {
-      res.status(500).json({ error: "Failed to fetch requesters" });
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Failed to fetch requesters" },
+      });
     }
   },
 );
@@ -95,7 +110,9 @@ app.get(
       });
       res.json(systems);
     } catch {
-      res.status(500).json({ error: "Failed to fetch related systems" });
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Failed to fetch related systems" },
+      });
     }
   },
 );
@@ -110,6 +127,15 @@ app.post(
   requireAuth,
   gateMustChangePassword,
   resolveIntent,
+);
+
+// IT Staff/Admin operational queue (api-spec §2, BR-13/BR-17).
+app.get(
+  "/api/staff/tickets",
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+  listStaffTickets,
 );
 
 // Protected attachment routes
