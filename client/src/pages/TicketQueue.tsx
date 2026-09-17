@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
@@ -205,40 +205,20 @@ export default function TicketQueue() {
   }, []);
 
   // Debounced search (ui-spec §5): typing refetches without a submit click.
-  // Page reset happens outside the state updater (updaters must stay pure —
-  // StrictMode double-invokes them).
+  // Page reset happens in the timeout callback (event path), not synchronously
+  // in the effect body — avoids react-hooks/set-state-in-effect cascading renders.
+  // The ref guard prevents resetting the page when the trimmed value is unchanged.
+  const appliedSearchRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const next = draftSearch.trim() || undefined;
-      setAppliedQuery((prev) => {
-        if ((prev.search ?? undefined) === next) return prev;
-        return { ...prev, search: next };
-      });
+      if (next === appliedSearchRef.current) return;
+      appliedSearchRef.current = next;
+      setAppliedQuery((prev) => ({ ...prev, search: next }));
+      setPage(1);
     }, 400);
     return () => window.clearTimeout(timer);
   }, [draftSearch]);
-
-  // Reset to page 1 whenever the applied filters change.
-  const appliedSearch = appliedQuery.search;
-  const appliedCategoryId = appliedQuery.categoryId;
-  const appliedSystemId = appliedQuery.systemId;
-  const appliedStatus = appliedQuery.status;
-  const appliedPriority = appliedQuery.priority;
-  const appliedOwnerId = appliedQuery.ownerId;
-  const appliedSort = appliedQuery.sort;
-  const appliedOrder = appliedQuery.order;
-  useEffect(() => {
-    setPage(1);
-  }, [
-    appliedSearch,
-    appliedCategoryId,
-    appliedSystemId,
-    appliedStatus,
-    appliedPriority,
-    appliedOwnerId,
-    appliedSort,
-    appliedOrder,
-  ]);
 
   useEffect(() => {
     if (!user) return;
@@ -270,12 +250,14 @@ export default function TicketQueue() {
   }, [user, appliedQuery, page, limit, retryKey]);
 
   const updateQuery = (patch: Partial<StaffTicketQuery>) => {
-    // Page reset to 1 is handled by the effect above.
+    // Reset to page 1 in the event handler (not in an effect).
     setAppliedQuery((prev) => ({ ...prev, ...patch }));
+    setPage(1);
   };
 
   const handleClearFilters = () => {
     setDraftSearch("");
+    appliedSearchRef.current = undefined;
     setAppliedQuery({ ...DEFAULT_QUERY });
     setPage(1);
   };
