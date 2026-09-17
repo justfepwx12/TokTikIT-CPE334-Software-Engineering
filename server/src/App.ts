@@ -5,6 +5,8 @@ import { createTicket } from "../controllers/ticket.controller.js";
 import { listTickets } from "../controllers/listTickets.controller.js";
 import { getTicketById } from "../controllers/ticketById.controller.js";
 import { resolveIntent } from "../controllers/resolveIntent.controller.js";
+import { listComments, postComment } from "../controllers/comments.controller.js";
+import { listNotes, postNote } from "../controllers/notes.controller.js";
 import {
   attachmentUpload,
   getAttachmentMeta,
@@ -16,6 +18,7 @@ import {
   hydrateUser,
   requireAuth,
   gateMustChangePassword,
+  requireRole,
 } from "./auth.middleware.js";
 import {
   loginController,
@@ -110,6 +113,26 @@ app.post(
   requireAuth,
   gateMustChangePassword,
   resolveIntent,
+);
+
+// Communication engine — append-only (api-spec §4, BR-17–BR-20).
+// Public comments: owning Requester + IT Staff/Admin. Internal notes:
+// IT Staff/Admin only (Requester → 403 with no content leak).
+app.get("/api/tickets/:id/comments", requireAuth, gateMustChangePassword, listComments);
+app.post("/api/tickets/:id/comments", requireAuth, gateMustChangePassword, postComment);
+app.get(
+  "/api/tickets/:id/notes",
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+  listNotes,
+);
+app.post(
+  "/api/tickets/:id/notes",
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+  postNote,
 );
 
 // Protected attachment routes

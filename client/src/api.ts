@@ -309,3 +309,57 @@ export function removeAttachment(
     body: JSON.stringify({ removalReason }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Communication engine (Lab 3 Issue 7, api-spec §4). Append-only timelines:
+// Public Comments (owning Requester + IT Staff/Admin) and Internal Notes
+// (IT Staff/Admin only — the requester UI never fetches them, BR-18).
+// ---------------------------------------------------------------------------
+
+export interface CommentAuthor {
+  id: number;
+  name: string;
+  role: UserRole;
+}
+export interface TicketComment {
+  id: number;
+  body: string;
+  author: CommentAuthor;
+  createdAt: string;
+}
+
+export interface InternalNote {
+  id: number;
+  body: string;
+  author: CommentAuthor;
+  createdAt: string;
+}
+
+// Client mirrors the server contract (api-spec §4, BR-20): 1–2000 chars
+// after trim. The server is authoritative; this only gives instant feedback.
+export const COMMENT_BODY_MIN = 1;
+export const COMMENT_BODY_MAX = 2000;
+
+export function getComments(ticketId: number): Promise<{ comments: TicketComment[] }> {
+  return request<{ comments: TicketComment[] }>(`/api/tickets/${ticketId}/comments`);
+}
+
+export function postComment(ticketId: number, body: string): Promise<TicketComment> {
+  return request<TicketComment>(`/api/tickets/${ticketId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
+  });
+}
+
+export function getNotes(ticketId: number): Promise<{ notes: InternalNote[] }> {
+  return request<{ notes: InternalNote[] }>(`/api/tickets/${ticketId}/notes`);
+}
+
+export function postNote(ticketId: number, body: string): Promise<InternalNote> {
+  return request<InternalNote>(`/api/tickets/${ticketId}/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
+  });
+}

@@ -15,6 +15,7 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import Badge from "../components/Badge";
 import Button from "../components/Button";
+import PublicComments from "../components/PublicComments";
 import ValidationMessage from "../components/ValidationMessage";
 
 const REMOVAL_REASON_MIN = 3;
@@ -379,6 +380,12 @@ export default function TicketDetail() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Public Comments (BR-17). Internal Notes are never rendered or fetched
+          for a Requester (BR-18) — there is no notes section here at all. */}
+      <div className="mt-3">
+        <PublicComments ticketId={ticket.id} />
       </div>
 
       {isModalOpen &&
