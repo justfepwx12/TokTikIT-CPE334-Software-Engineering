@@ -39,30 +39,16 @@ if (!existsSync(UPLOADS_DIR)) {
 }
 
 async function resolveActiveRequester(req: Request, res: Response): Promise<number | null> {
-  const raw = req.headers['x-requester-id'];
-  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
-    res.status(401).json({
-      error: { code: 'UNAUTHORIZED', message: 'Missing or invalid x-requester-id header' },
-    });
-    return null;
-  }
-
-  const requesterId = Number.parseInt(raw, 10);
-  if (!Number.isSafeInteger(requesterId) || requesterId <= 0) {
-    res.status(401).json({
-      error: { code: 'UNAUTHORIZED', message: 'Missing or invalid x-requester-id header' },
-    });
-    return null;
-  }
-
-  // Transitional BR-04 guard: header identity must match the session user.
+  // BR-03/BR-04: identity comes solely from the session. Any
+  // client-supplied requesterId (header or body) is ignored.
   const sessionUser = (req as AuthRequest).user;
-  if (sessionUser && sessionUser.id !== requesterId) {
-    res.status(403).json({
-      error: { code: 'FORBIDDEN', message: 'Requester does not match the signed-in user' },
+  if (!sessionUser) {
+    res.status(401).json({
+      error: { code: 'UNAUTHORIZED', message: 'Missing or invalid session' },
     });
     return null;
   }
+  const requesterId = sessionUser.id;
 
   const prisma = getPrisma();
   const requester = await prisma.user.findUnique({ where: { id: requesterId } });

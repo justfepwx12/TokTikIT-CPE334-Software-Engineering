@@ -11,7 +11,7 @@ import {
   type TicketPriority,
   type Ticket,
 } from "../api";
-import { useRequester } from "../hooks/useRequester";
+import { useAuth } from "../hooks/useAuth";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
 import ValidationMessage from "../components/ValidationMessage";
@@ -59,7 +59,7 @@ const EMPTY_FORM: FormValues = {
 };
 
 export default function CreateTicket() {
-  const { requester } = useRequester();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -167,7 +167,9 @@ export default function CreateTicket() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!requester || isSubmitting || createdTicket) return;
+    // Session owns the identity (BR-04) — no id is passed; the server scopes
+    // the ticket to the signed-in user.
+    if (!user || isSubmitting || createdTicket) return;
 
     const nextErrors = validate(values);
     setErrors(nextErrors);
@@ -176,22 +178,19 @@ export default function CreateTicket() {
     setIsSubmitting(true);
     setErrors((prev) => ({ ...prev, submit: undefined }));
     try {
-      const ticket = await apiCreateTicket(
-        {
-          title: values.title.trim(),
-          description: values.description.trim(),
-          categoryId: Number(values.categoryId),
-          systemId: Number(values.systemId),
-          priority: values.priority as TicketPriority,
-        },
-        requester.id
-      );
+      const ticket = await apiCreateTicket({
+        title: values.title.trim(),
+        description: values.description.trim(),
+        categoryId: Number(values.categoryId),
+        systemId: Number(values.systemId),
+        priority: values.priority as TicketPriority,
+      });
 
       // Upload staged attachments to the newly created ticket. The ticket is
       // already created, so a failed individual upload must not lose it.
       for (const file of stagedFiles) {
         try {
-          await uploadAttachment(ticket.id, file, requester.id);
+          await uploadAttachment(ticket.id, file);
         } catch {
           // Best-effort: the ticket remains; the user can add the file later.
         }

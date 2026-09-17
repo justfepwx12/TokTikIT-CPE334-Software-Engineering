@@ -143,7 +143,10 @@ async function loadErrorMessage(res: Response): Promise<string> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, init);
+  // Session cookie auth (BR-04): the server identifies the user from the
+  // HTTP-only session cookie, so every request must include credentials.
+  // No identity header is sent — the legacy x-requester-id is gone (Issue #95).
+  const res = await fetch(`${API_URL}${path}`, { credentials: "include", ...init });
   if (!res.ok) {
     throw new Error(await loadErrorMessage(res));
   }
@@ -151,17 +154,57 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function checkSystem(): Promise<SystemStatus> {
-  const res = await fetch(`${API_URL}/api/health`);
+  const res = await fetch(`${API_URL}/api/health`, { credentials: "include" });
   if (!res.ok) {
     throw new Error(`Health check failed with status: ${res.status}`);
   }
   const healthData = await res.json();
-  const catRes = await fetch(`${API_URL}/api/categories`);
+  const catRes = await fetch(`${API_URL}/api/categories`, { credentials: "include" });
   const categories = catRes.ok ? await catRes.json() : [];
   return {
     online: healthData.status === "ok",
     categories,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Authentication API (Lab 3 Issue 3, api-spec §1). Session-cookie based
+// (BR-04): identity comes from the server session, never from a header.
+// ---------------------------------------------------------------------------
+
+export type UserRole = "REQUESTER" | "IT_STAFF" | "ADMIN";
+
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  mustChangePassword: boolean;
+}
+
+export function getSessionUser(): Promise<{ user: AuthUser }> {
+  return request<{ user: AuthUser }>("/api/auth/me");
+}
+
+export function loginUser(email: string, password: string): Promise<{ user: AuthUser }> {
+  return request<{ user: AuthUser }>("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function logoutUser(): Promise<{ message: string }> {
+  return request<{ message: string }>("/api/auth/logout", { method: "POST" });
+}
+
+export function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+  return request<{ message: string }>("/api/auth/change-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
 }
 
 export function getCategories(): Promise<Category[]> {
@@ -172,15 +215,11 @@ export function getSystems(): Promise<RelatedSystem[]> {
   return request<RelatedSystem[]>("/api/systems");
 }
 
-export function createTicket(
-  payload: CreateTicketPayload,
-  requesterId: number
-): Promise<Ticket> {
+export function createTicket(payload: CreateTicketPayload): Promise<Ticket> {
   return request<Ticket>("/api/tickets", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-requester-id": String(requesterId),
     },
     body: JSON.stringify(payload),
   });
@@ -196,31 +235,19 @@ function buildQueryString(query: TicketQuery): string {
   return qs ? `?${qs}` : "";
 }
 
-export function getTickets(
-  query: TicketQuery,
-  requesterId: number
-): Promise<TicketsResponse> {
-  return request<TicketsResponse>(`/api/tickets${buildQueryString(query)}`, {
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
-  });
+export function getTickets(query: TicketQuery): Promise<TicketsResponse> {
+  return request<TicketsResponse>(`/api/tickets${buildQueryString(query)}`);
 }
 
-export function getTicket(ticketId: number, requesterId: number): Promise<TicketDetail> {
-  return request<TicketDetail>(`/api/tickets/${ticketId}`, {
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
-  });
+export function getTicket(ticketId: number): Promise<TicketDetail> {
+  return request<TicketDetail>(`/api/tickets/${ticketId}`);
 }
 
 // POST /api/attachments/upload — multipart upload linked to an owned ticket.
 // Note: no Content-Type header is set; the browser supplies the boundary.
 export async function uploadAttachment(
   ticketId: number,
-  file: File,
-  requesterId: number
+  file: File
 ): Promise<AttachmentUploadResponse> {
   const formData = new FormData();
   formData.append("ticketId", String(ticketId));
@@ -228,9 +255,7 @@ export async function uploadAttachment(
 
   const res = await fetch(`${API_URL}/api/attachments/upload`, {
     method: "POST",
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
+    credentials: "include",
     body: formData,
   });
   if (!res.ok) {
@@ -242,13 +267,10 @@ export async function uploadAttachment(
 // GET /api/attachments/:id/download — returns the binary content. Callers
 // trigger a browser download via triggerDownload(blob, filename).
 export async function downloadAttachment(
-  attachmentId: number,
-  requesterId: number
+  attachmentId: number
 ): Promise<{ blob: Blob; filename: string }> {
   const res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
+    credentials: "include",
   });
   if (!res.ok) {
     throw new Error(await loadErrorMessage(res));
@@ -277,14 +299,12 @@ export function triggerDownload(blob: Blob, filename: string): void {
 // PATCH /api/attachments/:id/remove — soft-removal with mandatory reason.
 export function removeAttachment(
   attachmentId: number,
-  removalReason: string,
-  requesterId: number
+  removalReason: string
 ): Promise<AttachmentRemovalResponse> {
   return request<AttachmentRemovalResponse>(`/api/attachments/${attachmentId}/remove`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      "x-requester-id": String(requesterId),
     },
     body: JSON.stringify({ removalReason }),
   });

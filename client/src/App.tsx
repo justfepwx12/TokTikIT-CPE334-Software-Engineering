@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { checkSystem, type Category } from "./api.js";
 import Header from "./components/Header";
-import { RequesterProvider } from "./context/RequesterContext";
-import { useRequester } from "./hooks/useRequester";
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./hooks/useAuth";
 import MyTickets from "./pages/MyTickets";
-import RequesterSelection from "./pages/RequesterSelection.js";
+import Login from "./pages/Login";
+import ChangePassword from "./pages/ChangePassword";
 import CreateTicket from "./pages/CreateTicket";
 import TicketDetail from "./pages/TicketDetail";
 
@@ -109,28 +110,36 @@ function SystemStatusHome() {
   );
 }
 
-// ป้องกัน Route: เด้งกลับไปหน้าเลือก Requester ทันทีถ้ายังไม่มี (FR-03)
+// Auth guard: no session → /login; mustChangePassword → /change-password
+// (BR-03 — cannot be routed around). Mirrors the server gate.
 function ProtectedRoute({ children }: { children: React.JSX.Element }) {
-  const { requester, isLoading } = useRequester();
+  const { user, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) return null;
 
-  if (!requester) {
+  if (!user) {
     const redirect = encodeURIComponent(location.pathname);
-    return <Navigate to={`/select-requester?redirect=${redirect}`} replace />;
+    return <Navigate to={`/login?redirect=${redirect}`} replace />;
+  }
+  if (user.mustChangePassword && location.pathname !== "/change-password") {
+    return <Navigate to="/change-password" replace />;
   }
   return children;
 }
 
 function App() {
   return (
-    <RequesterProvider>
+    <AuthProvider>
       <Header />
       <Routes>
-        <Route path="/" element={<SystemStatusHome />} />
-        <Route path="/select-requester" element={<RequesterSelection />} />
-        
+        <Route path="/" element={
+          <ProtectedRoute>
+            <SystemStatusHome />
+          </ProtectedRoute>
+        } />
+        <Route path="/login" element={<Login />} />
+        <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/my-tickets" element={
           <ProtectedRoute>
             <MyTickets />
@@ -146,8 +155,9 @@ function App() {
             <TicketDetail />
           </ProtectedRoute>
         } />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </RequesterProvider>
+    </AuthProvider>
   );
 }
 

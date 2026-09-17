@@ -4,6 +4,7 @@ import { getPrisma } from "./prisma.js";
 import { createTicket } from "../controllers/ticket.controller.js";
 import { listTickets } from "../controllers/listTickets.controller.js";
 import { getTicketById } from "../controllers/ticketById.controller.js";
+import { resolveIntent } from "../controllers/resolveIntent.controller.js";
 import {
   attachmentUpload,
   getAttachmentMeta,
@@ -103,6 +104,13 @@ app.get(
 app.get("/api/tickets", requireAuth, gateMustChangePassword, listTickets);
 app.get("/api/tickets/:id", requireAuth, gateMustChangePassword, getTicketById);
 app.post("/api/tickets", requireAuth, gateMustChangePassword, createTicket);
+// BR-05/BR-16: requester "Problem Appears Resolved" (owner only).
+app.post(
+  "/api/tickets/:id/resolve-intent",
+  requireAuth,
+  gateMustChangePassword,
+  resolveIntent,
+);
 
 // Protected attachment routes
 app.post(
