@@ -89,6 +89,9 @@ beforeEach(() => {
   });
 
   vi.spyOn(api, "getTicket").mockResolvedValue(fakeTicket);
+  // PublicComments section (Issue 7) fetches inside TicketDetail — keep it
+  // quiet so these tests stay focused on the detail blocks.
+  vi.spyOn(api, "getComments").mockResolvedValue({ comments: [] });
 });
 
 describe("TicketDetail", () => {

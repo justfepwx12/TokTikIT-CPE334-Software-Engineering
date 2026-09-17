@@ -169,6 +169,60 @@ export function getStaffTickets(query: StaffTicketQuery): Promise<StaffTicketsRe
   return request<StaffTicketsResponse>(`/api/staff/tickets${buildQueryString(query)}`);
 }
 
+// ---------------------------------------------------------------------------
+// Staff ticket operations (api-spec §3, Issues #98–#100).
+// ---------------------------------------------------------------------------
+
+export interface StaffTicketDetail extends StaffTicket {
+  description: string;
+  attachments: TicketDetailAttachment[];
+}
+
+export function getStaffTicket(ticketId: number): Promise<StaffTicketDetail> {
+  return request<StaffTicketDetail>(`/api/staff/tickets/${ticketId}`);
+}
+
+export function claimTicket(ticketId: number): Promise<{
+  id: number;
+  ownerId: number;
+  owner: { id: number; name: string };
+}> {
+  return request(`/api/tickets/${ticketId}/claim`, { method: "POST" });
+}
+
+export function assignTicket(
+  ticketId: number,
+  ownerId: number
+): Promise<{ id: number; ownerId: number; owner: { id: number; name: string } }> {
+  return request(`/api/tickets/${ticketId}/assign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ownerId }),
+  });
+}
+
+export function setItPriority(
+  ticketId: number,
+  itPriority: TicketPriority
+): Promise<{ id: number; requestedPriority: TicketPriority; itPriority: TicketPriority }> {
+  return request(`/api/tickets/${ticketId}/it-priority`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ itPriority }),
+  });
+}
+
+export function setTicketStatus(
+  ticketId: number,
+  status: TicketStatus
+): Promise<{ id: number; status: TicketStatus }> {
+  return request(`/api/tickets/${ticketId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+}
+
 export interface TicketQuery {
   search?: string;
   categoryId?: number;
@@ -419,5 +473,59 @@ export function resetAdminPassword(userId: number, newPassword: string): Promise
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ newPassword }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Communication engine (Lab 3 Issue 7, api-spec §4). Append-only timelines:
+// Public Comments (owning Requester + IT Staff/Admin) and Internal Notes
+// (IT Staff/Admin only — the requester UI never fetches them, BR-18).
+// ---------------------------------------------------------------------------
+
+export interface CommentAuthor {
+  id: number;
+  name: string;
+  role: UserRole;
+}
+export interface TicketComment {
+  id: number;
+  body: string;
+  author: CommentAuthor;
+  createdAt: string;
+}
+
+export interface InternalNote {
+  id: number;
+  body: string;
+  author: CommentAuthor;
+  createdAt: string;
+}
+
+// Client mirrors the server contract (api-spec §4, BR-20): 1–2000 chars
+// after trim. The server is authoritative; this only gives instant feedback.
+export const COMMENT_BODY_MIN = 1;
+export const COMMENT_BODY_MAX = 2000;
+
+export function getComments(ticketId: number): Promise<{ comments: TicketComment[] }> {
+  return request<{ comments: TicketComment[] }>(`/api/tickets/${ticketId}/comments`);
+}
+
+export function postComment(ticketId: number, body: string): Promise<TicketComment> {
+  return request<TicketComment>(`/api/tickets/${ticketId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
+  });
+}
+
+export function getNotes(ticketId: number): Promise<{ notes: InternalNote[] }> {
+  return request<{ notes: InternalNote[] }>(`/api/tickets/${ticketId}/notes`);
+}
+
+export function postNote(ticketId: number, body: string): Promise<InternalNote> {
+  return request<InternalNote>(`/api/tickets/${ticketId}/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
   });
 }

@@ -5,7 +5,15 @@ import { createTicket } from "../controllers/ticket.controller.js";
 import { listTickets } from "../controllers/listTickets.controller.js";
 import { getTicketById } from "../controllers/ticketById.controller.js";
 import { resolveIntent } from "../controllers/resolveIntent.controller.js";
-import { listStaffTickets } from "../controllers/staffTickets.controller.js";
+import { listComments, postComment } from "../controllers/comments.controller.js";
+import { listNotes, postNote } from "../controllers/notes.controller.js";
+import { listStaffTickets, getStaffTicketById } from "../controllers/staffTickets.controller.js";
+import {
+  claimTicket,
+  assignTicket,
+  setItPriority,
+  setTicketStatus,
+} from "../controllers/ticketOperations.controller.js";
 import {
   listUsers,
   createUser,
@@ -22,8 +30,8 @@ import { sessionMiddleware } from "./session.js";
 import {
   hydrateUser,
   requireAuth,
-  requireRole,
   gateMustChangePassword,
+  requireRole,
 } from "./auth.middleware.js";
 import {
   loginController,
@@ -135,6 +143,26 @@ app.post(
   resolveIntent,
 );
 
+// Communication engine — append-only (api-spec §4, BR-17–BR-20).
+// Public comments: owning Requester + IT Staff/Admin. Internal notes:
+// IT Staff/Admin only (Requester → 403 with no content leak).
+app.get("/api/tickets/:id/comments", requireAuth, gateMustChangePassword, listComments);
+app.post("/api/tickets/:id/comments", requireAuth, gateMustChangePassword, postComment);
+app.get(
+  "/api/tickets/:id/notes",
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+  listNotes,
+);
+app.post(
+  "/api/tickets/:id/notes",
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+  postNote,
+);
+
 // IT Staff/Admin operational queue (api-spec §2, BR-13/BR-17).
 app.get(
   "/api/staff/tickets",
@@ -143,6 +171,24 @@ app.get(
   requireRole("IT_STAFF", "ADMIN"),
   listStaffTickets,
 );
+app.get(
+  "/api/staff/tickets/:id",
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+  getStaffTicketById,
+);
+
+// Ticket detail operations (api-spec §3, BR-13–BR-15).
+const staffOp = [
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+] as const;
+app.post("/api/tickets/:id/claim", ...staffOp, claimTicket);
+app.post("/api/tickets/:id/assign", ...staffOp, assignTicket);
+app.patch("/api/tickets/:id/it-priority", ...staffOp, setItPriority);
+app.patch("/api/tickets/:id/status", ...staffOp, setTicketStatus);
 
 // Administrator user management (api-spec §5, BR-07–BR-12). Admin only;
 // no user is ever deleted (BR-12).
