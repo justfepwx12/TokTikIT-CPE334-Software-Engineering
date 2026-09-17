@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { getPrisma } from '../src/prisma.js';
 import type { AuthRequest } from '../src/auth.middleware.js';
+import { parseTicketIdParam } from '../src/ticketId.js';
 
 // Public Comments engine (api-spec §4, BR-17/BR-19/BR-20).
 // Append-only: only list + append endpoints exist — no edit/delete routes.
@@ -25,14 +26,8 @@ async function loadTicket(req: Request, res: Response) {
   }
 
   const raw = req.params.id;
-  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'Ticket id must be a positive integer' },
-    });
-    return null;
-  }
-  const ticketId = Number.parseInt(raw, 10);
-  if (!Number.isSafeInteger(ticketId) || ticketId <= 0) {
+  const ticketId = parseTicketIdParam(raw);
+  if (ticketId === null) {
     res.status(400).json({
       error: { code: 'VALIDATION_ERROR', message: 'Ticket id must be a positive integer' },
     });
@@ -81,7 +76,7 @@ export const listComments = async (req: Request, res: Response) => {
     const comments = await prisma.comment.findMany({
       where: { ticketId: ticket.id },
       select: { id: true, body: true, createdAt: true, author: { select: authorSelect } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
     return res.status(200).json({ comments });
   } catch {

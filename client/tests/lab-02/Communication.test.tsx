@@ -155,15 +155,14 @@ describe("PublicComments (AC-22/AC-24)", () => {
 describe("InternalNotes visual distinction (AC #102)", () => {
   it("renders the yellow-tint surface, lock indicator and staff-only label", async () => {
     vi.spyOn(api, "getNotes").mockResolvedValue({ notes: [] });
-    const { container } = render(<InternalNotes ticketId={42} />);
+    render(<InternalNotes ticketId={42} />);
     await waitFor(() => expect(screen.getByTestId("internal-notes")).toBeDefined());
 
     const section = screen.getByTestId("internal-notes");
     // jsdom normalizes #FFFBEB to rgb(255, 251, 235).
     expect(section.getAttribute("style") ?? "").toContain("rgb(255, 251, 235)");
     expect(screen.getByText("Internal — IT Staff only")).toBeDefined();
-    // Lucide is stubbed in tests; the lock icon is asserted via aria in code.
-    expect(container.querySelector("h3")).toBeDefined();
+    expect(screen.getByRole("heading", { name: /internal notes/i })).not.toBeNull();
   });
 
   it("posts a note and prepends it to the list", async () => {

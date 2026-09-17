@@ -120,6 +120,8 @@ export default function InternalNotes({ ticketId }: { ticketId: number }) {
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         placeholder="Append an operational note for IT staff…"
+        aria-invalid={fieldError ? "true" : "false"}
+        aria-describedby={fieldError ? "note-error" : undefined}
       />
       {fieldError && (
         <div data-testid="note-error" role="alert" className="text-danger small mb-2">

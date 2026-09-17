@@ -117,6 +117,29 @@ describe("Public Comments & Internal Notes API (AC-22–AC-25)", () => {
     }
     const long = await agent.post(`/api/tickets/${id}/comments`).send({ body: "x".repeat(2001) });
     expect(long.status).toBe(400);
+    const missing = await agent.post(`/api/tickets/${id}/comments`).send({});
+    expect(missing.status).toBe(400);
+  });
+
+  it("stores the trimmed body and never leaks author secrets", async () => {
+    const agent = await loginAs(OWNER_EMAIL, TEST_PASSWORD);
+    const id = await makeTicket();
+    const post = await agent.post(`/api/tickets/${id}/comments`).send({ body: "  padded hello  " });
+    expect(post.status).toBe(201);
+    expect(post.body.body).toBe("padded hello");
+    expect(post.body.author.passwordHash).toBeUndefined();
+    expect(post.body.author.email).toBeUndefined();
+    expect(post.body.author).toMatchObject({ name: "Comms Owner", role: "REQUESTER" });
+  });
+
+  it("lists comments newest-first", async () => {
+    const agent = await loginAs(OWNER_EMAIL, TEST_PASSWORD);
+    const id = await makeTicket();
+    await agent.post(`/api/tickets/${id}/comments`).send({ body: "first" });
+    await agent.post(`/api/tickets/${id}/comments`).send({ body: "second" });
+    const list = await agent.get(`/api/tickets/${id}/comments`);
+    expect(list.status).toBe(200);
+    expect(list.body.comments.map((c: { body: string }) => c.body)).toEqual(["second", "first"]);
   });
 
   it("staff posts and lists internal notes; admin can read them", async () => {
@@ -144,13 +167,15 @@ describe("Public Comments & Internal Notes API (AC-22–AC-25)", () => {
     expect(post.body.notes).toBeUndefined();
   });
 
-  it("rejects empty and whitespace-only note bodies", async () => {
+  it("rejects empty, whitespace-only and over-limit note bodies", async () => {
     const staff = await loginAs(STAFF_EMAIL, TEST_PASSWORD);
     const id = await makeTicket();
     const empty = await staff.post(`/api/tickets/${id}/notes`).send({ body: "" });
     expect(empty.status).toBe(400);
     const blank = await staff.post(`/api/tickets/${id}/notes`).send({ body: "   " });
     expect(blank.status).toBe(400);
+    const long = await staff.post(`/api/tickets/${id}/notes`).send({ body: "y".repeat(2001) });
+    expect(long.status).toBe(400);
   });
 
   it("has no edit/delete endpoints for comments or notes (AC-25)", async () => {

@@ -110,6 +110,8 @@ export default function PublicComments({ ticketId }: { ticketId: number }) {
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         placeholder="Write an update or answer for the IT team…"
+        aria-invalid={fieldError ? "true" : "false"}
+        aria-describedby={fieldError ? "comment-error" : undefined}
       />
       {fieldError && (
         <div data-testid="comment-error" role="alert" className="text-danger small mb-2">

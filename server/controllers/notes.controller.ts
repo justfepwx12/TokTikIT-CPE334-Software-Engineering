@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { getPrisma } from '../src/prisma.js';
 import type { AuthRequest } from '../src/auth.middleware.js';
+import { parseTicketIdParam } from '../src/ticketId.js';
 
 // Internal Notes engine (api-spec §4, BR-18/BR-19/BR-20).
 // IT Staff/Admin only — enforced in App.ts via requireRole, so a Requester
@@ -15,7 +16,7 @@ const bodySchema = z.object({
   body: z.string().trim().min(BODY_MIN).max(BODY_MAX),
 });
 
-/** Shared: session check + numeric id parse + ticket existence. */
+/** Shared: session + role check + numeric id parse + ticket existence. */
 async function loadTicket(req: Request, res: Response) {
   const sessionUser = (req as AuthRequest).user;
   if (!sessionUser) {
@@ -24,16 +25,19 @@ async function loadTicket(req: Request, res: Response) {
     });
     return null;
   }
-
-  const raw = req.params.id;
-  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'Ticket id must be a positive integer' },
+  // Defense in depth (BR-18): the route also sits behind
+  // requireRole('IT_STAFF', 'ADMIN') in App.ts, so this never fires in prod
+  // wiring — but the handler is safe even if reused without that guard.
+  if (sessionUser.role !== 'IT_STAFF' && sessionUser.role !== 'ADMIN') {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'You do not have permission to view internal notes.' },
     });
     return null;
   }
-  const ticketId = Number.parseInt(raw, 10);
-  if (!Number.isSafeInteger(ticketId) || ticketId <= 0) {
+
+  const raw = req.params.id;
+  const ticketId = parseTicketIdParam(raw);
+  if (ticketId === null) {
     res.status(400).json({
       error: { code: 'VALIDATION_ERROR', message: 'Ticket id must be a positive integer' },
     });
@@ -63,7 +67,7 @@ export const listNotes = async (req: Request, res: Response) => {
     const notes = await prisma.internalNote.findMany({
       where: { ticketId: ticket.id },
       select: { id: true, body: true, createdAt: true, author: { select: authorSelect } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
     return res.status(200).json({ notes });
   } catch {
