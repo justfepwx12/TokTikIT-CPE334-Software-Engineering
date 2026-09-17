@@ -5,7 +5,13 @@ import { createTicket } from "../controllers/ticket.controller.js";
 import { listTickets } from "../controllers/listTickets.controller.js";
 import { getTicketById } from "../controllers/ticketById.controller.js";
 import { resolveIntent } from "../controllers/resolveIntent.controller.js";
-import { listStaffTickets } from "../controllers/staffTickets.controller.js";
+import { listStaffTickets, getStaffTicketById } from "../controllers/staffTickets.controller.js";
+import {
+  claimTicket,
+  assignTicket,
+  setItPriority,
+  setTicketStatus,
+} from "../controllers/ticketOperations.controller.js";
 import {
   attachmentUpload,
   getAttachmentMeta,
@@ -137,6 +143,24 @@ app.get(
   requireRole("IT_STAFF", "ADMIN"),
   listStaffTickets,
 );
+app.get(
+  "/api/staff/tickets/:id",
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+  getStaffTicketById,
+);
+
+// Ticket detail operations (api-spec §3, BR-13–BR-15).
+const staffOp = [
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+] as const;
+app.post("/api/tickets/:id/claim", ...staffOp, claimTicket);
+app.post("/api/tickets/:id/assign", ...staffOp, assignTicket);
+app.patch("/api/tickets/:id/it-priority", ...staffOp, setItPriority);
+app.patch("/api/tickets/:id/status", ...staffOp, setTicketStatus);
 
 // Protected attachment routes
 app.post(
