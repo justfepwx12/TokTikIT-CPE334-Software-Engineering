@@ -10,6 +10,7 @@ import ChangePassword from "./pages/ChangePassword";
 import CreateTicket from "./pages/CreateTicket";
 import TicketDetail from "./pages/TicketDetail";
 import TicketQueue from "./pages/TicketQueue";
+import UserManagement from "./pages/UserManagement";
 import type { UserRole } from "./api.js";
 
 import "./App.css";
@@ -182,6 +183,13 @@ function App() {
         <Route path="/tickets/:id" element={
           <ProtectedRoute>
             <TicketDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/users" element={
+          <ProtectedRoute>
+            <RequireRole roles={["ADMIN"]}>
+              <UserManagement />
+            </RequireRole>
           </ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Clock, FileText, PlusCircle, Inbox, UserCircle, Menu, X, ChevronDown, LogOut } from 'lucide-react'
+import { Clock, FileText, PlusCircle, Inbox, Users, UserCircle, Menu, X, ChevronDown, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import Badge from './Badge'
 import type { BadgeColor } from './Badge'
@@ -8,9 +8,16 @@ import type { UserRole } from '../api.js'
 import styles from './Header.module.css'
 
 // Role-aware links (ui-spec §2.1): Requester gets creation; staff get the
-// queue; admin will additionally get Users (Issue 8).
+// queue; Admin additionally gets Users.
 function navLinksFor(role: UserRole | undefined) {
-  if (role === 'IT_STAFF' || role === 'ADMIN') {
+  if (role === 'ADMIN') {
+    return [
+      { label: 'Ticket Queue', href: '/queue', icon: Inbox },
+      { label: 'My Tickets', href: '/my-tickets', icon: FileText },
+      { label: 'Users', href: '/users', icon: Users },
+    ]
+  }
+  if (role === 'IT_STAFF') {
     return [
       { label: 'Ticket Queue', href: '/queue', icon: Inbox },
       { label: 'My Tickets', href: '/my-tickets', icon: FileText },

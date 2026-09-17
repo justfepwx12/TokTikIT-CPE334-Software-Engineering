@@ -7,6 +7,12 @@ import { getTicketById } from "../controllers/ticketById.controller.js";
 import { resolveIntent } from "../controllers/resolveIntent.controller.js";
 import { listStaffTickets } from "../controllers/staffTickets.controller.js";
 import {
+  listUsers,
+  createUser,
+  updateUser,
+  resetPassword,
+} from "../controllers/admin.controller.js";
+import {
   attachmentUpload,
   getAttachmentMeta,
   downloadAttachment,
@@ -137,6 +143,14 @@ app.get(
   requireRole("IT_STAFF", "ADMIN"),
   listStaffTickets,
 );
+
+// Administrator user management (api-spec §5, BR-07–BR-12). Admin only;
+// no user is ever deleted (BR-12).
+const adminOnly = [requireAuth, gateMustChangePassword, requireRole("ADMIN")] as const;
+app.get("/api/admin/users", ...adminOnly, listUsers);
+app.post("/api/admin/users", ...adminOnly, createUser);
+app.patch("/api/admin/users/:id", ...adminOnly, updateUser);
+app.post("/api/admin/users/:id/reset-password", ...adminOnly, resetPassword);
 
 // Protected attachment routes
 app.post(
