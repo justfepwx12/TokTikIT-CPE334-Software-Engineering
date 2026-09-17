@@ -133,7 +133,11 @@ function App() {
     <AuthProvider>
       <Header />
       <Routes>
-        <Route path="/" element={<SystemStatusHome />} />
+        <Route path="/" element={
+          <ProtectedRoute>
+            <SystemStatusHome />
+          </ProtectedRoute>
+        } />
         <Route path="/login" element={<Login />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/my-tickets" element={

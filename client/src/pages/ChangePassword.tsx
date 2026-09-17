@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { KeyRound } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import TextInput from "../components/TextInput";
-import { roleHome } from "./Login";
+import { roleHome } from "../utils/roleHome.js";
 
 // Mandatory first-login password change (ui-spec §4, BR-03). No cancel —
 // header Logout is the only exit. Server validation is authoritative.

@@ -34,6 +34,18 @@ it("renders the TokTickIT heading", () => {
   });
 
   it("shows Online and the seeded categories on success", async () => {
+    // `/` is protected (Lab 3 BR-03): mock an authenticated session so the
+    // system-status home renders instead of redirecting to /login.
+    vi.spyOn(api, "getSessionUser").mockResolvedValue({
+      user: {
+        id: 1,
+        name: "Test Requester",
+        email: "test@toktikit.com",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+      },
+    });
     vi.spyOn(api, "checkSystem").mockResolvedValue({
       online: true,
       categories: [
@@ -61,6 +73,16 @@ it("renders the TokTickIT heading", () => {
   });
 
   it("shows an Offline error message when the API is unavailable", async () => {
+    vi.spyOn(api, "getSessionUser").mockResolvedValue({
+      user: {
+        id: 1,
+        name: "Test Requester",
+        email: "test@toktikit.com",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+      },
+    });
     vi.spyOn(api, "checkSystem").mockRejectedValue(new Error("unavailable"));
 
     render(

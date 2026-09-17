@@ -3,13 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { LogIn, Eye, EyeOff, Home, ChevronRight } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import TextInput from "../components/TextInput";
-import type { AuthUser } from "../api.js";
-
-// Role home (ui-spec §3): Requester → My Tickets. The IT Staff/Admin Ticket
-// Queue does not exist yet (Issue 6) — staff land on My Tickets for now.
-export function roleHome(_user: AuthUser): string {
-  return "/my-tickets";
-}
+import { roleHome } from "../utils/roleHome.js";
 
 function safeMessage(err: unknown): string {
   return err instanceof Error && err.message ? err.message : "Invalid email or password.";

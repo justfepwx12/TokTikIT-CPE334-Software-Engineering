@@ -4,12 +4,22 @@ import { Clock, FileText, PlusCircle, UserCircle, Menu, X, ChevronDown, LogOut }
 import { useAuth } from '../hooks/useAuth'
 import Badge from './Badge'
 import type { BadgeColor } from './Badge'
+import type { UserRole } from '../api.js'
 import styles from './Header.module.css'
 
-const NAV_LINKS = [
-  { label: 'My Tickets', href: '/my-tickets', icon: FileText },
-  { label: 'Create Ticket', href: '/create-ticket', icon: PlusCircle },
-]
+// Role-aware navigation (ui-spec §2.1, BR-05 visual only — server enforces).
+// Requester: My Tickets + Create Ticket (ticket creation is Requester-only).
+// IT Staff/Admin: staff navigation. The Ticket Queue screen lands in Issue 5,
+// so staff temporarily get My Tickets here to avoid a dead /queue link.
+function navLinksFor(role: UserRole | undefined) {
+  if (role === 'IT_STAFF' || role === 'ADMIN') {
+    return [{ label: 'My Tickets', href: '/my-tickets', icon: FileText }]
+  }
+  return [
+    { label: 'My Tickets', href: '/my-tickets', icon: FileText },
+    { label: 'Create Ticket', href: '/create-ticket', icon: PlusCircle },
+  ]
+}
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`)
@@ -43,6 +53,8 @@ export default function Header() {
     navigate('/login', { replace: true })
   }
 
+  const navLinks = navLinksFor(user?.role)
+
   return (
     <header className={styles.header}>
       <div className={styles.bar}>
@@ -55,7 +67,7 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <nav className={styles.nav} aria-label="Main navigation">
-            {NAV_LINKS.map((link) => {
+            {navLinks.map((link) => {
               const Icon = link.icon
               const active = isActive(location.pathname, link.href)
               return (
@@ -129,7 +141,7 @@ export default function Header() {
 
       {/* Mobile Navigation Dropdown */}
       <nav id="mobile-nav" className={styles.mobileNav} data-open={menuOpen}>
-        {NAV_LINKS.map((link) => {
+        {navLinks.map((link) => {
           const Icon = link.icon
           return (
             <Link
