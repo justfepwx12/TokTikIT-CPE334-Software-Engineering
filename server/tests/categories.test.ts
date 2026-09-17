@@ -1,10 +1,18 @@
-import { describe, it, expect } from "vitest";
-import request from "supertest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { app } from "../src/App.js";
+import { loginAs } from "./helpers.js";
+
+const IT_STAFF_EMAIL = "somchai.jaidee@toktikit.com";
 
 describe("GET /api/categories", () => {
+  let agent: Awaited<ReturnType<typeof loginAs>>;
+
+  beforeAll(async () => {
+    agent = await loginAs(IT_STAFF_EMAIL);
+  });
+
   it("returns HTTP 200 and all seeded categories in predictable id order", async () => {
-    const response = await request(app).get("/api/categories");
+    const response = await agent.get("/api/categories");
 
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
@@ -14,12 +22,10 @@ describe("GET /api/categories", () => {
       expect(Object.keys(item).sort()).toEqual(["id", "name"]);
     });
 
-    // Ascending Order
     const ids = response.body.map((item: { id: number }) => item.id);
     const sortedIds = [...ids].sort((a, b) => a - b);
     expect(ids).toEqual(sortedIds);
 
-    // categories ตรงกับ Seed
     const names = response.body.map((item: { name: string }) => item.name);
     expect(names).toEqual([
       "Account and Access",

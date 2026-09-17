@@ -5,6 +5,7 @@ import path from 'node:path';
 import multer from 'multer';
 import { z } from 'zod';
 import { getPrisma } from '../src/prisma.js';
+import type { AuthRequest } from '../src/auth.middleware.js';
 
 // BR-20: files are always stored under a fixed, non-user-controlled uploads
 // directory using server-generated UUID storage names. The client-supplied
@@ -50,6 +51,15 @@ async function resolveActiveRequester(req: Request, res: Response): Promise<numb
   if (!Number.isSafeInteger(requesterId) || requesterId <= 0) {
     res.status(401).json({
       error: { code: 'UNAUTHORIZED', message: 'Missing or invalid x-requester-id header' },
+    });
+    return null;
+  }
+
+  // Transitional BR-04 guard: header identity must match the session user.
+  const sessionUser = (req as AuthRequest).user;
+  if (sessionUser && sessionUser.id !== requesterId) {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'Requester does not match the signed-in user' },
     });
     return null;
   }

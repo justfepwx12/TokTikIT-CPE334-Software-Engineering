@@ -100,7 +100,9 @@ describe("Lab 3 migration & seed (AC-32, AC-33)", () => {
     expect(withNotes.length).toBeGreaterThan(0);
   });
 
-  it("re-running prisma db seed is idempotent (AC-33)", async () => {
+  // Spawns `prisma db seed` as a child process — needs a longer timeout on
+  // Windows where it takes 6s+ (default 5s flakes).
+  it("re-running prisma db seed is idempotent (AC-33)", { timeout: 60000 }, async () => {
     const seedTicketNos = [
       "TK-20260820-0001",
       "TK-20260820-0002",
@@ -152,7 +154,7 @@ describe("Lab 3 migration & seed (AC-32, AC-33)", () => {
     expect(countsAfter.notes).toBe(countsBefore.notes);
   });
 
-  it("re-seeding preserves user-authored comments and notes (AC-33 data preservation)", async () => {
+  it("re-seeding preserves user-authored comments and notes (AC-33 data preservation)", { timeout: 60000 }, async () => {
     const ticket = await prisma.ticket.findUniqueOrThrow({
       where: { ticketNo: "TK-20260823-0005" },
     });

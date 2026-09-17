@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getPrisma } from '../src/prisma.js';
+import type { AuthRequest } from '../src/auth.middleware.js';
 
 function requesterIdFromHeader(req: Request): number | null {
   const raw = req.headers['x-requester-id'];
@@ -31,6 +32,14 @@ export const getTicketById = async (req: Request, res: Response) => {
     }
 
     const prisma = getPrisma();
+
+    // Transitional BR-04 guard: header identity must match the session user.
+    const sessionUser = (req as AuthRequest).user;
+    if (sessionUser && sessionUser.id !== requesterId) {
+      return res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'Requester does not match the signed-in user' },
+      });
+    }
 
     const requester = await prisma.user.findUnique({ where: { id: requesterId } });
     if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {

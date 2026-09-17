@@ -10,118 +10,124 @@ import {
   downloadAttachment,
   removeAttachment,
 } from "../controllers/attachment.controller.js";
+import { sessionMiddleware } from "./session.js";
+import {
+  hydrateUser,
+  requireAuth,
+  gateMustChangePassword,
+} from "./auth.middleware.js";
+import {
+  loginController,
+  logoutController,
+  meController,
+  changePasswordController,
+} from "../controllers/auth.controller.js";
 
-// The Express app is exported separately from app.listen() (see index.ts) so
-// Supertest can import `app` without opening a port. Do not merge these files.
 export const app = express();
 
-app.use(cors());          // already wired: lets the Vite dev server call this API
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
+app.use(sessionMiddleware);
+app.use(hydrateUser);
 
-// Issue 2 — API health check
-// It must return HTTP 200 with JSON: { status: "ok", service: "TokTickIT API" }
+// Public — no auth required
 app.get("/api/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok", service: "TokTikIT API" });
 });
 
-// Issue 4 — Category list
-// GET /api/categories
-app.get("/api/categories", async (_req: Request, res: Response) => {
-  try {
-    const prisma = getPrisma();
-    const categories = await prisma.category.findMany({
-      select: {
-        id: true,
-        name: true,
-      },
-      orderBy: {
-        id: "asc",
-      },
-    });
-    res.json(categories);
-  } catch {
-    res.status(500).json({ error: "Failed to fetch categories" });
-  }
-});
+// Auth routes — login is public; logout/me/change-password require an active
+// session but are exempt from gateMustChangePassword so that a first-login
+// user can still change their password and sign out (BR-03, api-spec §1).
+app.post("/api/auth/login", loginController);
+app.post("/api/auth/logout", requireAuth, logoutController);
+app.get("/api/auth/me", requireAuth, meController);
+app.post("/api/auth/change-password", requireAuth, changePasswordController);
 
-// Issue 48 — Active Development Requester list
-// GET /api/requesters
-// AC: "GET API retrieves only active Development Requesters from the database."
-// Response shape per api-spec.md §1: { id, name, email, isActive }.
-// Lab 3: Requesters are Users with role REQUESTER. This dev-only endpoint
-// stays until Lab 3 auth (#92) replaces the selector (AD-07).
-app.get("/api/requesters", async (_req: Request, res: Response) => {
-  try {
-    const prisma = getPrisma();
-    const requesters = await prisma.user.findMany({
-      where: {
-        role: "REQUESTER",
-        isActive: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        isActive: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
-    });
-    res.json(requesters);
-  } catch {
-    res.status(500).json({ error: "Failed to fetch requesters" });
-  }
-});
+// Protected reference-data routes
+app.get(
+  "/api/categories",
+  requireAuth,
+  gateMustChangePassword,
+  async (_req: Request, res: Response) => {
+    try {
+      const prisma = getPrisma();
+      const categories = await prisma.category.findMany({
+        select: { id: true, name: true },
+        orderBy: { id: "asc" },
+      });
+      res.json(categories);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  },
+);
 
-// Issue 43 — Related System list
-// GET /api/systems
-// Response shape per api-spec.md §3: [{ id, name }]. Ordered by id since this
-// feeds a user-facing Related System dropdown on Create Ticket (and the
-// My Tickets filter dropdown).
-app.get("/api/systems", async (_req: Request, res: Response) => {
-  try {
-    const prisma = getPrisma();
-    const systems = await prisma.relatedSystem.findMany({
-      select: {
-        id: true,
-        name: true,
-      },
-      orderBy: {
-        id: "asc",
-      },
-    });
-    res.json(systems);
-  } catch {
-    res.status(500).json({ error: "Failed to fetch related systems" });
-  }
-});
+app.get(
+  "/api/requesters",
+  requireAuth,
+  gateMustChangePassword,
+  async (_req: Request, res: Response) => {
+    try {
+      const prisma = getPrisma();
+      const requesters = await prisma.user.findMany({
+        where: { role: "REQUESTER", isActive: true },
+        select: { id: true, name: true, email: true, isActive: true },
+        orderBy: { name: "asc" },
+      });
+      res.json(requesters);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch requesters" });
+    }
+  },
+);
 
-// Issue 55 — My Tickets list
-// GET /api/tickets
-// Paginated, searchable, filterable, sortable list owned by the active Requester.
-app.get("/api/tickets", listTickets);
+app.get(
+  "/api/systems",
+  requireAuth,
+  gateMustChangePassword,
+  async (_req: Request, res: Response) => {
+    try {
+      const prisma = getPrisma();
+      const systems = await prisma.relatedSystem.findMany({
+        select: { id: true, name: true },
+        orderBy: { id: "asc" },
+      });
+      res.json(systems);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch related systems" });
+    }
+  },
+);
 
-// Issue 61 — Ticket Detail
-// GET /api/tickets/:id — full details of one owned ticket incl. attachments
-// (active and soft-removed) so the UI can render both states.
-app.get("/api/tickets/:id", getTicketById);
+// Protected ticket routes
+app.get("/api/tickets", requireAuth, gateMustChangePassword, listTickets);
+app.get("/api/tickets/:id", requireAuth, gateMustChangePassword, getTicketById);
+app.post("/api/tickets", requireAuth, gateMustChangePassword, createTicket);
 
-// Issue 52 — Create Ticket
-// POST /api/tickets
-app.post("/api/tickets", createTicket);
-
-// Issue 60 — Attachments (api-spec §5, BR-05/BR-07/BR-08/BR-20)
-// POST /api/attachments/upload — upload one file linked to an owned ticket.
-app.post("/api/attachments/upload", attachmentUpload);
-
-// GET /api/attachments/:id — attachment metadata only (no binary content).
-app.get("/api/attachments/:id", getAttachmentMeta);
-
-// GET /api/attachments/:id/download — binary stream; 410 if soft-removed.
-app.get("/api/attachments/:id/download", downloadAttachment);
-
-// PATCH /api/attachments/:id/remove — soft-remove with mandatory reason.
-app.patch("/api/attachments/:id/remove", removeAttachment);
+// Protected attachment routes
+app.post(
+  "/api/attachments/upload",
+  requireAuth,
+  gateMustChangePassword,
+  attachmentUpload,
+);
+app.get(
+  "/api/attachments/:id",
+  requireAuth,
+  gateMustChangePassword,
+  getAttachmentMeta,
+);
+app.get(
+  "/api/attachments/:id/download",
+  requireAuth,
+  gateMustChangePassword,
+  downloadAttachment,
+);
+app.patch(
+  "/api/attachments/:id/remove",
+  requireAuth,
+  gateMustChangePassword,
+  removeAttachment,
+);
 
 export default app;
