@@ -12,7 +12,7 @@ import {
 } from "../api";
 import { useAuth } from "../hooks/useAuth";
 import Badge from "../components/Badge";
-import { STATUS_COLOR, PRIORITY_COLOR } from "../components/TicketBadges";
+import { STATUS_COLOR, PRIORITY_COLOR } from "../utils/badgeColors.js";
 import Button from "../components/Button";
 import ValidationMessage from "../components/ValidationMessage";
 

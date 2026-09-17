@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { KeyRound } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import TextInput from "../components/TextInput";
-import { roleHome } from "./Login";
+import { roleHome } from "../utils/navigation.js";
 
 // Must mirror the server contract (api-spec §1): 8–128 chars after trim.
 const NEW_PASSWORD_MIN = 8;
