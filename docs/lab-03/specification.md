@@ -4,8 +4,8 @@
 | :--- | :--- |
 | **Project** | TokTickIT — IT Service Desk |
 | **Sprint** | Lab 3: Authenticated Ticketing, IT Staff Workflow, Communication & Admin Console |
-| **Version** | v1.0 — initial engineering contract for Sprint 3 |
-| **Date** | 2026-09-14 |
+| **Version** | v1.1 — adds single Role filter to Admin user list (Issue #83); otherwise unchanged from v1.0 |
+| **Date** | 2026-09-18 |
 | **Sources** | CPE 334 Lab 3 labsheet (course-provided handout, kept outside the repository); Lab 2 spec (docs/lab-02/specification.md) |
 | **Related docs** | `api-spec.md`, `ui-spec.md`, `tests.md` |
 | **Related Issue** | #77 *Issue 1: Lab 3 Engineering Contract (Spec-DD)* → sub-issues #87 (*specification.md*), #88 (*ui-spec.md* / *api-spec.md*), #89 (*tests.md*) |
@@ -55,7 +55,7 @@ The business rules in `docs/lab-02/specification.md` that still describe Request
 * Advanced dashboards, analytics, or KPI metrics.
 * Multi-tenant organizations, departments, or profile-picture uploads.
 * Multiple roles per user, bulk user operations, import/export, or account audit history.
-* Admin user-list pagination, multi-column sorting, or multiple simultaneous filters (a single search box is permitted — see AD-10).
+* Admin user-list pagination, multi-column sorting, or multiple simultaneous filters beyond search + one Role filter (a search box and a single Role dropdown are permitted — see AD-10).
 
 ---
 
@@ -93,7 +93,7 @@ The business rules in `docs/lab-02/specification.md` that still describe Request
 * **FR-19**: The UI visually distinguishes Internal Notes (yellow tint + lock indicator) from Public Comments to prevent accidental public posting (BR-21).
 
 **Administrator user management**
-* **FR-20**: Administrators can list (single search box), create, edit basic user info, assign exactly one role, activate/deactivate accounts, and reset initial passwords (BR-07, BR-08).
+* **FR-20**: Administrators can list (search box + single Role filter), create, edit basic user info, assign exactly one role, activate/deactivate accounts, and reset initial passwords (BR-07, BR-08).
 * **FR-21**: The three safety guards are enforced: duplicate email → HTTP 409; Administrator cannot deactivate their own active account; the last active Administrator can never be deactivated (BR-09–BR-11).
 * **FR-22**: No user is ever deleted from the database; deactivation (`isActive = false`) is the only lifecycle end state (BR-12).
 
@@ -116,7 +116,7 @@ The business rules in `docs/lab-02/specification.md` that still describe Request
 
 ### 5.2 Administrator & User Management
 
-* **BR-07 (Minimalist Admin Scope)** — Admin responsibilities are limited to user listing (single search box), creating users, editing basic user info, assigning one role, activating/deactivating accounts, and resetting initial passwords. Admin does not manage tickets **unless** the authorization matrix in §7 explicitly permits it (it does — full IT Staff ticket powers per §7). The excluded admin features listed in §3 are never implemented.
+* **BR-07 (Minimalist Admin Scope)** — Admin responsibilities are limited to user listing (search box + single Role filter), creating users, editing basic user info, assigning one role, activating/deactivating accounts, and resetting initial passwords. Admin does not manage tickets **unless** the authorization matrix in §7 explicitly permits it (it does — full IT Staff ticket powers per §7). The excluded admin features listed in §3 are never implemented.
 * **BR-08 (Single Role Assignment)** — A user is assigned **exactly one** role: `Requester`, `IT Staff`, or `Administrator`. There is no multi-role possibility.
 * **BR-09 (Safety Guard 1 — Duplicate Email)** — Registering or updating a user to an email that already exists returns HTTP `409 Conflict`; the existing user is untouched.
 * **BR-10 (Safety Guard 2 — Self-Deactivation Prevention)** — An Administrator may not deactivate their own active account; the attempt is rejected with HTTP 400 and the account stays active.
@@ -225,7 +225,7 @@ Full detail lives in `docs/lab-03/ui-spec.md`. Summary:
 * **IT Staff Ticket Queue**: Zen Green data table (cards on mobile) with search, filters, and pagination; shows Ticket No, Title, Requester, Category, System, Requested Priority, IT Priority, Status, Owner, Updated; distinct loading / empty / no-results / error states.
 * **Ticket Detail (IT/Admin)**: read-only requester-submitted fields (including Requested Priority), ownership controls (Claim / Reassign), IT Priority control, status workflow controls valid for the current state, and the Public Comments + Internal Notes sections (visually distinct, append-only editors).
 * **Ticket Detail (Requester)**: as Lab 2, plus the "Problem Appears Resolved" action when the state permits, the Public Comments section (read + post), and no visibility of Internal Notes.
-* **Admin User Management**: user table with single search box, status/role pills, Create User form, Edit User form (basic info + single role + activate/deactivate with safety-guard feedback), and Reset Password control; no pagination/sort/multi-filter.
+* **Admin User Management**: user table with search box + single Role dropdown, status/role pills, Create User form, Edit User form (basic info + single role + activate/deactivate with safety-guard feedback), and Reset Password control; no pagination/sort/multi-filter beyond that.
 * **Zen Green tokens** and responsive breakpoints are carried forward unchanged from `docs/lab-02/ui-spec.md` (Primary Green `#006B3C`, Secondary Green `#0B7A46`, Pale Green `#EAF6EF`, Page Background `#F5F7F6`, read-only token, Error `#B3261E`, Warning amber, Success; mobile `< 768px` / tablet `768–991px` / desktop `≥ 992px`).
 
 ---
@@ -389,7 +389,7 @@ Full request/response shapes in `docs/lab-03/api-spec.md`. Endpoint summary (all
 * **AD-07 (Identity Transport Removal)**: The `x-requester-id` header and Development Requester selector are removed in Lab 3; the client sends no identity header/field (BR-04, BR-21 UI).
 * **AD-08 (Comment/Note Limits)**: Public Comments and Internal Notes are 1–2000 characters after trim; whitespace-only rejected (BR-20). The value is configurable in one place per layer.
 * **AD-09 (Admin Reset Initial Password)**: Because email is excluded, an Administrator **sets** the temporary/reset password in the form (admin-typed, then shown once if generated). The reset sets `mustChangePassword = true`; the user must change it at next login (BR-03). Seeded demo accounts may reuse a documented known password with `mustChangePassword = false` for IT Staff/Admin demo logins, with all real new users created with `mustChangePassword = true`.
-* **AD-10 (Admin Search Scope)**: A single search box (email/name partial match) is allowed on the Admin user list; pagination, multi-column sorting, and multiple simultaneous filters remain excluded per §3.
+* **AD-10 (Admin Search Scope)**: A search box (email/name partial match) plus a single Role dropdown (`All` / `REQUESTER` / `IT_STAFF` / `ADMIN`) are allowed on the Admin user list; pagination, multi-column sorting, and any further simultaneous filters remain excluded per §3.
 * **AD-11 (Admin Ticket Powers)**: Per §7, Administrators hold full IT Staff ticket capabilities (queue, ownership, IT priority, status transitions, comments/notes). This is the explicit "permission of the authorization matrix" that BR-07 refers to.
 * **AD-12 (Test Directory Layout)**: Per Issue #89, Lab 3 API tests live at `server/tests/lab-03/`, UI component tests at `client/src/__tests__/lab-03/`, and Playwright specs at `e2e/lab-03/` — an intentional move away from Lab 2's `client/tests/lab-02/` grouping.
 
@@ -409,3 +409,5 @@ Decision captured separately for the grading trail:
 *End of specification. This document is the engineering contract for the AI coding agent; changes require student approval and a version bump.*
 
 **Approval:** Reviewed and approved by the student on 2026-09-14. AD-01–AD-04 confirmed; AD-05–AD-12 pending confirmation (proposed defaults are safe and consistent with Lab 2 conventions).
+
+**Amendment v1.1 (2026-09-18, student-approved):** AD-10 widened to permit one Role dropdown filter on the Admin user list (requested by Issue #83); §3 excluded scope, FR-20, BR-07 and §8 summary updated to match. Nothing else changed.
