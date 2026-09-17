@@ -155,7 +155,9 @@ function RequireRole({ roles, children }: { roles: UserRole[]; children: React.J
 // requesters get their read-only view (Issue #100).
 function TicketDetailRoute() {
   const { user, isLoading } = useAuth();
-  if (isLoading) return null;
+  if (isLoading) {
+    return <div className="container py-5 text-center text-secondary">Loading ticket…</div>;
+  }
   if (user && (user.role === "IT_STAFF" || user.role === "ADMIN")) {
     return <StaffTicketDetail />;
   }

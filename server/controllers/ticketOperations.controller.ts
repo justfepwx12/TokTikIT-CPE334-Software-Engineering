@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { TicketStatus } from '@prisma/client';
 import { getPrisma } from '../src/prisma.js';
 import type { AuthRequest } from '../src/auth.middleware.js';
+import { parseTicketIdParam } from '../src/ticketId.js';
 
 // IT Staff ticket operations (api-spec §3, BR-13–BR-15). All endpoints here
 // require role IT_STAFF or ADMIN (enforced in App.ts via requireRole); the
@@ -43,14 +44,8 @@ async function loadTicket(req: Request, res: Response) {
   }
 
   const raw = req.params.id;
-  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'Ticket id must be a positive integer' },
-    });
-    return null;
-  }
-  const ticketId = Number.parseInt(raw, 10);
-  if (!Number.isSafeInteger(ticketId) || ticketId <= 0) {
+  const ticketId = parseTicketIdParam(raw);
+  if (ticketId === null) {
     res.status(400).json({
       error: { code: 'VALIDATION_ERROR', message: 'Ticket id must be a positive integer' },
     });
@@ -75,6 +70,8 @@ async function loadTicket(req: Request, res: Response) {
 
 // POST /api/tickets/:id/claim — current user becomes the Owner (BR-13).
 // Only unassigned tickets can be claimed; 400 if already owned.
+// Atomic guard (updateMany where ownerId null) so concurrent claims cannot
+// both succeed — the loser gets 400 ALREADY_OWNED instead of last-wins.
 export const claimTicket = async (req: Request, res: Response) => {
   try {
     const loaded = await loadTicket(req, res);
@@ -87,9 +84,18 @@ export const claimTicket = async (req: Request, res: Response) => {
       });
     }
 
-    const updated = await prisma.ticket.update({
-      where: { id: ticket.id },
+    const claimed = await prisma.ticket.updateMany({
+      where: { id: ticket.id, ownerId: null },
       data: { ownerId: sessionUser.id },
+    });
+    if (claimed.count === 0) {
+      return res.status(400).json({
+        error: { code: 'ALREADY_OWNED', message: 'Ticket is already owned.' },
+      });
+    }
+
+    const updated = await prisma.ticket.findUnique({
+      where: { id: ticket.id },
       select: {
         id: true,
         ownerId: true,
@@ -112,7 +118,7 @@ export const assignTicket = async (req: Request, res: Response) => {
     if (!loaded) return;
     const { ticket, prisma } = loaded;
 
-    const parsed = z.object({ ownerId: z.number().int().positive() }).safeParse(req.body);
+    const parsed = z.object({ ownerId: z.coerce.number().int().positive() }).safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
         error: { code: 'VALIDATION_ERROR', message: 'ownerId must be a positive integer.' },
@@ -179,6 +185,8 @@ export const setItPriority = async (req: Request, res: Response) => {
 
 // PATCH /api/tickets/:id/status { status } — matrix-governed transition
 // (BR-15). Illegal edge → 400 INVALID_STATUS_TRANSITION, unchanged (AC-19).
+// Conditional write (updateMany where status = from) so a concurrent
+// transition cannot resurrect a ticket out of a terminal state.
 export const setTicketStatus = async (req: Request, res: Response) => {
   try {
     const loaded = await loadTicket(req, res);
@@ -203,12 +211,19 @@ export const setTicketStatus = async (req: Request, res: Response) => {
       });
     }
 
-    const updated = await prisma.ticket.update({
-      where: { id: ticket.id },
+    const applied = await prisma.ticket.updateMany({
+      where: { id: ticket.id, status: from },
       data: { status: to },
-      select: { id: true, status: true },
     });
-    return res.status(200).json(updated);
+    if (applied.count === 0) {
+      return res.status(400).json({
+        error: {
+          code: 'INVALID_STATUS_TRANSITION',
+          message: `Cannot move a ticket from ${from} to ${to}.`,
+        },
+      });
+    }
+    return res.status(200).json({ id: ticket.id, status: to });
   } catch {
     return res.status(500).json({
       error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },

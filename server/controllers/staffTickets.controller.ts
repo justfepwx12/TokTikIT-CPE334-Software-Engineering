@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { getPrisma } from '../src/prisma.js';
 import type { AuthRequest } from '../src/auth.middleware.js';
+import { parseTicketIdParam } from '../src/ticketId.js';
 
 // GET /api/staff/tickets — operational queue for IT Staff/Admin (api-spec §2,
 // BR-13/BR-17). All tickets regardless of requester. Role guard runs in App.ts
@@ -117,13 +118,8 @@ export const getStaffTicketById = async (req: Request, res: Response) => {
     }
 
     const raw = req.params.id;
-    if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
-      return res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Ticket id must be a positive integer' },
-      });
-    }
-    const ticketId = Number.parseInt(raw, 10);
-    if (!Number.isSafeInteger(ticketId) || ticketId <= 0) {
+    const ticketId = parseTicketIdParam(raw);
+    if (ticketId === null) {
       return res.status(400).json({
         error: { code: 'VALIDATION_ERROR', message: 'Ticket id must be a positive integer' },
       });

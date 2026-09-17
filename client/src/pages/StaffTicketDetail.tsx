@@ -13,6 +13,7 @@ import {
 } from "../api";
 import { useAuth } from "../hooks/useAuth";
 import Badge from "../components/Badge";
+import { StatusBadge } from "../components/TicketBadges";
 import Button from "../components/Button";
 import TextInput from "../components/TextInput";
 
@@ -28,8 +29,9 @@ const MATRIX: Record<TicketStatus, TicketStatus[]> = {
   CANCELLED: [],
 };
 
-const EDGE_LABEL: Record<TicketStatus, string> = {
-  NEW: "Mark New",
+// Button labels per target status. NEW has no incoming edge in the §6 matrix,
+// so it intentionally has no label (Partial + fallback below).
+const EDGE_LABEL: Partial<Record<TicketStatus, string>> = {
   OPEN: "Mark Open",
   IN_PROGRESS: "Mark In Progress",
   WAITING_FOR_REQUESTER: "Request Info",
@@ -132,7 +134,12 @@ export default function StaffTicketDetail() {
   };
   const handlePrioritySave = () => {
     if (!priorityDraft) return;
-    void runOp(() => setItPriority(ticketId, priorityDraft));
+    const next = priorityDraft;
+    void runOp(async () => {
+      const patch = await setItPriority(ticketId, next);
+      setPriorityDraft(patch.itPriority);
+      return patch;
+    });
   };
   const handleStatus = (status: TicketStatus) => {
     void runOp(() => setTicketStatus(ticketId, status));
@@ -270,11 +277,11 @@ export default function StaffTicketDetail() {
       <section className="card shadow-sm border-0 rounded-3 p-3 mb-3" aria-label="Status workflow">
         <h3 className="h6 fw-bold text-dark mb-1">Status Workflow</h3>
         <p className="small text-secondary">
-          Current status: <Badge color="blue">{ticket.status}</Badge>
+          Current status: <StatusBadge status={ticket.status} />
         </p>
         {edges.length === 0 ? (
           <p className="small text-secondary mb-0" data-testid="staff-no-transitions">
-            No transitions available — this ticket is closed-terminal.
+            No transitions available — this ticket is cancelled (terminal).
           </p>
         ) : (
           <div className="d-flex flex-wrap gap-2">
@@ -287,7 +294,7 @@ export default function StaffTicketDetail() {
                 disabled={opBusy}
                 data-testid={`staff-status-${target}`}
               >
-                <Activity size={16} className="me-1" /> {EDGE_LABEL[target]}
+                <Activity size={16} className="me-1" /> {EDGE_LABEL[target] ?? target}
               </Button>
             ))}
           </div>
