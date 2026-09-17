@@ -125,6 +125,104 @@ export interface TicketsResponse {
   pagination: Pagination;
 }
 
+// ---------------------------------------------------------------------------
+// IT Staff queue (api-spec §2, Issue #96). Sortable by Updated / Status /
+// (IT) Priority; ownerId 0 = unassigned.
+// ---------------------------------------------------------------------------
+
+export type QueueSortField = "updatedAt" | "status" | "priority";
+
+export interface StaffTicketQuery {
+  search?: string;
+  status?: TicketStatus;
+  priority?: TicketPriority;
+  categoryId?: number;
+  systemId?: number;
+  ownerId?: number;
+  sort?: QueueSortField;
+  order?: SortOrder;
+  page?: number;
+  limit?: number;
+}
+
+export interface StaffTicket {
+  id: number;
+  ticketNo: string;
+  title: string;
+  requestedPriority: TicketPriority;
+  itPriority: TicketPriority;
+  status: TicketStatus;
+  createdAt: string;
+  updatedAt: string;
+  category: Category;
+  system: RelatedSystem;
+  requester: { id: number; name: string };
+  owner: { id: number; name: string } | null;
+}
+
+export interface StaffTicketsResponse {
+  tickets: StaffTicket[];
+  pagination: Pagination;
+}
+
+export function getStaffTickets(query: StaffTicketQuery): Promise<StaffTicketsResponse> {
+  return request<StaffTicketsResponse>(`/api/staff/tickets${buildQueryString(query)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Staff ticket operations (api-spec §3, Issues #98–#100).
+// ---------------------------------------------------------------------------
+
+export interface StaffTicketDetail extends StaffTicket {
+  description: string;
+  attachments: TicketDetailAttachment[];
+}
+
+export function getStaffTicket(ticketId: number): Promise<StaffTicketDetail> {
+  return request<StaffTicketDetail>(`/api/staff/tickets/${ticketId}`);
+}
+
+export function claimTicket(ticketId: number): Promise<{
+  id: number;
+  ownerId: number;
+  owner: { id: number; name: string };
+}> {
+  return request(`/api/tickets/${ticketId}/claim`, { method: "POST" });
+}
+
+export function assignTicket(
+  ticketId: number,
+  ownerId: number
+): Promise<{ id: number; ownerId: number; owner: { id: number; name: string } }> {
+  return request(`/api/tickets/${ticketId}/assign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ownerId }),
+  });
+}
+
+export function setItPriority(
+  ticketId: number,
+  itPriority: TicketPriority
+): Promise<{ id: number; requestedPriority: TicketPriority; itPriority: TicketPriority }> {
+  return request(`/api/tickets/${ticketId}/it-priority`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ itPriority }),
+  });
+}
+
+export function setTicketStatus(
+  ticketId: number,
+  status: TicketStatus
+): Promise<{ id: number; status: TicketStatus }> {
+  return request(`/api/tickets/${ticketId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+}
+
 export interface TicketQuery {
   search?: string;
   categoryId?: number;
@@ -139,7 +237,10 @@ export interface TicketQuery {
 
 async function loadErrorMessage(res: Response): Promise<string> {
   const body = await res.json().catch(() => null);
-  return body?.error?.message ?? body?.error ?? `Request failed with status ${res.status}`;
+  const err = body?.error;
+  if (typeof err === "string") return err;
+  if (err && typeof err.message === "string") return err.message;
+  return `Request failed with status ${res.status}`;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -225,7 +326,7 @@ export function createTicket(payload: CreateTicketPayload): Promise<Ticket> {
   });
 }
 
-function buildQueryString(query: TicketQuery): string {
+function buildQueryString(query: object): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === null || value === "") continue;

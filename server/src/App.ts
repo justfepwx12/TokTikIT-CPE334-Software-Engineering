@@ -7,6 +7,13 @@ import { getTicketById } from "../controllers/ticketById.controller.js";
 import { resolveIntent } from "../controllers/resolveIntent.controller.js";
 import { listComments, postComment } from "../controllers/comments.controller.js";
 import { listNotes, postNote } from "../controllers/notes.controller.js";
+import { listStaffTickets, getStaffTicketById } from "../controllers/staffTickets.controller.js";
+import {
+  claimTicket,
+  assignTicket,
+  setItPriority,
+  setTicketStatus,
+} from "../controllers/ticketOperations.controller.js";
 import {
   attachmentUpload,
   getAttachmentMeta,
@@ -29,7 +36,16 @@ import {
 
 export const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+// CORS must allow credentials for the session cookie. In production the
+// frontend origin is explicit (FRONTEND_URL); in dev we echo the request
+// origin. Never reflect arbitrary origins with credentials in production.
+const isProduction = process.env.NODE_ENV === "production";
+app.use(
+  cors({
+    origin: isProduction ? (process.env.FRONTEND_URL ?? false) : true,
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(sessionMiddleware);
 app.use(hydrateUser);
@@ -61,7 +77,9 @@ app.get(
       });
       res.json(categories);
     } catch {
-      res.status(500).json({ error: "Failed to fetch categories" });
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Failed to fetch categories" },
+      });
     }
   },
 );
@@ -80,7 +98,9 @@ app.get(
       });
       res.json(requesters);
     } catch {
-      res.status(500).json({ error: "Failed to fetch requesters" });
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Failed to fetch requesters" },
+      });
     }
   },
 );
@@ -98,7 +118,9 @@ app.get(
       });
       res.json(systems);
     } catch {
-      res.status(500).json({ error: "Failed to fetch related systems" });
+      res.status(500).json({
+        error: { code: "INTERNAL_ERROR", message: "Failed to fetch related systems" },
+      });
     }
   },
 );
@@ -134,6 +156,33 @@ app.post(
   requireRole("IT_STAFF", "ADMIN"),
   postNote,
 );
+
+// IT Staff/Admin operational queue (api-spec §2, BR-13/BR-17).
+app.get(
+  "/api/staff/tickets",
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+  listStaffTickets,
+);
+app.get(
+  "/api/staff/tickets/:id",
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+  getStaffTicketById,
+);
+
+// Ticket detail operations (api-spec §3, BR-13–BR-15).
+const staffOp = [
+  requireAuth,
+  gateMustChangePassword,
+  requireRole("IT_STAFF", "ADMIN"),
+] as const;
+app.post("/api/tickets/:id/claim", ...staffOp, claimTicket);
+app.post("/api/tickets/:id/assign", ...staffOp, assignTicket);
+app.patch("/api/tickets/:id/it-priority", ...staffOp, setItPriority);
+app.patch("/api/tickets/:id/status", ...staffOp, setTicketStatus);
 
 // Protected attachment routes
 app.post(

@@ -58,7 +58,8 @@ export async function hydrateUser(req: AuthRequest, res: Response, next: NextFun
       req.user = toShape(user);
     }
   } catch {
-    req.session.destroy(() => {});
+    // Transient DB failure: drop the user for this request but keep the
+    // session alive — a blip must not log the user out.
     req.user = undefined;
   }
   next();

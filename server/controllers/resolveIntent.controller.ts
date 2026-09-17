@@ -4,11 +4,13 @@ import type { AuthRequest } from '../src/auth.middleware.js';
 
 // POST /api/tickets/:id/resolve-intent — Requester "Problem Appears Resolved"
 // action (BR-16, AD-02, api-spec §3). The Requester's ONLY status-changing
-// endpoint; it never sets RESOLVED/CLOSED directly — the requester only
+// endpoint; it never exposes a direct status write — the requester only
 // signals, and the ticket moves to RESOLVED (or back to REOPENED).
 //
 // Transition: NEW/OPEN/IN_PROGRESS/WAITING_FOR_REQUESTER → RESOLVED;
-// RESOLVED/CLOSED → REOPENED; CANCELLED (or REOPENED loop) → 400.
+// RESOLVED/CLOSED → REOPENED. (Per spec §6, REOPENED → RESOLVED is also a
+// legal intent edge: a reopened ticket that gets fixed resolves again.)
+// CANCELLED has no outgoing edge → 400.
 export const resolveIntent = async (req: Request, res: Response) => {
   try {
     const sessionUser = (req as AuthRequest).user;

@@ -9,6 +9,9 @@ import Login from "./pages/Login";
 import ChangePassword from "./pages/ChangePassword";
 import CreateTicket from "./pages/CreateTicket";
 import TicketDetail from "./pages/TicketDetail";
+import StaffTicketDetail from "./pages/StaffTicketDetail";
+import TicketQueue from "./pages/TicketQueue";
+import type { UserRole } from "./api.js";
 
 import "./App.css";
 
@@ -128,6 +131,39 @@ function ProtectedRoute({ children }: { children: React.JSX.Element }) {
   return children;
 }
 
+// Role guard on top of auth (ui-spec §2.2): visual only — the server
+// enforces. Disallowed roles get a 403 screen instead of the page.
+function RequireRole({ roles, children }: { roles: UserRole[]; children: React.JSX.Element }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return null;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!roles.includes(user.role)) {
+    return (
+      <div className="container py-5 text-center" data-testid="role-forbidden">
+        <h2 className="h4 fw-bold text-dark mb-2">403 — Forbidden</h2>
+        <p className="text-secondary">Your role cannot access this page.</p>
+      </div>
+    );
+  }
+  return children;
+}
+
+// Ticket detail resolves by role: staff/admin get the operational view,
+// requesters get their read-only view (Issue #100).
+function TicketDetailRoute() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return <div className="container py-5 text-center text-secondary">Loading ticket…</div>;
+  }
+  if (user && (user.role === "IT_STAFF" || user.role === "ADMIN")) {
+    return <StaffTicketDetail />;
+  }
+  return <TicketDetail />;
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -145,6 +181,13 @@ function App() {
             <MyTickets />
           </ProtectedRoute>
         } />
+        <Route path="/queue" element={
+          <ProtectedRoute>
+            <RequireRole roles={["IT_STAFF", "ADMIN"]}>
+              <TicketQueue />
+            </RequireRole>
+          </ProtectedRoute>
+        } />
         <Route path="/create-ticket" element={
           <ProtectedRoute>
             <CreateTicket />
@@ -152,7 +195,7 @@ function App() {
         } />
         <Route path="/tickets/:id" element={
           <ProtectedRoute>
-            <TicketDetail />
+            <TicketDetailRoute />
           </ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to="/" replace />} />

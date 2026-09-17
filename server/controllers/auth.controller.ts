@@ -8,10 +8,20 @@ const INVALID_CREDENTIALS = "Invalid email or password.";
 const INVALID_CREDENTIALS_CODE = "INVALID_CREDENTIALS";
 const BCRYPT_ROUNDS = 12;
 
-// Dummy bcrypt hash (cost 10, hash of "password") used only to equalize timing:
+// Dummy bcrypt hash at the production cost (12) used only to equalize timing:
 // when the email is unknown we still run bcrypt.compare so unknown-email vs
 // wrong-password take the same time (prevents enumeration via timing).
-const DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+// Computed once at startup; falls back to a cost-10 test vector if hashing
+// fails (compare still runs, parity only slightly weaker).
+let DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+bcrypt
+  .hash("timing-attack-dummy-value", BCRYPT_ROUNDS)
+  .then((h) => {
+    DUMMY_HASH = h;
+  })
+  .catch(() => {
+    /* keep fallback — compare still runs */
+  });
 
 const NEW_PASSWORD_MIN = 8;
 const NEW_PASSWORD_MAX = 128;
@@ -19,7 +29,13 @@ const NEW_PASSWORD_MAX = 128;
 export const loginController = async (req: Request, res: Response) => {
   const { email, password } = req.body ?? {};
 
-  if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password) {
+  // Whitespace-only counts as missing (spec: fields are non-empty after trim).
+  if (
+    typeof email !== "string" ||
+    typeof password !== "string" ||
+    !email.trim() ||
+    !password.trim()
+  ) {
     res.status(400).json({
       error: { code: "VALIDATION_ERROR", message: "email and password are required." },
     });
@@ -110,8 +126,11 @@ export const changePasswordController = async (req: Request, res: Response) => {
     return;
   }
 
-  const trimmedNew = newPassword.trim();
-  if (trimmedNew.length < NEW_PASSWORD_MIN || trimmedNew.length > NEW_PASSWORD_MAX) {
+  // Spec: length is checked after trim. Trim once up front and use the
+  // canonical value for length, equality, and storage alike — a padded
+  // password must not bypass the "different" check or be stored padded.
+  const next = newPassword.trim();
+  if (next.length < NEW_PASSWORD_MIN || next.length > NEW_PASSWORD_MAX) {
     res.status(400).json({
       error: {
         code: "VALIDATION_ERROR",
@@ -121,7 +140,7 @@ export const changePasswordController = async (req: Request, res: Response) => {
     return;
   }
 
-  if (newPassword === currentPassword) {
+  if (next === currentPassword.trim()) {
     res.status(400).json({
       error: {
         code: "VALIDATION_ERROR",
@@ -148,7 +167,7 @@ export const changePasswordController = async (req: Request, res: Response) => {
     return;
   }
 
-  const newHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+  const newHash = await bcrypt.hash(next, BCRYPT_ROUNDS);
   await prisma.user.update({
     where: { id: user.id },
     data: { passwordHash: newHash, mustChangePassword: false },

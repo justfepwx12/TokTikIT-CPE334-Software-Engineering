@@ -51,7 +51,10 @@ async function resolveActiveRequester(req: Request, res: Response): Promise<numb
   const requesterId = sessionUser.id;
 
   const prisma = getPrisma();
-  const requester = await prisma.user.findUnique({ where: { id: requesterId } });
+  const requester = await prisma.user.findUnique({
+    where: { id: requesterId },
+    select: { id: true, role: true, isActive: true },
+  });
   if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Requester is inactive or does not exist' },

@@ -187,13 +187,20 @@ export default function CreateTicket() {
       });
 
       // Upload staged attachments to the newly created ticket. The ticket is
-      // already created, so a failed individual upload must not lose it.
+      // already created, so a failed individual upload must not lose it —
+      // but failures are reported (never swallowed) so the user can retry.
+      const failed: string[] = [];
       for (const file of stagedFiles) {
         try {
           await uploadAttachment(ticket.id, file);
         } catch {
-          // Best-effort: the ticket remains; the user can add the file later.
+          failed.push(file.name);
         }
+      }
+      if (failed.length > 0) {
+        setAttachmentError(
+          `Ticket created, but these files failed to upload: ${failed.join(", ")}. You can add them from the ticket detail page.`
+        );
       }
 
       setCreatedTicket(ticket);
@@ -246,6 +253,12 @@ export default function CreateTicket() {
           >
             {createdTicket.ticketNo}
           </div>
+
+          {attachmentError && (
+            <div className="alert alert-warning py-2 small mt-3" role="alert">
+              {attachmentError}
+            </div>
+          )}
 
           <div className="d-flex justify-content-end gap-3 mt-4">
             <Button variant="secondary" onClick={handleCreateAnother}>

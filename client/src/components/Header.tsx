@@ -1,19 +1,20 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Clock, FileText, PlusCircle, UserCircle, Menu, X, ChevronDown, LogOut } from 'lucide-react'
+import { Clock, FileText, PlusCircle, Inbox, UserCircle, Menu, X, ChevronDown, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import Badge from './Badge'
 import type { BadgeColor } from './Badge'
 import type { UserRole } from '../api.js'
 import styles from './Header.module.css'
 
-// Role-aware navigation (ui-spec §2.1, BR-05 visual only — server enforces).
-// Requester: My Tickets + Create Ticket (ticket creation is Requester-only).
-// IT Staff/Admin: staff navigation. The Ticket Queue screen lands in Issue 5,
-// so staff temporarily get My Tickets here to avoid a dead /queue link.
+// Role-aware links (ui-spec §2.1): Requester gets creation; staff get the
+// queue; admin will additionally get Users (Issue 8).
 function navLinksFor(role: UserRole | undefined) {
   if (role === 'IT_STAFF' || role === 'ADMIN') {
-    return [{ label: 'My Tickets', href: '/my-tickets', icon: FileText }]
+    return [
+      { label: 'Ticket Queue', href: '/queue', icon: Inbox },
+      { label: 'My Tickets', href: '/my-tickets', icon: FileText },
+    ]
   }
   return [
     { label: 'My Tickets', href: '/my-tickets', icon: FileText },
@@ -65,9 +66,9 @@ export default function Header() {
             TokTickIT
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className={styles.nav} aria-label="Main navigation">
-            {navLinks.map((link) => {
+            {/* Desktop Navigation */}
+            <nav className={styles.nav} aria-label="Main navigation">
+              {navLinks.map((link) => {
               const Icon = link.icon
               const active = isActive(location.pathname, link.href)
               return (
@@ -139,9 +140,9 @@ export default function Header() {
         </button>
       </div>
 
-      {/* Mobile Navigation Dropdown */}
-      <nav id="mobile-nav" className={styles.mobileNav} data-open={menuOpen}>
-        {navLinks.map((link) => {
+        {/* Mobile Navigation Dropdown */}
+        <nav id="mobile-nav" className={styles.mobileNav} data-open={menuOpen}>
+          {navLinks.map((link) => {
           const Icon = link.icon
           return (
             <Link
@@ -163,7 +164,7 @@ export default function Header() {
               <span className={styles.requesterLabel}>{user.name}</span>
               <Badge color={ROLE_BADGE_COLOR[user.role] ?? 'gray'}>{roleLabel(user.role)}</Badge>
             </div>
-            <button type="button" className={styles.changeRequesterButton} onClick={handleLogout}>
+            <button type="button" className={styles.logoutButton} onClick={handleLogout}>
               Log out
             </button>
           </div>

@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { LogIn, Eye, EyeOff, Home, ChevronRight } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import TextInput from "../components/TextInput";
-import { roleHome } from "../utils/roleHome.js";
+import { roleHome, safeRedirect } from "../utils/navigation.js";
 
 function safeMessage(err: unknown): string {
   return err instanceof Error && err.message ? err.message : "Invalid email or password.";
@@ -40,11 +40,7 @@ export default function Login() {
     setBanner(null);
     try {
       const signedIn = await login(email.trim(), password);
-      const redirectParam = new URLSearchParams(location.search).get("redirect");
-      const redirect =
-        redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
-          ? redirectParam
-          : null;
+      const redirect = safeRedirect(new URLSearchParams(location.search).get("redirect"));
       if (signedIn.mustChangePassword) {
         navigate("/change-password", { replace: true });
       } else {
