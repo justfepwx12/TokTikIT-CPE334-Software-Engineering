@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { getPrisma } from '../src/prisma.js';
+import type { AuthRequest } from '../src/auth.middleware.js';
+import { parseTicketIdParam } from '../src/ticketId.js';
 
 // GET /api/staff/tickets — operational queue for IT Staff/Admin (api-spec §2,
 // BR-13/BR-17). All tickets regardless of requester. Role guard runs in App.ts
@@ -97,6 +99,69 @@ export const listStaffTickets = async (req: Request, res: Response) => {
         error: { code: 'VALIDATION_ERROR', message },
       });
     }
+    return res.status(500).json({
+      error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },
+    });
+  }
+};
+
+// GET /api/staff/tickets/:id — full detail for IT Staff/Admin (BR-13/BR-17
+// visibility: all tickets). Includes attachments metadata read-only;
+// staff never see removal-gated downloads here (that stays requester-side).
+export const getStaffTicketById = async (req: Request, res: Response) => {
+  try {
+    const sessionUser = (req as AuthRequest).user;
+    if (!sessionUser) {
+      return res.status(401).json({
+        error: { code: 'UNAUTHORIZED', message: 'Missing or invalid session' },
+      });
+    }
+
+    const raw = req.params.id;
+    const ticketId = parseTicketIdParam(raw);
+    if (ticketId === null) {
+      return res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Ticket id must be a positive integer' },
+      });
+    }
+
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: {
+        id: true,
+        ticketNo: true,
+        title: true,
+        description: true,
+        requestedPriority: true,
+        itPriority: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        category: { select: { id: true, name: true } },
+        system: { select: { id: true, name: true } },
+        requester: { select: { id: true, name: true } },
+        owner: { select: { id: true, name: true } },
+        attachments: {
+          select: {
+            id: true,
+            filename: true,
+            mimeType: true,
+            size: true,
+            isRemoved: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!ticket) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Ticket not found' },
+      });
+    }
+    return res.status(200).json(ticket);
+  } catch {
     return res.status(500).json({
       error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },
     });

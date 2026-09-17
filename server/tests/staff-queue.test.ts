@@ -194,4 +194,27 @@ describe("GET /api/staff/tickets (api-spec §2)", () => {
     const badLimit = await agent.get("/api/staff/tickets?limit=999");
     expect(badLimit.status).toBe(400);
   });
+
+  it("staff detail: full shape for IT_STAFF, 403 for Requester, 404/400 on bad id", async () => {
+    const staff = await loginAs(STAFF_EMAIL, TEST_PASSWORD);
+    const ticketId = ticketIds[0];
+
+    const ok = await staff.get(`/api/staff/tickets/${ticketId}`);
+    expect(ok.status).toBe(200);
+    expect(ok.body.id).toBe(ticketId);
+    expect(ok.body).toHaveProperty("description");
+    expect(ok.body).toHaveProperty("requestedPriority");
+    expect(ok.body.requester).toHaveProperty("name");
+    expect(Array.isArray(ok.body.attachments)).toBe(true);
+
+    const reqAgent = await loginAs(REQ_A_EMAIL, TEST_PASSWORD);
+    const forbidden = await reqAgent.get(`/api/staff/tickets/${ticketId}`);
+    expect(forbidden.status).toBe(403);
+
+    const missing = await staff.get("/api/staff/tickets/99999999");
+    expect(missing.status).toBe(404);
+
+    const badId = await staff.get("/api/staff/tickets/abc");
+    expect(badId.status).toBe(400);
+  });
 });
