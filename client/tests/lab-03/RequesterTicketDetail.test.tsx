@@ -94,7 +94,7 @@ beforeEach(() => {
   vi.spyOn(api, "getComments").mockResolvedValue({ comments: [] });
 });
 
-describe("TicketDetail", () => {
+describe("Lab 3 RequesterTicketDetail (AC-20/21, BR-18)", () => {
   it("fetches and renders owned ticket metadata read-only with badges and attachments", async () => {
     renderDetail();
 
@@ -278,5 +278,33 @@ describe("TicketDetail", () => {
     renderDetail();
     await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
     expect(screen.queryByTestId("resolve-intent-button")).toBeNull();
+  });
+
+  it("never fetches nor renders internal notes for the requester (BR-18)", async () => {
+    const notesMock = vi.spyOn(api, "getNotes").mockResolvedValue({ notes: [] });
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
+    await waitFor(() => expect(screen.getByTestId("public-comments")).toBeDefined());
+    expect(screen.queryByTestId("internal-notes")).toBeNull();
+    expect(notesMock).not.toHaveBeenCalled();
+  });
+
+  it("reads and posts public comments on the owned ticket (AC-22)", async () => {
+    const postMock = vi.spyOn(api, "postComment").mockResolvedValue({
+      id: 7,
+      body: "Still happening after reboot.",
+      author: { id: 2, name: "Jane Doe", role: "REQUESTER" },
+      createdAt: "2026-09-06T07:00:00.000Z",
+    });
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId("comment-composer")).toBeDefined());
+
+    fireEvent.change(screen.getByTestId("comment-composer"), {
+      target: { value: "Still happening after reboot." },
+    });
+    fireEvent.click(screen.getByTestId("comment-submit"));
+
+    await waitFor(() => expect(postMock).toHaveBeenCalledWith(42, "Still happening after reboot."));
+    await waitFor(() => expect(screen.getByText("Still happening after reboot.")).toBeDefined());
   });
 });
