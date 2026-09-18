@@ -119,7 +119,7 @@ Same route, Requester role (own tickets only; foreign ticket → 403 screen).
 
 Route `/users` — Admin only. Fetches `GET /api/admin/users`.
 
-*   **User table**: single search box (name/email partial, debounced) — no pagination/sort/multi-filter (excluded scope, AD-10). Columns: Name, Email, Role pill, Status pill (`Active`/`Inactive`), Must-Change-Password indicator, actions.
+*   **User table**: search box (name/email partial, debounced) + single Role dropdown (`All`/`Requester`/`IT Staff`/`Admin`) — no pagination/sort/further filters (excluded scope, AD-10). Columns: Name, Email, Role pill, Status pill (`Active`/`Inactive`), Must-Change-Password indicator, actions.
 *   **Create User**: modal or dedicated panel — Name, Email, **Role select** (exactly one of `REQUESTER`/`IT_STAFF`/`ADMIN`), initial Password, Active toggle (default on). Email duplicate on submit → 409 message shown against the Email field (BR-09). New users default to `mustChangePassword = true`.
 *   **Edit User**: inline/modal — Name, Email, Role select, Active toggle:
     *   Deactivating the **current admin's own account** → guarded message and no change (BR-10).

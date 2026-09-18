@@ -270,7 +270,7 @@ Appends an internal note (BR-18, BR-19, BR-20). Same validation as comments.
 All endpoints require role ADMIN (BR-07). Non-Admin authenticated users → `403` (AC-30). No user is ever deleted (BR-12): there is no `DELETE /api/admin/users/:id`.
 
 ### GET /api/admin/users
-Lists users with optional single-field search (AD-10). No pagination/sort/multi-filter (excluded scope §3).
+Lists users with optional search + single Role filter (AD-10, spec v1.1). No pagination/sort/further filters (excluded scope §3).
 
 * **Method**: `GET`
 * **Roles**: ADMIN.
@@ -278,6 +278,7 @@ Lists users with optional single-field search (AD-10). No pagination/sort/multi-
   | Param | Type | Required | Notes |
   | :--- | :--- | :--- | :--- |
   | `search` | String | No | Case-insensitive partial match on name or email. |
+  | `role` | String | No | One of `REQUESTER`, `IT_STAFF`, `ADMIN`. Unknown value → `400`. |
 * **Status Codes**: `200 OK` · `401` · `403` · `500`
 * **Response Shape**:
   ```json

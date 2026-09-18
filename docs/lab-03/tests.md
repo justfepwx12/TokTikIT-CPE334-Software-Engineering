@@ -42,7 +42,7 @@ All test files live under `server/tests/lab-03/`, `client/src/__tests__/lab-03/`
 | 30 | API | #101 | AC-23 | Supertest | `communication-api.test.ts` — Requester GET/POST notes → 403, zero note content leaked | Planned |
 | 31 | API | #101 | AC-24 | Supertest | `communication-api.test.ts` — empty/whitespace comment/note → 400 | Planned |
 | 32 | API | #101 | AC-25 | Supertest | `communication-api.test.ts` — no edit/delete routes; PUT/DELETE on comments/notes → 404/405 | Planned |
-| 33 | API | #103 | AC-26 | Supertest | `admin-api.test.ts` — list/search, create, edit (basic + single role), activate/deactivate, reset-password | Planned |
+| 33 | API | #103 | AC-26 | Supertest | `admin-api.test.ts` — list/search + single Role filter, create, edit (basic + single role), activate/deactivate, reset-password | Planned |
 | 34 | API | #103 | AC-27 | Supertest | `admin-api.test.ts` — duplicate email create/update → 409, existing user untouched | Planned |
 | 35 | API | #103 | AC-28 | Supertest | `admin-api.test.ts` — admin self-deactivation → 400, stays active | Planned |
 | 36 | API | #103 | AC-29 | Supertest | `admin-api.test.ts` — last-admin deactivation/downgrade → 400 | Planned |
@@ -64,7 +64,7 @@ All test files live under `server/tests/lab-03/`, `client/src/__tests__/lab-03/`
 | 52 | UI | #95 | AC-20/21 | Vitest/RTL | `RequesterTicketDetail.test.tsx` — resolve-intent button states per status; no direct resolved/closed control | Planned |
 | 53 | UI | #102 | BR-18 | Vitest/RTL | `RequesterTicketDetail.test.tsx` — internal notes section never rendered for Requester | Planned |
 | 54 | UI | #102/100 | AC-22 | Vitest/RTL | `RequesterTicketDetail.test.tsx` — public comments read + post on own ticket | Planned |
-| 55 | UI | #104 | AC-26 | Vitest/RTL | `AdminUsers.test.tsx` — table + single search; create/edit forms with single-role select | Planned |
+| 55 | UI | #104 | AC-26 | Vitest/RTL | `AdminUsers.test.tsx` — table + search + single Role filter; create/edit forms with single-role select | Planned |
 | 56 | UI | #104 | AC-27/28/29 | Vitest/RTL | `AdminUsers.test.tsx` — 409 duplicate + self-deactivate + last-admin guard feedback | Planned |
 | 57 | UI | #104 | AC-31/BR-12 | Vitest/RTL | `AdminUsers.test.tsx` — no Delete control; reset-password flow present | Planned |
 | 58 | UI Style | all | — | Vitest/RTL (CSS) | `uiStyle.test.tsx` — Zen Green tokens, read-only token, internal-note yellow/lock, all 8 status badges | Planned |

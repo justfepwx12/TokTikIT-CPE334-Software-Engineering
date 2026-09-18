@@ -410,6 +410,71 @@ export function removeAttachment(
     body: JSON.stringify({ removalReason }),
   });
 }
+// ---------------------------------------------------------------------------
+// Administrator User Management (Lab 3 Issue 8, api-spec §5). Admin only.
+// No user is ever deleted (BR-12): deactivation is the only lifecycle end.
+// ---------------------------------------------------------------------------
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
+}
+
+export interface AdminUserQuery {
+  search?: string;
+  role?: UserRole;
+}
+
+export interface CreateAdminUserPayload {
+  name: string;
+  email: string;
+  role: UserRole;
+  password: string;
+  isActive?: boolean;
+}
+
+export interface UpdateAdminUserPayload {
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  isActive?: boolean;
+}
+
+export function getAdminUsers(query: AdminUserQuery = {}): Promise<{ users: AdminUser[] }> {
+  return request<{ users: AdminUser[] }>(`/api/admin/users${buildQueryString(query)}`);
+}
+
+export function createAdminUser(payload: CreateAdminUserPayload): Promise<{ user: AdminUser }> {
+  return request<{ user: AdminUser }>("/api/admin/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminUser(
+  userId: number,
+  payload: UpdateAdminUserPayload
+): Promise<{ user: AdminUser }> {
+  return request<{ user: AdminUser }>(`/api/admin/users/${userId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function resetAdminPassword(userId: number, newPassword: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/api/admin/users/${userId}/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ newPassword }),
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Communication engine (Lab 3 Issue 7, api-spec §4). Append-only timelines:

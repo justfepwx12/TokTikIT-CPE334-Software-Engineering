@@ -15,6 +15,12 @@ import {
   setTicketStatus,
 } from "../controllers/ticketOperations.controller.js";
 import {
+  listUsers,
+  createUser,
+  updateUser,
+  resetPassword,
+} from "../controllers/admin.controller.js";
+import {
   attachmentUpload,
   getAttachmentMeta,
   downloadAttachment,
@@ -183,6 +189,14 @@ app.post("/api/tickets/:id/claim", ...staffOp, claimTicket);
 app.post("/api/tickets/:id/assign", ...staffOp, assignTicket);
 app.patch("/api/tickets/:id/it-priority", ...staffOp, setItPriority);
 app.patch("/api/tickets/:id/status", ...staffOp, setTicketStatus);
+
+// Administrator user management (api-spec §5, BR-07–BR-12). Admin only;
+// no user is ever deleted (BR-12).
+const adminOnly = [requireAuth, gateMustChangePassword, requireRole("ADMIN")] as const;
+app.get("/api/admin/users", ...adminOnly, listUsers);
+app.post("/api/admin/users", ...adminOnly, createUser);
+app.patch("/api/admin/users/:id", ...adminOnly, updateUser);
+app.post("/api/admin/users/:id/reset-password", ...adminOnly, resetPassword);
 
 // Protected attachment routes
 app.post(
