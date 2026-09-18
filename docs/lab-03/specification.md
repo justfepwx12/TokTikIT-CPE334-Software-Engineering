@@ -391,7 +391,7 @@ Full request/response shapes in `docs/lab-03/api-spec.md`. Endpoint summary (all
 * **AD-09 (Admin Reset Initial Password)**: Because email is excluded, an Administrator **sets** the temporary/reset password in the form (admin-typed, then shown once if generated). The reset sets `mustChangePassword = true`; the user must change it at next login (BR-03). Seeded demo accounts may reuse a documented known password with `mustChangePassword = false` for IT Staff/Admin demo logins, with all real new users created with `mustChangePassword = true`.
 * **AD-10 (Admin Search Scope)**: A search box (email/name partial match) plus a single Role dropdown (`All` / `REQUESTER` / `IT_STAFF` / `ADMIN`) are allowed on the Admin user list; pagination, multi-column sorting, and any further simultaneous filters remain excluded per §3.
 * **AD-11 (Admin Ticket Powers)**: Per §7, Administrators hold full IT Staff ticket capabilities (queue, ownership, IT priority, status transitions, comments/notes). This is the explicit "permission of the authorization matrix" that BR-07 refers to.
-* **AD-12 (Test Directory Layout)**: Per Issue #89, Lab 3 API tests live at `server/tests/lab-03/`, UI component tests at `client/src/__tests__/lab-03/`, and Playwright specs at `e2e/lab-03/` — an intentional move away from Lab 2's `client/tests/lab-02/` grouping.
+* **AD-12 (Test Directory Layout)**: Per Issue #89, Lab 3 API tests live at `server/tests/lab-03/`, UI component tests at `client/tests/lab-03/`, and Playwright specs at `client/tests/e2e/lab-03/` — an intentional move away from Lab 2's `client/tests/lab-02/` grouping. (Corrected under Issue #85: the as-built layout keeps all client tests under `client/tests/`.)
 
 ---
 
@@ -402,7 +402,7 @@ Decision captured separately for the grading trail:
 * **D-01 (Session Mechanism)**: HTTP-only server-side session cookie (express-session + PostgreSQL store) — chosen over stateless JWT because the business rule explicitly says the requester identity is derived "from the server-side session/token (`req.user.id`)" and a server-side session maximises server control (immediate logout, user deactivation blocks new requests, no revocation problem). AD-01.
 * **D-02 (Resolve-Intent Behavior)**: State-dependent (AD-02) — chosen over a fixed "always → RESOLVED" because it also gives Requesters a non-adversarial way to re-report an unresolved problem (`REOPENED`) while keeping `CLOSED` staff-only (BR-16).
 * **D-03 (Status Count & Semantics)**: Eight statuses (`New`, `Open`, `In Progress`, `Waiting for Requester`, `Resolved`, `Closed`, `Reopened`, `Cancelled`) per the business rule; `PENDING` maps to `NEW` (AD-04).
-* **D-04 (Test Paths)**: Issue #89's mandated paths (`server/tests/lab-03/`, `client/src/__tests__/lab-03/`, `e2e/lab-03/`) supersede Lab 2's conventions (AD-12).
+* **D-04 (Test Paths)**: Issue #89's mandated paths (`server/tests/lab-03/`, `client/tests/lab-03/`, `client/tests/e2e/lab-03/`) supersede Lab 2's conventions (AD-12).
 
 ---
 

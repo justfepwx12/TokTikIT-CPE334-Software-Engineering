@@ -41,6 +41,7 @@ Breakpoints: Mobile `< 768px` · Tablet `768–991px` · Desktop `≥ 992px` (id
     *   **IT Staff**: "Ticket Queue", "My Tickets".
     *   **Administrator**: "Ticket Queue", "My Tickets", "Users".
 *   Right: authenticated user context — name, role pill (`REQUESTER`/`IT_STAFF`/`ADMIN`), and a **Logout** button. The Lab 2 "Change Requester" control and the Simulation-Mode banner are removed (FR-03).
+*   The header renders **only while a session exists** — signed-out visitors see no nav chrome, so the public routes (`/login`, `/forgot-password`) are bare centered cards.
 
 ### 2.2 Route guards
 *   No session → every app route redirects to `/login`.
@@ -55,6 +56,7 @@ Full-page centered card on Page Background, `GET /api/auth/me` already probed (i
 
 *   **Fields**: Email (labeled, `type=email`, autofocus), Password (labeled, `type=password`, show/hide toggle).
 *   **Primary button**: "Log in" — loading state ("Logging in…" disabled) while in flight; no double submit.
+*   **Forgot password?** link below the form → `/forgot-password` (resets are administrator-mediated, AD-09 — §11).
 *   **Error behavior**: a single safe banner above the form — "Invalid email or password." — for any 401 (BR-02 leaks nothing). Field-level messages (below each field) for client validation only (empty/email-shape).
 *   On success → role home (Requester → My Tickets; IT Staff/Admin → Ticket Queue). If the returned user has `mustChangePassword`, route to `/change-password` instead.
 
@@ -82,7 +84,7 @@ Route `/queue` — IT Staff & Admin only (Requester → 403 screen). Fetches `GE
     *   Mobile/tablet (< 992px): stacked cards with the same fields prioritized (Title, Ticket No, Status/priority pills, Owner, Updated).
 *   **States**: loading skeleton; empty (zero tickets total); no-results (filters/search match nothing, with Clear Filters); error panel with Retry.
 *   **Pagination**: centered bar with page-size control (matches Lab 2 My Tickets pattern).
-*   Each row exposes quick actions at ≥ tablet width: **Claim** (when unassigned), **IT Priority** inline pill editor, and **status quick-transition** only when a single valid matrix edge exists from the current state (full matrix in the detail screen).
+*   Rows navigate to the staff Ticket Detail on click/Enter — **no inline Claim/Priority/Status controls live in the rows**; all operational actions happen on the detail screen (§6), where guards and feedback are enforced.
 
 ---
 
@@ -95,7 +97,7 @@ Route `/tickets/:id` with a staff flag. Read-only Requester fields + operational
     *   **Claim** (primary) when unassigned and current user is eligible.
     *   **Reassign** (secondary) → inline user picker (active IT_STAFF/ADMIN only) + Confirm.
 *   **Priority block**: **IT Priority** editable pills/select (`LOW/MEDIUM/HIGH/URGENT`) with save; success/error feedback inline (BR-14).
-*   **Status workflow block**: current Status badge; action buttons rendered **only for legal matrix edges** from the current state (per §6). Each button is labeled by its target, e.g. "Mark In Progress", "Resolve", "Close", "Reopen", "Cancel". Invalid transitions are never offered; if the backend still rejects (out-of-sync), the 400 matrix message displays safely (BR-15, AC-19).
+*   **Status workflow block**: current Status badge; action buttons rendered **only for legal matrix edges** from the current state (per §6). Each button is labeled by its target: "Mark Open", "Mark In Progress", "Request Info", "Resolve", "Close", "Reopen", "Cancel". Invalid transitions are never offered; if the backend still rejects (out-of-sync), the 400 matrix message displays safely (BR-15, AC-19).
 *   **Attachments**: as Lab 2 (read-only list for staff — no soft-remove UI for staff).
 *   **Communication columns**: two side-by-side panels (stacked on mobile) —
     *   **Public Comments** (white surface): list newest-first; composer textarea + "Post public comment" primary button.
@@ -119,7 +121,7 @@ Same route, Requester role (own tickets only; foreign ticket → 403 screen).
 
 Route `/users` — Admin only. Fetches `GET /api/admin/users`.
 
-*   **User table**: search box (name/email partial, debounced) + single Role dropdown (`All`/`Requester`/`IT Staff`/`Admin`) — no pagination/sort/further filters (excluded scope, AD-10). Columns: Name, Email, Role pill, Status pill (`Active`/`Inactive`), Must-Change-Password indicator, actions.
+*   **User table**: search box (name/email partial, debounced) + single Role dropdown (`All`/`Requester`/`IT Staff`/`Admin`) — no pagination/sort/further filters (excluded scope, AD-10). Columns: Name, Email, Role pill, Status pill (`Active`/`Inactive`), Password (`Must change` badge or `—`), actions (Edit, Reset password). Fixed column widths with ellipsis (see §10); full text on hover.
 *   **Create User**: modal or dedicated panel — Name, Email, **Role select** (exactly one of `REQUESTER`/`IT_STAFF`/`ADMIN`), initial Password, Active toggle (default on). Email duplicate on submit → 409 message shown against the Email field (BR-09). New users default to `mustChangePassword = true`.
 *   **Edit User**: inline/modal — Name, Email, Role select, Active toggle:
     *   Deactivating the **current admin's own account** → guarded message and no change (BR-10).
@@ -154,5 +156,30 @@ Badges keep Lab 2 pill styling; text labels always present (never color alone).
 *   **Validation**: client + server identical, server authoritative; messages appear directly under fields, asterisks never replace messages (Lab 2 §4.2 rules, carried).
 *   **Read-only fields**: the dedicated warm-ivory/gray-green token only (Ticket No, Requested Priority for staff, system-generated values, dates).
 *   **Accessibility (carried)**: focus rings Secondary Green, visible labels, keyboard-operable, modals trap focus, `Esc` closes, `aria-disabled` on busy controls, badges never color-only.
+*   **Stable tables**: ticket and user tables use fixed layout (`.table-stable`) with per-column widths — columns never shift when row content changes length, and no cell text ever wraps (ellipsis overflow, full text on `title` hover).
+
+---
+
+## 11. Screen: Forgot Password
+
+Route `/forgot-password` — public (no session required; signed-in users skip to home). Resets are administrator-mediated (AD-09), so this screen collects the account email and directs the user onward; it never reveals whether an email is registered (BR-02).
+
+*   **Fields**: Email (labeled, `type=email`, autofocus) with the same client validation as Login.
+*   **Primary button**: "Request password reset".
+*   **Behavior**: on valid submit the form is replaced by a neutral confirmation — "If this email is registered, your administrator can now reset the password. Please contact your IT administrator…" — identical for any input. "Back to log in" link returns to `/login`.
+
+---
+
+## 12. Visual Inspection Checklist (#109)
+
+Checked against `artifacts/lab-03/screenshots/` (5 pages × desktop/tablet/mobile). Status is **Pending** until the final capture run on merged code (post-PR #121).
+
+| Page | Desktop | Tablet | Mobile | Checks (all viewports) |
+| :--- | :---: | :---: | :---: | :--- |
+| Login (`e2e-login-*.png`) | ☐ | ☐ | ☐ | No nav chrome; card centered; no overflow; focus ring on Email |
+| Ticket Queue (`e2e-queue-*.png`) | ☐ | ☐ | ☐ | Fixed columns, no wrap; badges labeled; cards on narrow |
+| Staff Detail (`e2e-staff-detail-*.png`) | ☐ | ☐ | ☐ | Legal status buttons only; notes yellow + lock |
+| Requester Detail (`e2e-requester-detail-*.png`) | ☐ | ☐ | ☐ | Intent button state; no internal-notes section |
+| User Management (`e2e-users-*.png`) | ☐ | ☐ | ☐ | No Delete control; guard messages; horizontal scroll, no clip |
 
 *End of UI specification. Conforms to `specification.md` §7, §8; tokens/breakpoints inherit `docs/lab-02/ui-spec.md`.*
