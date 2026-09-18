@@ -273,7 +273,15 @@ export default function UserManagement() {
 
       {!isLoading && !error && users.length > 0 && (
         <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0" data-testid="users-table">
+          <table className="table table-hover align-middle mb-0 table-stable" data-testid="users-table">
+            <colgroup>
+              <col style={{ width: "180px" }} />
+              <col />
+              <col style={{ width: "110px" }} />
+              <col style={{ width: "100px" }} />
+              <col style={{ width: "130px" }} />
+              <col style={{ width: "210px" }} />
+            </colgroup>
             <thead className="table-light">
               <tr>
                 <th scope="col">Name</th>
@@ -287,11 +295,11 @@ export default function UserManagement() {
             <tbody>
               {users.map((u) => (
                 <tr key={u.id} data-testid="user-row">
-                  <td className="fw-semibold text-dark">
+                  <td className="fw-semibold text-dark" title={u.name}>
                     {u.name}
                     {me?.id === u.id && <span className="text-secondary small"> (you)</span>}
                   </td>
-                  <td className="small">{u.email}</td>
+                  <td className="small" title={u.email}>{u.email}</td>
                   <td>
                     <Badge color={u.role === "ADMIN" ? "yellow" : u.role === "IT_STAFF" ? "blue" : "green"}>
                       {roleLabel(u.role)}

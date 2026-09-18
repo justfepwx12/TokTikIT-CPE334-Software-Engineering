@@ -529,3 +529,12 @@ export function postNote(ticketId: number, body: string): Promise<InternalNote> 
     body: JSON.stringify({ body }),
   });
 }
+// POST /api/tickets/:id/resolve-intent — the requester's only
+// status-affecting action (ui-spec §7, BR-16, AD-02). State-dependent:
+// NEW/OPEN/IN_PROGRESS/WAITING_FOR_REQUESTER → RESOLVED,
+// RESOLVED/CLOSED → REOPENED.
+export function triggerResolveIntent(ticketId: number): Promise<{ id: number; status: TicketStatus }> {
+  return request<{ id: number; status: TicketStatus }>(`/api/tickets/${ticketId}/resolve-intent`, {
+    method: "POST",
+  });
+}

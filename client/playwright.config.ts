@@ -23,6 +23,11 @@ export default defineConfig({
       url: 'http://127.0.0.1:5173',
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
+      // The session cookie is SameSite=Lax: the API host must match the page
+      // host, otherwise the browser withholds the cookie on cross-site fetch
+      // and every authenticated request 401s. Point the client at 127.0.0.1
+      // (same host as baseURL) instead of the default localhost:3000.
+      env: { VITE_API_URL: 'http://127.0.0.1:3000' },
     },
   ],
   projects: [

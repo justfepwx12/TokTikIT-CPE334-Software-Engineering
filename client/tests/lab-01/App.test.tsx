@@ -17,7 +17,7 @@ describe("App", () => {
     cleanup();
   });
 
-it("renders the TokTickIT heading", () => {
+it("renders the TokTickIT heading", async () => {
     vi.spyOn(api, "checkSystem").mockResolvedValue({
       online: true,
       categories: [],
@@ -28,9 +28,11 @@ it("renders the TokTickIT heading", () => {
         <App />
       </MemoryRouter>
     );
-    
-    const elements = screen.getAllByText(/TokT.*kIT/i);
-    expect(elements.length).toBeGreaterThan(0);
+
+    // Signed out: no nav chrome renders, so `/` bounces to the login card,
+    // which carries the product heading once the session check settles.
+    const heading = await screen.findByText(/Log in to TokTikIT/i);
+    expect(heading).toBeDefined();
   });
 
   it("shows Online and the seeded categories on success", async () => {

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { LogIn, Eye, EyeOff, Home, ChevronRight } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import TextInput from "../components/TextInput";
 import { roleHome, safeRedirect } from "../utils/navigation.js";
@@ -56,23 +56,9 @@ export default function Login() {
 
   return (
     <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: "#F5F7F6" }}>
-      <div className="container mt-4 mb-2 d-flex align-items-center text-muted small fw-medium">
-        <Link to="/" aria-label="Go to home">
-          <Home size={16} className="me-1" style={{ color: "#006B3C" }} />
-        </Link>
-        <ChevronRight size={14} className="mx-1" />
-        <span style={{ color: "#006B3C" }}>Log in</span>
-      </div>
-
       <div className="d-flex flex-column justify-content-center align-items-center p-4 flex-grow-1">
         <div className="card shadow-sm border-0 rounded-3 p-4 p-md-5 w-100 bg-white" style={{ maxWidth: "480px" }}>
           <div className="text-center mb-4">
-            <div
-              className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
-              style={{ width: "64px", height: "64px", backgroundColor: "#EAF6EF" }}
-            >
-              <LogIn size={32} style={{ color: "#006B3C" }} />
-            </div>
             <h2 className="h4 fw-bold text-dark mb-2">Log in to TokTikIT</h2>
             <p className="text-muted small px-3">Use your account email and password.</p>
           </div>
@@ -133,6 +119,17 @@ export default function Login() {
               {isSubmitting ? "Logging in…" : "Log in"}
             </button>
           </form>
+
+          <div className="text-center mt-3">
+            <Link
+              to="/forgot-password"
+              className="small fw-medium text-decoration-none"
+              style={{ color: "#006B3C" }}
+              data-testid="forgot-password-link"
+            >
+              Forgot password?
+            </Link>
+          </div>
         </div>
       </div>
     </div>

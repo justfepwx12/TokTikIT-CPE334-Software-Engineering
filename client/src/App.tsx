@@ -6,6 +6,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./hooks/useAuth";
 import MyTickets from "./pages/MyTickets";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 import ChangePassword from "./pages/ChangePassword";
 import CreateTicket from "./pages/CreateTicket";
 import TicketDetail from "./pages/TicketDetail";
@@ -165,10 +166,18 @@ function TicketDetailRoute() {
   return <TicketDetail />;
 }
 
+// Header is session-driven (BR-04): no signed-in user → no nav chrome.
+// This keeps public routes like /login and /forgot-password free of nav.
+function AppHeader() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <Header />;
+}
+
 function App() {
   return (
     <AuthProvider>
-      <Header />
+      <AppHeader />
       <Routes>
         <Route path="/" element={
           <ProtectedRoute>
@@ -176,6 +185,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/my-tickets" element={
           <ProtectedRoute>
