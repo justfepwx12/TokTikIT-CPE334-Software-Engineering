@@ -73,7 +73,18 @@ function EmptyState({ hasActiveFilters }: { hasActiveFilters: boolean }) {
 function QueueTable({ tickets, onOpen }: { tickets: StaffTicket[]; onOpen: (id: number) => void }) {
   return (
     <div className="d-none d-lg-block overflow-auto">
-      <table className="table table-hover align-middle mb-0" data-testid="queue-table">
+      <table className="table table-hover align-middle mb-0 table-stable" data-testid="queue-table">
+        <colgroup>
+          <col style={{ width: "140px" }} />
+          <col />
+          <col style={{ width: "130px" }} />
+          <col style={{ width: "170px" }} />
+          <col style={{ width: "100px" }} />
+          <col style={{ width: "100px" }} />
+          <col style={{ width: "190px" }} />
+          <col style={{ width: "120px" }} />
+          <col style={{ width: "100px" }} />
+        </colgroup>
         <thead className="table-light">
           <tr>
             <th scope="col">Ticket No</th>
@@ -102,12 +113,12 @@ function QueueTable({ tickets, onOpen }: { tickets: StaffTicket[]; onOpen: (id: 
                 }
               }}
             >
-              <td className="fw-semibold text-decoration-underline text-brand" data-testid="queue-row-ticket-no">
+              <td className="fw-semibold text-decoration-underline text-brand" data-testid="queue-row-ticket-no" title={t.ticketNo}>
                 {t.ticketNo}
               </td>
-              <td className="text-dark">{t.title}</td>
-              <td>{t.requester.name}</td>
-              <td className="small">
+              <td className="text-dark" title={t.title}>{t.title}</td>
+              <td title={t.requester.name}>{t.requester.name}</td>
+              <td className="small" title={`${t.category.name} / ${t.system.name}`}>
                 {t.category.name} / {t.system.name}
               </td>
               <td>
@@ -119,7 +130,7 @@ function QueueTable({ tickets, onOpen }: { tickets: StaffTicket[]; onOpen: (id: 
               <td>
                 <StatusBadge status={t.status} />
               </td>
-              <td>{t.owner ? t.owner.name : <span className="text-secondary fst-italic">Unassigned</span>}</td>
+              <td title={t.owner ? t.owner.name : "Unassigned"}>{t.owner ? t.owner.name : <span className="text-secondary fst-italic">Unassigned</span>}</td>
               <td className="text-secondary small">{formatDate(t.updatedAt)}</td>
             </tr>
           ))}

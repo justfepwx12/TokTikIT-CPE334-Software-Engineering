@@ -80,7 +80,15 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 function DesktopTable({ tickets, onOpen }: { tickets: TicketSummary[]; onOpen: (id: number) => void }) {
   return (
     <div className="d-none d-md-block overflow-auto">
-      <table className="table table-hover align-middle mb-0" data-testid="tickets-table">
+      <table className="table table-hover align-middle mb-0 table-stable" data-testid="tickets-table">
+        <colgroup>
+          <col style={{ width: "150px" }} />
+          <col />
+          <col style={{ width: "150px" }} />
+          <col style={{ width: "110px" }} />
+          <col style={{ width: "200px" }} />
+          <col style={{ width: "110px" }} />
+        </colgroup>
         <thead className="table-light">
           <tr>
             <th scope="col">Ticket No</th>
@@ -106,11 +114,11 @@ function DesktopTable({ tickets, onOpen }: { tickets: TicketSummary[]; onOpen: (
                 }
               }}
             >
-              <td className="fw-semibold text-decoration-underline text-brand" data-testid="ticket-row-ticket-no">
+              <td className="fw-semibold text-decoration-underline text-brand" data-testid="ticket-row-ticket-no" title={t.ticketNo}>
                 {t.ticketNo}
               </td>
-              <td className="text-dark">{t.title}</td>
-              <td>{t.category.name}</td>
+              <td className="text-dark" title={t.title}>{t.title}</td>
+              <td title={t.category.name}>{t.category.name}</td>
               <td>
                 <PriorityBadge priority={t.requestedPriority} />
               </td>
