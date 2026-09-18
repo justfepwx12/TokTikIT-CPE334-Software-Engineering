@@ -132,6 +132,13 @@ function parseUserId(raw: unknown): number | null {
 // PATCH /api/admin/users/:id — edit basic info / single role / activate.
 // Guards: no self-deactivation (BR-10), never zero active Admins (BR-11),
 // duplicate email → 409 (BR-09).
+class LastAdminError extends Error {
+  constructor() {
+    super('LAST_ADMIN');
+    this.name = 'LastAdminError';
+  }
+}
+
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const sessionUser = (req as AuthRequest).user;
@@ -188,31 +195,38 @@ export const updateUser = async (req: Request, res: Response) => {
     }
 
     // BR-11: never leave zero active Administrators (via deactivation or
-    // role downgrade of the last one).
+    // role downgrade of the last one). The count check and the update run
+    // inside one transaction serialized by a session-level advisory lock, so
+    // two concurrent requests cannot both pass the check and together remove
+    // the last active Administrator.
     const wasActiveAdmin = target.role === 'ADMIN' && target.isActive;
     const staysActiveAdmin = nextRole === 'ADMIN' && nextActive;
-    if (wasActiveAdmin && !staysActiveAdmin) {
-      const otherActiveAdmins = await prisma.user.count({
-        where: { role: 'ADMIN', isActive: true, id: { not: target.id } },
+    const updateData = {
+      ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+      ...(parsed.data.email !== undefined ? { email: nextEmail } : {}),
+      ...(parsed.data.role !== undefined ? { role: parsed.data.role } : {}),
+      ...(parsed.data.isActive !== undefined ? { isActive: parsed.data.isActive } : {}),
+    };
+    try {
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('toktikit-admin-guard')::bigint)`;
+        if (wasActiveAdmin && !staysActiveAdmin) {
+          const otherActiveAdmins = await tx.user.count({
+            where: { role: 'ADMIN', isActive: true, id: { not: target.id } },
+          });
+          if (otherActiveAdmins === 0) throw new LastAdminError();
+        }
+        return tx.user.update({ where: { id: userId }, data: updateData, select: userSelect });
       });
-      if (otherActiveAdmins === 0) {
+      return res.status(200).json({ user: updated });
+    } catch (err) {
+      if (err instanceof LastAdminError) {
         return res.status(400).json({
           error: { code: 'LAST_ADMIN', message: 'The last active Administrator cannot be removed.' },
         });
       }
+      throw err;
     }
-
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
-        ...(parsed.data.email !== undefined ? { email: nextEmail } : {}),
-        ...(parsed.data.role !== undefined ? { role: parsed.data.role } : {}),
-        ...(parsed.data.isActive !== undefined ? { isActive: parsed.data.isActive } : {}),
-      },
-      select: userSelect,
-    });
-    return res.status(200).json({ user: updated });
   } catch {
     return res.status(500).json({
       error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },

@@ -140,38 +140,62 @@ describe("Admin User Management API (AC-26–AC-31)", () => {
     }
   });
 
-  it("blocks removing the last active admin (BR-11, AC-29)", async (ctx) => {
-    // Reachable path: self-demotion (ADMIN → non-ADMIN) while sole active
-    // admin. (Deactivating another admin can never trigger BR-11 — the actor
-    // is always an active admin themselves; self-deactivation is caught by
-    // BR-10 first.) The guard counts global active admins and other files
-    // create admin fixtures concurrently — so isolate (deactivate others,
-    // restore in finally) and retry a few times before skipping.
+  it("serializes concurrent last-admin removals: one wins, one gets 400 (BR-11 race)", async (ctx) => {
+    // Genuine concurrency probe: two sole active admins demote each other at
+    // the same time. Without an atomic guard both checks pass and both
+    // writes land (zero admins left). With the advisory-lock transaction,
+    // exactly one 200 + one 400 LAST_ADMIN must result.
+    // Other test files create admin fixtures concurrently, so isolate
+    // (deactivate other admins, restore in finally) and retry before skip.
     for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const a = await mkUser("Adm Race A", "adm-race-a@toktikit.com", "ADMIN");
+      const b = await mkUser("Adm Race B", "adm-race-b@toktikit.com", "ADMIN");
       const deactivated: number[] = [];
       try {
+        const agentA = await loginAs("adm-race-a@toktikit.com", TEST_PASSWORD);
+        const agentB = await loginAs("adm-race-b@toktikit.com", TEST_PASSWORD);
         const others = await prisma.user.findMany({
-          where: { role: "ADMIN", isActive: true, id: { not: adminId } },
+          where: { role: "ADMIN", isActive: true, id: { notIn: [a.id, b.id] } },
           select: { id: true },
         });
         for (const o of others) {
           await prisma.user.update({ where: { id: o.id }, data: { isActive: false } });
           deactivated.push(o.id);
         }
-        const agent = await loginAs(ADMIN_EMAIL, TEST_PASSWORD);
-        const down = await agent.patch(`/api/admin/users/${adminId}`).send({ role: "REQUESTER" });
-        if (down.status === 400) {
-          expect(down.body.error.code).toBe("LAST_ADMIN");
-          const after = await prisma.user.findUniqueOrThrow({ where: { id: adminId } });
-          expect(after.role).toBe("ADMIN");
+        const [resA, resB] = await Promise.all([
+          agentA.patch(`/api/admin/users/${b.id}`).send({ role: "REQUESTER" }),
+          agentB.patch(`/api/admin/users/${a.id}`).send({ role: "REQUESTER" }),
+        ]);
+        const sorted = [resA.status, resB.status].sort();
+        if (sorted[0] === 200 && sorted[1] === 200) {
+          // A concurrent fixture appeared mid-window — restore and retry.
+          await prisma.user.updateMany({
+            where: { id: { in: [a.id, b.id] } },
+            data: { role: "ADMIN", isActive: true },
+          });
+        } else {
+          // One request wins (200). The loser either reaches the atomic
+          // guard (400 LAST_ADMIN — it passed the role check first, then
+          // blocked on the advisory lock and saw zero remaining admins) or
+          // is rejected up front (403 — the winner's demotion committed
+          // before its role check). Both prove zero admins is unreachable.
+          expect(sorted[0]).toBe(200);
+          expect([400, 403]).toContain(sorted[1]);
+          const loser = resA.status !== 200 ? resA : resB;
+          if (loser.status === 400) {
+            expect(loser.body.error.code).toBe("LAST_ADMIN");
+          }
+          const survivors = await prisma.user.count({
+            where: { role: "ADMIN", isActive: true, id: { in: [a.id, b.id] } },
+          });
+          expect(survivors).toBe(1);
           return;
         }
-        // A concurrent fixture appeared mid-window — roll back and retry.
-        await prisma.user.update({ where: { id: adminId }, data: { role: "ADMIN", isActive: true } });
       } finally {
         if (deactivated.length > 0) {
           await prisma.user.updateMany({ where: { id: { in: deactivated } }, data: { isActive: true } });
         }
+        await prisma.user.deleteMany({ where: { email: { in: ["adm-race-a@toktikit.com", "adm-race-b@toktikit.com"] } } });
       }
       await new Promise((r) => setTimeout(r, 500));
     }
