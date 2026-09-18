@@ -53,16 +53,20 @@ async function rotatePassword(page: Page, current: string): Promise<void> {
 }
 
 export async function logout(page: Page): Promise<void> {
-  // The desktop Log out action lives inside the profile dropdown; the mobile
-  // nav exposes it after opening the hamburger menu.
-  const profile = page.getByRole('button', { name: /signed in as/i });
-  if (await profile.isVisible().catch(() => false)) {
-    await profile.click();
-  } else {
-    const menu = page.getByRole('button', { name: /navigation menu/i });
-    if (await menu.isVisible().catch(() => false)) await menu.click();
+  // Desktop exposes Log out inside the profile dropdown; the mobile nav
+  // exposes it after opening the hamburger menu. Always click the
+  // *visible* one — both variants exist in the DOM on desktop widths.
+  const visibleLogout = () => page.locator('button:visible', { hasText: 'Log out' });
+  if ((await visibleLogout().count()) === 0) {
+    const profile = page.getByRole('button', { name: /signed in as/i });
+    if (await profile.isVisible().catch(() => false)) {
+      await profile.click();
+    } else {
+      const menu = page.getByRole('button', { name: /navigation menu/i });
+      if (await menu.isVisible().catch(() => false)) await menu.click();
+    }
   }
-  await page.getByText('Log out').first().click();
+  await visibleLogout().first().click();
   // Logout races the ProtectedRoute bounce: the landing URL may carry a
   // ?redirect= query, so match the /login prefix, not the exact end.
   await page.waitForURL('**/login**');
@@ -83,3 +87,29 @@ export async function createTicket(page: Page, title: string): Promise<string> {
 }
 
 export { uniqueTitle };
+
+/**
+ * Open the first list entry regardless of viewport: wide screens render
+ * tables (`ticket-row` / `queue-row`), narrow screens render cards
+ * (`ticket-card` / `queue-card`). Tablet sits between the two breakpoints
+ * (My Tickets table at md+, queue table at lg+), so probe visibility.
+ */
+export async function openFirstEntry(page: Page, kind: 'ticket' | 'queue'): Promise<void> {
+  const row = page.getByTestId(`${kind}-row`).first();
+  if (await row.isVisible().catch(() => false)) {
+    await row.click();
+    return;
+  }
+  await page.getByTestId(`${kind}-card`).first().click();
+}
+
+/** Assert the list body is visible in whichever layout the viewport uses. */
+export async function expectListVisible(page: Page, kind: 'ticket' | 'queue'): Promise<void> {
+  // NB: the requester table id is plural (tickets-table).
+  const tableId = kind === 'ticket' ? 'tickets-table' : 'queue-table';
+  if (await page.getByTestId(tableId).isVisible().catch(() => false)) {
+    await expect(page.getByTestId(tableId)).toBeVisible();
+  } else {
+    await expect(page.getByTestId(`${kind}-card`).first()).toBeVisible();
+  }
+}

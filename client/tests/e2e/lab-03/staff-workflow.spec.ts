@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { login, logout, createTicket, uniqueTitle } from './helpers';
+import { login, logout, createTicket, openFirstEntry, expectListVisible, uniqueTitle } from './helpers';
 
 // Lab 3 E2E: IT staff workflow (AC-14–AC-19, AC-22/23, tests.md rows 63-64).
 // Requester side uses sirichai.thongdee; staff side uses somchai.jaidee
@@ -23,13 +23,11 @@ test.describe('staff workflow', () => {
     await page.getByTestId('login-password').fill(STAFF_PASSWORD);
     await page.getByTestId('login-submit').click();
     await page.waitForURL('**/queue');
-    await expect(page.getByTestId('queue-table')).toBeVisible();
+    await expectListVisible(page, 'queue');
     await page.screenshot({ path: `../docs/lab-03/images/e2e-queue-${test.info().project.name}.png` });
 
     await page.getByTestId('queue-search').fill(title);
-    const row = page.getByTestId('queue-row').first();
-    await expect(row).toBeVisible();
-    await row.click();
+    await openFirstEntry(page, 'queue');
     await expect(page.getByTestId('staff-ticket-detail')).toBeVisible();
 
     // 3. Claim the unassigned ticket (AC-15).
@@ -60,7 +58,7 @@ test.describe('staff workflow', () => {
     await page.goto('/my-tickets');
     await page.getByTestId('ticket-search').fill(title);
     await page.getByRole('button', { name: /apply/i }).click();
-    await page.getByTestId('ticket-row').first().click();
+    await openFirstEntry(page, 'ticket');
     await expect(page.getByText('E2E public comment: looking into it.')).toBeVisible();
     expect(await page.getByTestId('internal-notes').count()).toBe(0);
     expect(await page.getByText('E2E internal note: vpn logs.').count()).toBe(0);

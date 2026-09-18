@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { login, logout, createTicket, uniqueTitle } from './helpers';
+import { login, logout, createTicket, openFirstEntry, uniqueTitle } from './helpers';
 
 // Lab 3 E2E: requester resolve-intent lifecycle (AC-20, tests.md row 66).
 // Uses weerapong.chaiyaporn (dedicated seeded requester).
@@ -15,7 +15,7 @@ test.describe('requester resolve intent', () => {
     await page.goto('/my-tickets');
     await page.getByTestId('ticket-search').fill(title);
     await page.getByRole('button', { name: /apply/i }).click();
-    await page.getByTestId('ticket-row').first().click();
+    await openFirstEntry(page, 'ticket');
     await expect(page.getByTestId('ticket-detail')).toBeVisible();
     await page.screenshot({ path: `../docs/lab-03/images/e2e-requester-detail-${test.info().project.name}.png` });
 
