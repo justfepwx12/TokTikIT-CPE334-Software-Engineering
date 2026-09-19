@@ -229,27 +229,37 @@ All Lab 3 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (revie
 
 ## Pull Requests I Reviewed for My Partner
 
-Partner repo `itspxsh/toktickit` (Pawarisa Thongchua). I reviewed the full Lab 3 series — each review verified locally (tests, build, spec traceability) before verdict. All states below confirmed via GitHub API.
+Partner repo `itspxsh/toktickit` (Pawarisa Thongchua). วิธีรีวิวของฉันเหมือนกันทุกอัน: อ่าน scope จาก PR description → เทียบ `specification.md`/`api-spec.md`/`tests.md` → รันเทสกับบิลด์เองในเครื่อง → ให้ verdict (states/dates ทั้งหมดยืนยันผ่าน GitHub API แล้ว).
 
-| Partner PR | Scope | My Verdict |
-| :--- | :--- | :--- |
-| #36 (L3-01) Spec-DD/Test-DD contract | Engineering contract approval | Approved 2026-09-14 |
-| #46 (L3-02) Identity data foundation | Migration, seed, guarded test DB | Approved 2026-09-15 |
-| #47 (L3-03) Auth, sessions, first-login change | Login/session/must-change flow | Reviewed with line comments 2026-09-15 |
-| #48 (L3-04) Server authorization + Lab 2 regression | RBAC, requester regression | Changes requested → Approved 2026-09-17 |
-| #49 (L3-05) Staff queue | Search, filters, pagination | Approved 2026-09-17 |
-| #50 (L3-06) Staff detail, workflow, comms, notes | Claim/matrix/comments/notes | Changes requested → Approved 2026-09-17 |
-| #51 (L3-07) Admin user management | Users console + safety guards | Approved 2026-09-17 |
-| #52 (L3-08) Authenticated role shell + UI flows | Shell, queue/detail/admin UI | Changes requested → Approved 2026-09-18 |
-| #53 (L3-09) E2E, security, responsive, a11y evidence | Playwright journeys + evidence | Changes requested (×2) → Approved 2026-09-18 |
-| #54 (L3-10) Evidence + release readiness | Promotion, release gate | Changes requested (×2) → Approved 2026-09-19 |
+### L3-01 · #36 — Spec-DD/Test-DD contract (Approved 2026-09-14)
+เพื่อนส่ง engineering contract 11 sections (FR-01..18, BR-01..32, AC-01..20) มาขอ approve สปรินต์ ฉันตรวจ traceability ใน `tests.md` ว่าทุก AC มี test mapping ก่อน implement จริง บวก security/workflow (server-side auth, anti-forgery, admin safeguards, status matrix) และ migration แบบ forward-only ที่ไม่ทิ้งข้อมูล Lab 2 — ครบเลย approve ตรง มีแค่โน้ต non-blocking ฝากไว้ เพื่อน quote approval นี้ตอน merge
 
-Notable findings I raised (all addressed by the partner before approval):
-- #48: unwired `requirePasswordChanged` gate (2 must-fix items) — verified fixed across `c4feea5`, `6146f18`, `34b771c` (gate on requester/reference/workflow routes, BR-04/AC-02).
-- #50: duplicate comment route (single canonical endpoint) + `CANCELLED → REOPENED` restricted to Admins (403 + tests) — verified on `c262490` (local: server 67/67, client 37/37).
-- #52: missing `RequesterRegression.test.tsx` + resolution-indication endpoint wiring — verified on `635b025` (local: client 51/51, server 76/76 re-run).
-- #53: broken `T-E2E-01` selector (`getByRole('link', /TKT-/)`) + missing live evidence for AC-18/T-E2E-04/05 — verified on `1c2226b` (local: discovery 9 tests, client 56/56).
-- #54: release-gate validation + 3 follow-up patches — verified on `1c45150` + `5782c0c`, then approved.
+### L3-02 · #46 — Identity data foundation (Approved 2026-09-15)
+Scope คือ schema/enum/migration/seed/test-DB guard ฉันเทียบ spec §7, `api-spec.md`, `tests.md` (T-MIG-01..05) และ BR-25..BR-31 — ตรงหมด เลย approve พร้อมทิ้ง cleanup เล็กๆ จุดเดียว: `SeedClient` type ใน `data-foundation.ts:48` ประกาศไว้แต่ไม่เคยใช้ เพื่อนตอบว่าจะเอา cleanup นี้ไปทำต่อใน branch ถัดไป แล้ว merge ที่ `8099912`
+
+### L3-03 · #47 — Auth, sessions, first-login change (line comments → Approved)
+Scope คือ login/session/must-change flow ฉัน reproduce เองทั้ง flow (manual cookie relay): `POST /api/auth/login` normalize email + scrypt + reject inactive + ตั้ง cookie `tt_session` (`HttpOnly; Secure; SameSite=Lax; Max-Age=43200`) — product logic ถูกหมด แต่เจอ 8 จุดต้องแก้ ฉันแปะเป็น line comments (cookie forwarding, dummy password กัน timing leak, แยก CSRF/Origin coverage, negative password-change tests, session/hash tests, เอกสาร `AUTH_ORIGIN`, CSRF-entry eviction) เพื่อนแก้ครบใน `fe68adc` + `c8a9511` แล้วตอบกลับมาขอ re-review ฉันตรวจซ้ำแล้ว approve
+
+### L3-04 · #48 — Server authorization + Lab 2 regression (Changes requested → Approved 2026-09-17)
+Scope ตาม Issue #39 ฉันชมโครงก่อน (`requesterContext()` เมิน header ที่ไม่น่าเชื่อถือตาม BR-08, user id มาจาก session ล้วน, workflow integrity ดี) แล้วขอแก้ 2 must-fix: wire `requirePasswordChanged` ใน `app.ts` กัน first-login user หลุด (บวกประเด็น test ที่เหลือในรีวิวเต็ม) เพื่อนแก้ใน `c4feea5`, `6146f18`, `34b771c` (gate ลงทุก requester/reference/workflow routes ตาม BR-04/AC-02, CSRF middleware งานเขียน, ตัด `requireRoles` ที่ไม่ใช้, response `TICKET_NOT_FOUND`) แล้วตอบกลับ ฉันเช็คทีละข้อว่าตรงรีวิวก่อนหน้าแล้ว approve
+
+### L3-05 · #49 — Staff queue (Approved 2026-09-17)
+Scope ตาม Issue #40 ฉันตรวจ spec + test contract: query defaults, projection ปลอดภัย (no password/notes leak), ordering deterministic, pageSize ≤ 100, staff auth middleware — server/client tests ผ่าน บิลด์สะอาด TDD chain ครบ เลย approve ตรงไม่มีขอแก้
+
+### L3-06 · #50 — Staff detail, workflow, comms, notes (Changes requested → Approved 2026-09-17)
+ฉันรันเอง (server 67/67, client 37/37, builds clean) โครงดี (error codes ตรงสเปก, atomic claims, `updateMany` status guards, authorship จาก server, CSRF ครบ 6 mutations) แต่ติด 2 blocking + test gaps: ลบ dead duplicate comment route (เหลือ canonical endpoint เดียว) และล็อก `CANCELLED → REOPENED` ให้เฉพาะ Admin (403 + test) เพื่อนแก้แล้วตอบกลับ ฉันตรวจบน `c262490` (เพิ่ม `comments-notes.api.test.ts` ครอบ T-COMMENT-01/03/05, mocks assert query args) แล้ว approve
+
+### L3-07 · #51 — Admin user management (Approved 2026-09-17)
+Scope ตาม Issue #42 ฉันรันเอง (server 76/76, client 41/41, builds + Prisma validate clean) ผ่านหมด: self-check กันก่อน last-admin check, deactivate/reset ตัด session ทันที, P2002 race handling, บังคับ `mustChangePassword` ตอน create, response shape ตรงสเปก TDD chain ครบ — approve ตรง
+
+### L3-08 · #52 — Authenticated role shell + UI flows (Changes requested → Approved 2026-09-18)
+Scope ตาม Issue #43 ฉันรันเอง (client 51/51 lab-01+02+03, build, diff-check, แถม re-run server 76/76 บน branch นี้เอง) เทียบ `ui-spec.md` §2/5/8/9, FR-04..07, BR-05..07, AC-02..04/07..11/15..16, T-UI-01..09 — ขอเพิ่ม/แก้ blocking gaps + enhancements เพื่อนแก้ใน `635b025` (ปุ่ม "Problem appears resolved" + `RequesterRegression.test.tsx` T-UI-06, `RoleGuard` + Forbidden state T-UI-03, ล้าง CSRF state ตอน login, ล้าง password fields ตอน change ล้มเหลว) แล้วตอบกลับ ฉัน re-review commit นี้แล้ว approve
+
+### L3-09 · #53 — E2E, security, responsive, a11y evidence (Changes requested ×2 → Approved 2026-09-18)
+รอบแรกฉันรันเอง (discovery 9 tests, client 56/56, build clean) แล้วขอแก้ 3 blocking: selector `T-E2E-01` (`getByRole('link', /TKT-/)` พัง) และยังไม่มี live evidence ของ AC-18/T-E2E-04/05 (รอบสองย้ำเป็น line-level notes ว่าขาด run log/screenshots/migration output) เพื่อนแก้แล้วตอบกลับ ฉันตรวจบน `1c2226b` (ดึง ticket number จาก `<th scope="row">`, `T-E2E-02` มี pagination + priority/status assertions, `T-E2E-03` มี reset/activate/deactivate) แล้ว approve ให้ merge ลง `lab3-staging`
+
+### L3-10 · #54 — Evidence + release readiness (Changes requested ×2 → Approved 2026-09-19)
+รอบแรก scope เป็น docs-only 5 ไฟล์ ฉันขอ gate ไว้: promote ขึ้น `main` ได้ก็ต่อเมื่อมี release evidence จริง เพื่อนกลับมาด้วย live evidence (migrations ลง fresh `_test` DB, integration 5/5, `artifacts/lab-03/migration/deploy.txt`, Playwright matrix เขียว 3 roles, screenshots 42 ภาพ) ฉันตรวจแล้วยอมรับ evidence แต่ขออีก 3 จุดพร้อม patch ตรงๆ (`T-AUTHZ-05` ลง tests.md + traceability AC-03/AC-14, `setNotice("")` กัน notice ค้างข้าม ticket, เอกสาร `AUTH_ORIGIN=http://127.0.0.1:5173`) เพื่อนแก้ครบใน `1c45150` (+ `5782c0c`) แล้วตอบยืนยัน ฉันตรวจแล้ว approve ให้ promote ขึ้น `main`
 
 ---
 
