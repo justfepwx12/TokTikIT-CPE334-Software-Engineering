@@ -21,7 +21,7 @@ All Lab 3 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (revie
 | #82 (PR #119) | feature/7-comments-internal-notes | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 | #83 (PR #120) | feature/8-admin-user-management | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 | #84 (PR #121) | feature/9-lab3-automated-tests | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
-| #85 (PR TBD) | feature/10-release-docs-pdf | Pawarisa Thongchua (@itspxsh) | Pending |
+| #85 (PR #122) | feature/10-release-docs-pdf | Pawarisa Thongchua (@itspxsh) | Approved (merge pending) |
 
 > Note: PR #111 (same spec branch) was closed superseded by PR #112/#113.
 
@@ -207,26 +207,49 @@ All Lab 3 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (revie
 
 ---
 
-### #85 (Issue 10 — Release · PR TBD)
+### #85 (Issue 10 — Release · PR #122)
 
-**Reviewed by:** TBD
+**Reviewed by:** Pawarisa Thongchua (@itspxsh)
 
-**Review-type:** Release — `reviewer.md`, `ai-use.md`, `artifacts/lab-03/screenshots/`, visual checklist, `Lab3_Submission.pdf`.
+**Review-type:** Release docs — `reviewer.md` per-PR detail, `ai-use.md` reflection, `api-spec.md`/`ui-spec.md`/`tests.md`/`specification.md` sync, refreshed `README.md`, `.gitignore`.
 
-**Reviewer comments given:**
-> TBD — add review comments received during partner review.
+**PR Overview & Details:**
+> Closes the #108 documentation scope: 10-prompt AI-use table with Thai reflection, per-PR review record #112–#121 sourced from GitHub API, staff-detail endpoint + no-self-service-reset notes in `api-spec.md`, header/forgot-password/table-layout/forgot screen/checklist updates in `ui-spec.md`, corrected paths + Passed rows + PR #121 evidence in `tests.md`, AD-12/D-04 path fix, Lab 3 README rewrite, `blob-report/` ignore. Screenshots + PDF remain #109/#110 follow-ups.
+
+**Reviewer comments given (CHANGES_REQUESTED, 1 point):**
+> `tests.md` §4 evidence command used `tests/e2e/lab-03/` — the real path is `client/tests/e2e/lab-03/`; correct it so another reviewer can run the command copy-paste from the repo root.
 
 **How I responded:**
-> TBD — add response/action taken.
+> Fix commit `ddb7df9` — evidence command corrected to `pnpm --filter client exec playwright test tests/e2e/lab-03/`; replied on the PR thread. (Follow-up commit `eb49d55` — README refresh + gitignore — landed after the approval below and is docs-only.)
 
-**Reviewer approved comment:**
-> TBD.
+**Reviewer approved comment (APPROVED 2026-09-19):**
+> "Re-reviewed commit `ddb7df9` — evidence command path correct, references consistent, `git diff --check` passed, docs-only. LGTM — approving this PR."
 
 ---
 
 ## Pull Requests I Reviewed for My Partner
 
-> TBD — add review records per PR as Lab 3 progresses (mirror of Lab 2 structure).
+Partner repo `itspxsh/toktickit` (Pawarisa Thongchua). I reviewed the full Lab 3 series — each review verified locally (tests, build, spec traceability) before verdict. All states below confirmed via GitHub API.
+
+| Partner PR | Scope | My Verdict |
+| :--- | :--- | :--- |
+| #36 (L3-01) Spec-DD/Test-DD contract | Engineering contract approval | Approved 2026-09-14 |
+| #46 (L3-02) Identity data foundation | Migration, seed, guarded test DB | Approved 2026-09-15 |
+| #47 (L3-03) Auth, sessions, first-login change | Login/session/must-change flow | Reviewed with line comments 2026-09-15 |
+| #48 (L3-04) Server authorization + Lab 2 regression | RBAC, requester regression | Changes requested → Approved 2026-09-17 |
+| #49 (L3-05) Staff queue | Search, filters, pagination | Approved 2026-09-17 |
+| #50 (L3-06) Staff detail, workflow, comms, notes | Claim/matrix/comments/notes | Changes requested → Approved 2026-09-17 |
+| #51 (L3-07) Admin user management | Users console + safety guards | Approved 2026-09-17 |
+| #52 (L3-08) Authenticated role shell + UI flows | Shell, queue/detail/admin UI | Changes requested → Approved 2026-09-18 |
+| #53 (L3-09) E2E, security, responsive, a11y evidence | Playwright journeys + evidence | Changes requested (×2) → Approved 2026-09-18 |
+| #54 (L3-10) Evidence + release readiness | Promotion, release gate | Changes requested (×2) → Approved 2026-09-19 |
+
+Notable findings I raised (all addressed by the partner before approval):
+- #48: unwired `requirePasswordChanged` gate (2 must-fix items) — verified fixed across `c4feea5`, `6146f18`, `34b771c` (gate on requester/reference/workflow routes, BR-04/AC-02).
+- #50: duplicate comment route (single canonical endpoint) + `CANCELLED → REOPENED` restricted to Admins (403 + tests) — verified on `c262490` (local: server 67/67, client 37/37).
+- #52: missing `RequesterRegression.test.tsx` + resolution-indication endpoint wiring — verified on `635b025` (local: client 51/51, server 76/76 re-run).
+- #53: broken `T-E2E-01` selector (`getByRole('link', /TKT-/)`) + missing live evidence for AC-18/T-E2E-04/05 — verified on `1c2226b` (local: discovery 9 tests, client 56/56).
+- #54: release-gate validation + 3 follow-up patches — verified on `1c45150` + `5782c0c`, then approved.
 
 ---
 
