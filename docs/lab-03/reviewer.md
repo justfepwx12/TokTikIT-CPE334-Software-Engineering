@@ -21,7 +21,7 @@ All Lab 3 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (revie
 | #82 (PR #119) | feature/7-comments-internal-notes | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 | #83 (PR #120) | feature/8-admin-user-management | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 | #84 (PR #121) | feature/9-lab3-automated-tests | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
-| #85 (PR #122) | feature/10-release-docs-pdf | Pawarisa Thongchua (@itspxsh) | Approved (merge pending) |
+| #85 (PR #122) | feature/10-release-docs-pdf | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 
 > Note: PR #111 (same spec branch) was closed superseded by PR #112/#113.
 
