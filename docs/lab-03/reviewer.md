@@ -2,7 +2,6 @@
 
 **Author:** Onsinee Chotchuangsakulchai — 67070501078 — GitHub: @justfepwx12  
 **Peer reviewer 1:** Pawarisa Thongchua — 67070501032 — GitHub: @itspxsh  
-**Peer reviewer 2:** Lappawat Laohasoot — 67070501039 — GitHub: @MacOverlorD
 
 All Lab 3 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (reviews verified via GitHub API).
 
