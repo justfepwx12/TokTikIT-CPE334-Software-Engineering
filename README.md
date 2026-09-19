@@ -188,12 +188,54 @@ Full contracts, validation rules, and error envelopes are documented in [`docs/l
 
 ---
 
+## Labs at a Glance
+
+| | Lab 1 — Foundation | Lab 2 — Requester Loop | Lab 3 — Role-Based Ticketing |
+|---|---|---|---|
+| Identity | Health check + category seed | Simulated requester (`x-requester-id` header) | Session cookie; 3 roles (Requester / IT Staff / Admin) |
+| Core flow | Scaffold, DB, reference data | Create → My Tickets → Detail + attachments (≤5 MB, soft-remove) | Queue, claim/assign, dual priorities, 8-state workflow, comments/notes, admin console |
+| Tests | `health`, `categories` suites | `client/tests/lab-02/`, `client/tests/e2e/flow.spec.ts` | `server/tests/lab-03/` (81), `client/tests/lab-03/` (UI), `client/tests/e2e/lab-03/` (18 E2E runs) |
+| Docs | `docs/lab-01/` | `docs/lab-02/` | `docs/lab-03/` (contract + reviewer + AI use) |
+
+---
+
 ## Tests
 
+Run everything (needs DB + seed from the Setup Guide):
+
 ```sh
-pnpm --filter server exec vitest run tests/lab-03/  # Supertest suites: 8 files / 81 tests
-pnpm --filter client exec vitest run                # Vitest UI suites: 17 files / 116 tests
-pnpm --filter client exec playwright test tests/e2e/lab-03/  # Playwright E2E: 18 runs (6 journeys x desktop/tablet/mobile)
+# Server — full API suite (root suites + lab-03)
+pnpm --filter server exec vitest run
+pnpm --filter server exec vitest run tests/lab-03/   # Lab 3 only: 8 files / 81 tests
+
+# Client — full UI suite (lab-01 + lab-02 + lab-03)
+pnpm --filter client exec vitest run                 # 17 files / 116 tests
+
+# E2E — full browser matrix (boots API + Vite itself)
+pnpm --filter client exec playwright test                        # everything
+pnpm --filter client exec playwright test tests/e2e/lab-03/     # Lab 3: 18 runs (6 journeys x desktop/tablet/mobile)
+pnpm --filter client exec playwright test --project=mobile tests/e2e/lab-03/  # one viewport
+```
+
+Targeted runs while developing:
+
+```sh
+pnpm --filter server exec vitest run tests/admin-api.test.ts           # one server file
+pnpm --filter client exec vitest run tests/lab-03/TicketQueue.test.tsx # one client file
+```
+
+---
+
+## Checks (run before every PR)
+
+```sh
+pnpm --filter server exec tsc --noEmit          # server typecheck
+pnpm --filter client exec tsc --noEmit          # client typecheck
+pnpm --filter client exec eslint src tests      # client lint
+pnpm --filter client build                      # production build (tsc -b + vite)
+pnpm --filter server exec prisma validate       # schema check
+pnpm --filter server exec prisma format --check # schema formatting
+git diff --check                                # no whitespace errors
 ```
 
 > `playwright test` boots both the Express API and Vite via `webServer` config, so no manual servers are needed. Requires a running PostgreSQL (`docker compose up -d`) with seed data. Per-spec accounts from the seed keep runs isolated; re-seed to restore passwords after E2E runs rotate them.
