@@ -190,12 +190,32 @@ Full contracts, validation rules, and error envelopes are documented in [`docs/l
 
 ## Labs at a Glance
 
-| | Lab 1 — Foundation | Lab 2 — Requester Loop | Lab 3 — Role-Based Ticketing |
-|---|---|---|---|
-| Identity | Health check + category seed | Simulated requester (`x-requester-id` header) | Session cookie; 3 roles (Requester / IT Staff / Admin) |
-| Core flow | Scaffold, DB, reference data | Create → My Tickets → Detail + attachments (≤5 MB, soft-remove) | Queue, claim/assign, dual priorities, 8-state workflow, comments/notes, admin console |
-| Tests | `health`, `categories` suites | `client/tests/lab-02/`, `client/tests/e2e/flow.spec.ts` | `server/tests/lab-03/` (81), `client/tests/lab-03/` (UI), `client/tests/e2e/lab-03/` (18 E2E runs) |
-| Docs | `docs/lab-01/` | `docs/lab-02/` | `docs/lab-03/` (contract + reviewer + AI use) |
+### Lab 1 — Foundation
+
+| Area | Details |
+|---|---|
+| Identity | Health check + category seed |
+| Core flow | Scaffold, DB, reference data |
+| Tests | `health`, `categories` suites |
+| Docs | `docs/lab-01/` |
+
+### Lab 2 — Requester Loop
+
+| Area | Details |
+|---|---|
+| Identity | Simulated requester (`x-requester-id` header) |
+| Core flow | Create → My Tickets → Detail + attachments (≤5 MB, soft-remove) |
+| Tests | `client/tests/lab-02/`, `client/tests/e2e/flow.spec.ts` |
+| Docs | `docs/lab-02/` |
+
+### Lab 3 — Role-Based Ticketing
+
+| Area | Details |
+|---|---|
+| Identity | Session cookie; 3 roles (Requester / IT Staff / Admin) |
+| Core flow | Queue, claim/assign, dual priorities, 8-state workflow, comments/notes, admin console |
+| Tests | `server/tests/lab-03/` (81), `client/tests/lab-03/` (UI), `client/tests/e2e/lab-03/` (18 E2E runs) |
+| Docs | `docs/lab-03/` (contract + reviewer + AI use) |
 
 ---
 
