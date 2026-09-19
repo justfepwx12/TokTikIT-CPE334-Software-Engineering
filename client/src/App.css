@@ -35,3 +35,18 @@
   background-color: #003620;
   border-color: #003620;
 }
+
+/* Stable table layout: fixed column widths so columns never shift when row
+   content gets shorter/longer, and no cell text ever wraps — overflow
+   truncates with an ellipsis (full text is on the cell title attribute). */
+.table-stable {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.table-stable th,
+.table-stable td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

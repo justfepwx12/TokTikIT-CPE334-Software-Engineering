@@ -95,7 +95,7 @@
   white-space: nowrap;
 }
 
-.changeRequesterButton {
+.logoutButton {
   padding: 6px 14px;
   border: 1px solid var(--color-on-primary);
   border-radius: 6px;
@@ -107,11 +107,11 @@
   white-space: nowrap;
 }
 
-.changeRequesterButton:hover {
+.logoutButton:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 
-.changeRequesterButton:focus-visible {
+.logoutButton:focus-visible {
   outline: 2px solid var(--color-on-primary);
   outline-offset: 2px;
 }
@@ -219,16 +219,6 @@
   margin-top: 8px;
   padding: 12px 8px 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-/* Simulation Mode banner (ui-spec.md §3.1) — Warning token: #B45309 on #FEF3C7 */
-.simulationBanner {
-  background: #FEF3C7;
-  color: #B45309;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  text-align: center;
-  padding: 10px 16px;
 }
 
 /* Tablet: 768px–991px */

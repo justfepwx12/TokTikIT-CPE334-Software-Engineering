@@ -5,7 +5,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
-import { RequesterProvider } from "../../src/context/RequesterContext";
+import { AuthProvider } from "../../src/context/AuthContext";
 import TicketDetail from "../../src/pages/TicketDetail";
 import * as api from "../../src/api";
 import type { TicketDetail as TicketDetailType } from "../../src/api";
@@ -44,7 +44,8 @@ const fakeTicket: TicketDetailType = {
   ticketNo: "TK-20260906-0042",
   title: "VPN drops every five minutes",
   description: "Cannot stay connected to the corporate VPN.",
-  priority: "HIGH",
+  requestedPriority: "HIGH",
+  itPriority: "HIGH",
   status: "IN_PROGRESS",
   createdAt: "2026-09-06T04:18:20.000Z",
   updatedAt: "2026-09-06T05:02:00.000Z",
@@ -60,14 +61,14 @@ const fakeTicket: TicketDetailType = {
 
 function renderDetail() {
   return render(
-    <RequesterProvider>
+    <AuthProvider>
       <MemoryRouter initialEntries={["/tickets/42"]}>
         <Routes>
           <Route path="/tickets/:id" element={<TicketDetail />} />
           <Route path="/my-tickets" element={<div>My Tickets Page</div>} />
         </Routes>
       </MemoryRouter>
-    </RequesterProvider>
+    </AuthProvider>
   );
 }
 
@@ -75,13 +76,22 @@ beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
 
-  localStorage.clear();
-  localStorage.setItem(
-    "toktickit.selectedRequester",
-    JSON.stringify({ id: 2, name: "Jane Doe" })
-  );
+  // Authenticated session fixture (replaces the Lab 2 simulated selector).
+  vi.spyOn(api, "getSessionUser").mockResolvedValue({
+    user: {
+      id: 2,
+      name: "Jane Doe",
+      email: "jane@toktikit.com",
+      role: "REQUESTER",
+      isActive: true,
+      mustChangePassword: false,
+    },
+  });
 
   vi.spyOn(api, "getTicket").mockResolvedValue(fakeTicket);
+  // PublicComments section (Issue 7) fetches inside TicketDetail — keep it
+  // quiet so these tests stay focused on the detail blocks.
+  vi.spyOn(api, "getComments").mockResolvedValue({ comments: [] });
 });
 
 describe("TicketDetail", () => {
@@ -100,7 +110,7 @@ describe("TicketDetail", () => {
     expect(screen.getByText("HIGH")).toBeDefined();
     expect(screen.getByText("IN_PROGRESS")).toBeDefined();
 
-    expect(api.getTicket).toHaveBeenCalledWith(42, 2);
+    expect(api.getTicket).toHaveBeenCalledWith(42);
 
     expect(screen.getByTestId("attachment-list")).toBeDefined();
     expect(screen.getByText("screenshot.png")).toBeDefined();
@@ -133,7 +143,7 @@ describe("TicketDetail", () => {
     await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
 
     fireEvent.click(screen.getByTestId("download-2"));
-    await waitFor(() => expect(downloadMock).toHaveBeenCalledWith(2, 2));
+    await waitFor(() => expect(downloadMock).toHaveBeenCalledWith(2));
     expect(triggerMock).toHaveBeenCalledWith(blob, "report.pdf");
     expect(screen.queryByTestId("download-error")).toBeNull();
   });
@@ -200,16 +210,16 @@ describe("TicketDetail", () => {
     });
     fireEvent.click(screen.getByTestId("confirm-remove"));
 
-    await waitFor(() => expect(removeMock).toHaveBeenCalledWith(1, "Contains credentials", 2));
+    await waitFor(() => expect(removeMock).toHaveBeenCalledWith(1, "Contains credentials"));
     await waitFor(() => expect(screen.queryByTestId("removal-modal")).toBeNull());
     await waitFor(() => expect(screen.getByTestId("removed-badge-1")).toBeDefined());
     expect(screen.queryByTestId("download-1")).toBeNull();
   });
 
-  it("passes the active requester id as the ownership scope", async () => {
+  it("scopes the fetch server-side: ticket id only, no identity param (BR-04)", async () => {
     renderDetail();
     await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
-    expect(api.getTicket).toHaveBeenCalledWith(42, 2);
+    expect(api.getTicket).toHaveBeenCalledWith(42);
   });
 
   it("shows the no-attachments message when the ticket has none", async () => {
@@ -235,15 +245,38 @@ describe("TicketDetail", () => {
 
   it("shows an error for an invalid ticket id", async () => {
     render(
-      <RequesterProvider>
+      <AuthProvider>
         <MemoryRouter initialEntries={["/tickets/abc"]}>
           <Routes>
             <Route path="/tickets/:id" element={<TicketDetail />} />
           </Routes>
         </MemoryRouter>
-      </RequesterProvider>
+      </AuthProvider>
     );
     await waitFor(() => expect(screen.getByTestId("ticket-detail-error")).toBeDefined());
     expect(screen.getByText("Invalid ticket id.")).toBeDefined();
+  });
+
+  it("offers Problem Appears Resolved on an active ticket (AC-20)", async () => {
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
+    expect(screen.getByTestId("resolve-intent-button").textContent).toContain("Problem Appears Resolved");
+  });
+
+  it("posts resolve-intent and reflects the RESOLVED status", async () => {
+    const intentMock = vi.spyOn(api, "triggerResolveIntent").mockResolvedValue({ id: 42, status: "RESOLVED" });
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId("resolve-intent-button")).toBeDefined());
+
+    fireEvent.click(screen.getByTestId("resolve-intent-button"));
+    await waitFor(() => expect(intentMock).toHaveBeenCalledWith(42));
+    await waitFor(() => expect(screen.getByText("RESOLVED")).toBeDefined());
+  });
+
+  it("hides the intent action on a cancelled ticket", async () => {
+    vi.spyOn(api, "getTicket").mockResolvedValue({ ...fakeTicket, status: "CANCELLED" });
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId("ticket-title")).toBeDefined());
+    expect(screen.queryByTestId("resolve-intent-button")).toBeNull();
   });
 });

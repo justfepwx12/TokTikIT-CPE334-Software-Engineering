@@ -2,39 +2,41 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { getPrisma } from '../src/prisma.js';
+import type { AuthRequest } from '../src/auth.middleware.js';
 
 const listQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   categoryId: z.coerce.number().int().positive().optional(),
   systemId: z.coerce.number().int().positive().optional(),
-  status: z.enum(['PENDING', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).optional(),
+  status: z
+    .enum(['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CLOSED', 'REOPENED', 'CANCELLED'])
+    .optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-  sort: z.enum(['createdAt', 'priority']).default('createdAt'),
+  sort: z.enum(['createdAt', 'requestedPriority']).default('createdAt'),
   order: z.enum(['asc', 'desc']).default('desc'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(10),
 });
 
-function requesterIdFromHeader(req: Request): number | null {
-  const raw = req.headers['x-requester-id'];
-  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) return null;
-  const id = Number.parseInt(raw, 10);
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
-
 export const listTickets = async (req: Request, res: Response) => {
   try {
-    const requesterId = requesterIdFromHeader(req);
-    if (requesterId === null) {
+    // BR-03/BR-04: identity comes solely from the session. Any
+    // client-supplied requesterId (header or query) is ignored.
+    const sessionUser = (req as AuthRequest).user;
+    if (!sessionUser) {
       return res.status(401).json({
-        error: { code: 'UNAUTHORIZED', message: 'Missing or invalid x-requester-id header' },
+        error: { code: 'UNAUTHORIZED', message: 'Missing or invalid session' },
       });
     }
+    const requesterId = sessionUser.id;
 
     const prisma = getPrisma();
 
-    const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
-    if (!requester || !requester.isActive) {
+    const requester = await prisma.user.findUnique({
+      where: { id: requesterId },
+      select: { id: true, role: true, isActive: true },
+    });
+    if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {
       return res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Requester is inactive or does not exist' },
       });
@@ -55,11 +57,12 @@ export const listTickets = async (req: Request, res: Response) => {
       ...(query.categoryId ? { categoryId: query.categoryId } : {}),
       ...(query.systemId ? { systemId: query.systemId } : {}),
       ...(query.status ? { status: query.status } : {}),
-      ...(query.priority ? { priority: query.priority } : {}),
+      // The Requester filters by what they submitted (Requested Priority).
+      ...(query.priority ? { requestedPriority: query.priority } : {}),
     };
     const orderBy =
-      query.sort === 'priority'
-        ? { priority: query.order }
+      query.sort === 'requestedPriority'
+        ? { requestedPriority: query.order }
         : { createdAt: query.order };
 
     const skip = (query.page - 1) * query.limit;
@@ -75,7 +78,8 @@ export const listTickets = async (req: Request, res: Response) => {
           ticketNo: true,
           title: true,
           description: true,
-          priority: true,
+          requestedPriority: true,
+          itPriority: true,
           status: true,
           createdAt: true,
           category: { select: { id: true, name: true } },

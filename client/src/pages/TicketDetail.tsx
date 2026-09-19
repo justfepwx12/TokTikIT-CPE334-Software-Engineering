@@ -7,32 +7,19 @@ import {
   downloadAttachment,
   removeAttachment,
   triggerDownload,
-  type Status,
-  type Priority,
+  triggerResolveIntent,
   type TicketDetail as TicketDetailType,
   type TicketDetailAttachment,
 } from "../api";
-import { useRequester } from "../hooks/useRequester";
+import { useAuth } from "../hooks/useAuth";
 import Badge from "../components/Badge";
+import { STATUS_COLOR, PRIORITY_COLOR } from "../utils/badgeColors.js";
 import Button from "../components/Button";
+import PublicComments from "../components/PublicComments";
 import ValidationMessage from "../components/ValidationMessage";
 
 const REMOVAL_REASON_MIN = 3;
 const REMOVAL_REASON_MAX = 200;
-
-const STATUS_COLOR: Record<Status, "gray" | "blue" | "green"> = {
-  PENDING: "gray",
-  IN_PROGRESS: "blue",
-  RESOLVED: "green",
-  CLOSED: "gray",
-};
-
-const PRIORITY_COLOR: Record<Priority, "gray" | "yellow" | "red"> = {
-  LOW: "gray",
-  MEDIUM: "yellow",
-  HIGH: "red",
-  URGENT: "red",
-};
 
 function formatDate(value: string): string {
   const d = new Date(value);
@@ -130,7 +117,9 @@ function AttachmentRow({
 
 export default function TicketDetail() {
   const { id } = useParams<{ id: string }>();
-  const { requester } = useRequester();
+  // Session owns the identity (BR-04) — user is only used as a signed-in
+  // gate; all API calls scope to the session server-side.
+  const { user } = useAuth();
 
   const [ticket, setTicket] = useState<TicketDetailType | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -142,11 +131,12 @@ export default function TicketDetail() {
   const [removalReason, setRemovalReason] = useState("");
   const [removalError, setRemovalError] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [intentError, setIntentError] = useState<string | null>(null);
+  const [isIntentBusy, setIsIntentBusy] = useState(false);
   const removalModalRef = useRef<HTMLDivElement>(null);
 
   const isModalOpen = removalTarget !== null;
 
-  const requesterId = requester?.id;
   const ticketId = Number(id);
   const idIsInvalid = !Number.isSafeInteger(ticketId) || ticketId <= 0;
 
@@ -188,7 +178,7 @@ export default function TicketDetail() {
   }, [removalTarget, isRemoving, closeRemoveModal]);
 
   useEffect(() => {
-    if (idIsInvalid || requesterId === undefined) return;
+    if (idIsInvalid || !user) return;
 
     let cancelled = false;
 
@@ -196,7 +186,7 @@ export default function TicketDetail() {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await getTicket(ticketId, requesterId);
+        const data = await getTicket(ticketId);
         if (cancelled) return;
         setTicket(data);
       } catch (err) {
@@ -212,18 +202,33 @@ export default function TicketDetail() {
     return () => {
       cancelled = true;
     };
-  }, [id, requesterId, retryKey, ticketId, idIsInvalid]);
+  }, [id, user, retryKey, ticketId, idIsInvalid]);
 
   const handleDownload = async (attachmentId: number) => {
-    if (requesterId === undefined) return;
+    if (!user) return;
     setDownloadError(null);
     try {
-      const { blob, filename } = await downloadAttachment(attachmentId, requesterId);
+      const { blob, filename } = await downloadAttachment(attachmentId);
       triggerDownload(blob, filename);
     } catch (err) {
       setDownloadError(
         err instanceof Error ? err.message : "Failed to download attachment."
       );
+    }
+  };
+  // Requester intent action (ui-spec §7, BR-16, AD-02): the requester's only
+  // status-affecting control. Hidden while CANCELLED.
+  const handleResolveIntent = async () => {
+    if (!user || isIntentBusy) return;
+    setIsIntentBusy(true);
+    setIntentError(null);
+    try {
+      const res = await triggerResolveIntent(ticketId);
+      setTicket((prev) => (prev ? { ...prev, status: res.status } : prev));
+    } catch (err) {
+      setIntentError(err instanceof Error ? err.message : "Could not update the ticket.");
+    } finally {
+      setIsIntentBusy(false);
     }
   };
 
@@ -234,8 +239,7 @@ export default function TicketDetail() {
     setIsRemoving(false);
   };
 
-  const handleConfirmRemove = async () => {
-    if (!removalTarget || requesterId === undefined || isRemoving) return;
+  const handleConfirmRemove = async () => {    if (!removalTarget || !user || isRemoving) return;
 
     const reason = removalReason.trim();
     if (reason.length < REMOVAL_REASON_MIN || reason.length > REMOVAL_REASON_MAX) {
@@ -248,7 +252,7 @@ export default function TicketDetail() {
     setIsRemoving(true);
     setRemovalError(null);
     try {
-      await removeAttachment(removalTarget.id, reason, requesterId);
+      await removeAttachment(removalTarget.id, reason);
       const removedId = removalTarget.id;
       setTicket((prev) =>
         prev
@@ -310,6 +314,18 @@ export default function TicketDetail() {
 
   if (!ticket) return null;
 
+  const intentLabel =
+    ticket.status === "RESOLVED" || ticket.status === "CLOSED"
+      ? "Problem Still Occurs / Reopen"
+      : "Problem Appears Resolved";
+  const showIntent =
+    ticket.status === "NEW" ||
+    ticket.status === "OPEN" ||
+    ticket.status === "IN_PROGRESS" ||
+    ticket.status === "WAITING_FOR_REQUESTER" ||
+    ticket.status === "RESOLVED" ||
+    ticket.status === "CLOSED";
+
   return (
     <div className="container py-4" style={{ maxWidth: "820px" }}>
       <Link to="/my-tickets" className="d-inline-flex align-items-center text-decoration-none text-secondary mb-3">
@@ -329,8 +345,8 @@ export default function TicketDetail() {
               </div>
             </div>
             <div className="d-flex gap-2">
-              <Badge color={PRIORITY_COLOR[ticket.priority]} data-testid="ticket-priority">
-                {ticket.priority}
+              <Badge color={PRIORITY_COLOR[ticket.requestedPriority]} data-testid="ticket-priority">
+                {ticket.requestedPriority}
               </Badge>
               <Badge color={STATUS_COLOR[ticket.status]}>{ticket.status}</Badge>
             </div>
@@ -348,6 +364,24 @@ export default function TicketDetail() {
             </div>
           </div>
           <ReadOnlyField label="Requester" value={ticket.requester.name} />
+
+          {showIntent && (
+            <div className="mt-3" data-testid="resolve-intent-block">
+              {intentError && (
+                <div data-testid="intent-error" role="alert" className="alert alert-danger py-2 small">
+                  {intentError}
+                </div>
+              )}
+              <Button
+                type="button"
+                data-testid="resolve-intent-button"
+                onClick={() => void handleResolveIntent()}
+                disabled={isIntentBusy}
+              >
+                {isIntentBusy ? "Updating…" : intentLabel}
+              </Button>
+            </div>
+          )}
 
           <div className="mt-4">
             <h3 className="h6 fw-bold text-dark mb-3">Attachments ({ticket.attachments.length})</h3>
@@ -374,6 +408,12 @@ export default function TicketDetail() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Public Comments (BR-17). Internal Notes are never rendered or fetched
+          for a Requester (BR-18) — there is no notes section here at all. */}
+      <div className="mt-3">
+        <PublicComments ticketId={ticket.id} />
       </div>
 
       {isModalOpen &&

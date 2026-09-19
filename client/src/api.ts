@@ -22,9 +22,17 @@ export interface SystemStatus {
   categories: Category[];
 }
 
-export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-export type Status = "PENDING" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
-export type SortField = "createdAt" | "priority";
+export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type TicketStatus =
+  | "NEW"
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "WAITING_FOR_REQUESTER"
+  | "RESOLVED"
+  | "CLOSED"
+  | "REOPENED"
+  | "CANCELLED";
+export type SortField = "createdAt" | "requestedPriority";
 export type SortOrder = "asc" | "desc";
 
 export interface Ticket {
@@ -32,8 +40,9 @@ export interface Ticket {
   ticketNo: string;
   title: string;
   description: string;
-  priority: Priority;
-  status: Status;
+  requestedPriority: TicketPriority;
+  itPriority: TicketPriority;
+  status: TicketStatus;
   categoryId: number;
   systemId: number;
   requesterId: number;
@@ -46,7 +55,9 @@ export interface CreateTicketPayload {
   description: string;
   categoryId: number;
   systemId: number;
-  priority: Priority;
+  // BR-14: the Requester always submits a Requested Priority; the server
+  // initializes IT Priority as a copy of it.
+  priority: TicketPriority;
 }
 
 export interface TicketSummary {
@@ -54,8 +65,9 @@ export interface TicketSummary {
   ticketNo: string;
   title: string;
   description: string;
-  priority: Priority;
-  status: Status;
+  requestedPriority: TicketPriority;
+  itPriority: TicketPriority;
+  status: TicketStatus;
   createdAt: string;
   category: Category;
   system: RelatedSystem;
@@ -97,8 +109,9 @@ export interface TicketDetail {
   ticketNo: string;
   title: string;
   description: string;
-  priority: Priority;
-  status: Status;
+  requestedPriority: TicketPriority;
+  itPriority: TicketPriority;
+  status: TicketStatus;
   createdAt: string;
   updatedAt: string;
   category: Category;
@@ -112,12 +125,110 @@ export interface TicketsResponse {
   pagination: Pagination;
 }
 
+// ---------------------------------------------------------------------------
+// IT Staff queue (api-spec §2, Issue #96). Sortable by Updated / Status /
+// (IT) Priority; ownerId 0 = unassigned.
+// ---------------------------------------------------------------------------
+
+export type QueueSortField = "updatedAt" | "status" | "priority";
+
+export interface StaffTicketQuery {
+  search?: string;
+  status?: TicketStatus;
+  priority?: TicketPriority;
+  categoryId?: number;
+  systemId?: number;
+  ownerId?: number;
+  sort?: QueueSortField;
+  order?: SortOrder;
+  page?: number;
+  limit?: number;
+}
+
+export interface StaffTicket {
+  id: number;
+  ticketNo: string;
+  title: string;
+  requestedPriority: TicketPriority;
+  itPriority: TicketPriority;
+  status: TicketStatus;
+  createdAt: string;
+  updatedAt: string;
+  category: Category;
+  system: RelatedSystem;
+  requester: { id: number; name: string };
+  owner: { id: number; name: string } | null;
+}
+
+export interface StaffTicketsResponse {
+  tickets: StaffTicket[];
+  pagination: Pagination;
+}
+
+export function getStaffTickets(query: StaffTicketQuery): Promise<StaffTicketsResponse> {
+  return request<StaffTicketsResponse>(`/api/staff/tickets${buildQueryString(query)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Staff ticket operations (api-spec §3, Issues #98–#100).
+// ---------------------------------------------------------------------------
+
+export interface StaffTicketDetail extends StaffTicket {
+  description: string;
+  attachments: TicketDetailAttachment[];
+}
+
+export function getStaffTicket(ticketId: number): Promise<StaffTicketDetail> {
+  return request<StaffTicketDetail>(`/api/staff/tickets/${ticketId}`);
+}
+
+export function claimTicket(ticketId: number): Promise<{
+  id: number;
+  ownerId: number;
+  owner: { id: number; name: string };
+}> {
+  return request(`/api/tickets/${ticketId}/claim`, { method: "POST" });
+}
+
+export function assignTicket(
+  ticketId: number,
+  ownerId: number
+): Promise<{ id: number; ownerId: number; owner: { id: number; name: string } }> {
+  return request(`/api/tickets/${ticketId}/assign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ownerId }),
+  });
+}
+
+export function setItPriority(
+  ticketId: number,
+  itPriority: TicketPriority
+): Promise<{ id: number; requestedPriority: TicketPriority; itPriority: TicketPriority }> {
+  return request(`/api/tickets/${ticketId}/it-priority`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ itPriority }),
+  });
+}
+
+export function setTicketStatus(
+  ticketId: number,
+  status: TicketStatus
+): Promise<{ id: number; status: TicketStatus }> {
+  return request(`/api/tickets/${ticketId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+}
+
 export interface TicketQuery {
   search?: string;
   categoryId?: number;
   systemId?: number;
-  status?: Status;
-  priority?: Priority;
+  status?: TicketStatus;
+  priority?: TicketPriority;
   sort?: SortField;
   order?: SortOrder;
   page?: number;
@@ -126,11 +237,17 @@ export interface TicketQuery {
 
 async function loadErrorMessage(res: Response): Promise<string> {
   const body = await res.json().catch(() => null);
-  return body?.error?.message ?? body?.error ?? `Request failed with status ${res.status}`;
+  const err = body?.error;
+  if (typeof err === "string") return err;
+  if (err && typeof err.message === "string") return err.message;
+  return `Request failed with status ${res.status}`;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, init);
+  // Session cookie auth (BR-04): the server identifies the user from the
+  // HTTP-only session cookie, so every request must include credentials.
+  // No identity header is sent — the legacy x-requester-id is gone (Issue #95).
+  const res = await fetch(`${API_URL}${path}`, { credentials: "include", ...init });
   if (!res.ok) {
     throw new Error(await loadErrorMessage(res));
   }
@@ -138,17 +255,57 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function checkSystem(): Promise<SystemStatus> {
-  const res = await fetch(`${API_URL}/api/health`);
+  const res = await fetch(`${API_URL}/api/health`, { credentials: "include" });
   if (!res.ok) {
     throw new Error(`Health check failed with status: ${res.status}`);
   }
   const healthData = await res.json();
-  const catRes = await fetch(`${API_URL}/api/categories`);
+  const catRes = await fetch(`${API_URL}/api/categories`, { credentials: "include" });
   const categories = catRes.ok ? await catRes.json() : [];
   return {
     online: healthData.status === "ok",
     categories,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Authentication API (Lab 3 Issue 3, api-spec §1). Session-cookie based
+// (BR-04): identity comes from the server session, never from a header.
+// ---------------------------------------------------------------------------
+
+export type UserRole = "REQUESTER" | "IT_STAFF" | "ADMIN";
+
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  mustChangePassword: boolean;
+}
+
+export function getSessionUser(): Promise<{ user: AuthUser }> {
+  return request<{ user: AuthUser }>("/api/auth/me");
+}
+
+export function loginUser(email: string, password: string): Promise<{ user: AuthUser }> {
+  return request<{ user: AuthUser }>("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function logoutUser(): Promise<{ message: string }> {
+  return request<{ message: string }>("/api/auth/logout", { method: "POST" });
+}
+
+export function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+  return request<{ message: string }>("/api/auth/change-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
 }
 
 export function getCategories(): Promise<Category[]> {
@@ -159,21 +316,17 @@ export function getSystems(): Promise<RelatedSystem[]> {
   return request<RelatedSystem[]>("/api/systems");
 }
 
-export function createTicket(
-  payload: CreateTicketPayload,
-  requesterId: number
-): Promise<Ticket> {
+export function createTicket(payload: CreateTicketPayload): Promise<Ticket> {
   return request<Ticket>("/api/tickets", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-requester-id": String(requesterId),
     },
     body: JSON.stringify(payload),
   });
 }
 
-function buildQueryString(query: TicketQuery): string {
+function buildQueryString(query: object): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === null || value === "") continue;
@@ -183,31 +336,19 @@ function buildQueryString(query: TicketQuery): string {
   return qs ? `?${qs}` : "";
 }
 
-export function getTickets(
-  query: TicketQuery,
-  requesterId: number
-): Promise<TicketsResponse> {
-  return request<TicketsResponse>(`/api/tickets${buildQueryString(query)}`, {
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
-  });
+export function getTickets(query: TicketQuery): Promise<TicketsResponse> {
+  return request<TicketsResponse>(`/api/tickets${buildQueryString(query)}`);
 }
 
-export function getTicket(ticketId: number, requesterId: number): Promise<TicketDetail> {
-  return request<TicketDetail>(`/api/tickets/${ticketId}`, {
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
-  });
+export function getTicket(ticketId: number): Promise<TicketDetail> {
+  return request<TicketDetail>(`/api/tickets/${ticketId}`);
 }
 
 // POST /api/attachments/upload — multipart upload linked to an owned ticket.
 // Note: no Content-Type header is set; the browser supplies the boundary.
 export async function uploadAttachment(
   ticketId: number,
-  file: File,
-  requesterId: number
+  file: File
 ): Promise<AttachmentUploadResponse> {
   const formData = new FormData();
   formData.append("ticketId", String(ticketId));
@@ -215,9 +356,7 @@ export async function uploadAttachment(
 
   const res = await fetch(`${API_URL}/api/attachments/upload`, {
     method: "POST",
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
+    credentials: "include",
     body: formData,
   });
   if (!res.ok) {
@@ -229,13 +368,10 @@ export async function uploadAttachment(
 // GET /api/attachments/:id/download — returns the binary content. Callers
 // trigger a browser download via triggerDownload(blob, filename).
 export async function downloadAttachment(
-  attachmentId: number,
-  requesterId: number
+  attachmentId: number
 ): Promise<{ blob: Blob; filename: string }> {
   const res = await fetch(`${API_URL}/api/attachments/${attachmentId}/download`, {
-    headers: {
-      "x-requester-id": String(requesterId),
-    },
+    credentials: "include",
   });
   if (!res.ok) {
     throw new Error(await loadErrorMessage(res));
@@ -264,15 +400,141 @@ export function triggerDownload(blob: Blob, filename: string): void {
 // PATCH /api/attachments/:id/remove — soft-removal with mandatory reason.
 export function removeAttachment(
   attachmentId: number,
-  removalReason: string,
-  requesterId: number
+  removalReason: string
 ): Promise<AttachmentRemovalResponse> {
   return request<AttachmentRemovalResponse>(`/api/attachments/${attachmentId}/remove`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      "x-requester-id": String(requesterId),
     },
     body: JSON.stringify({ removalReason }),
+  });
+}
+// ---------------------------------------------------------------------------
+// Administrator User Management (Lab 3 Issue 8, api-spec §5). Admin only.
+// No user is ever deleted (BR-12): deactivation is the only lifecycle end.
+// ---------------------------------------------------------------------------
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
+}
+
+export interface AdminUserQuery {
+  search?: string;
+  role?: UserRole;
+}
+
+export interface CreateAdminUserPayload {
+  name: string;
+  email: string;
+  role: UserRole;
+  password: string;
+  isActive?: boolean;
+}
+
+export interface UpdateAdminUserPayload {
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  isActive?: boolean;
+}
+
+export function getAdminUsers(query: AdminUserQuery = {}): Promise<{ users: AdminUser[] }> {
+  return request<{ users: AdminUser[] }>(`/api/admin/users${buildQueryString(query)}`);
+}
+
+export function createAdminUser(payload: CreateAdminUserPayload): Promise<{ user: AdminUser }> {
+  return request<{ user: AdminUser }>("/api/admin/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminUser(
+  userId: number,
+  payload: UpdateAdminUserPayload
+): Promise<{ user: AdminUser }> {
+  return request<{ user: AdminUser }>(`/api/admin/users/${userId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function resetAdminPassword(userId: number, newPassword: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/api/admin/users/${userId}/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ newPassword }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Communication engine (Lab 3 Issue 7, api-spec §4). Append-only timelines:
+// Public Comments (owning Requester + IT Staff/Admin) and Internal Notes
+// (IT Staff/Admin only — the requester UI never fetches them, BR-18).
+// ---------------------------------------------------------------------------
+
+export interface CommentAuthor {
+  id: number;
+  name: string;
+  role: UserRole;
+}
+export interface TicketComment {
+  id: number;
+  body: string;
+  author: CommentAuthor;
+  createdAt: string;
+}
+
+export interface InternalNote {
+  id: number;
+  body: string;
+  author: CommentAuthor;
+  createdAt: string;
+}
+
+// Client mirrors the server contract (api-spec §4, BR-20): 1–2000 chars
+// after trim. The server is authoritative; this only gives instant feedback.
+export const COMMENT_BODY_MIN = 1;
+export const COMMENT_BODY_MAX = 2000;
+
+export function getComments(ticketId: number): Promise<{ comments: TicketComment[] }> {
+  return request<{ comments: TicketComment[] }>(`/api/tickets/${ticketId}/comments`);
+}
+
+export function postComment(ticketId: number, body: string): Promise<TicketComment> {
+  return request<TicketComment>(`/api/tickets/${ticketId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
+  });
+}
+
+export function getNotes(ticketId: number): Promise<{ notes: InternalNote[] }> {
+  return request<{ notes: InternalNote[] }>(`/api/tickets/${ticketId}/notes`);
+}
+
+export function postNote(ticketId: number, body: string): Promise<InternalNote> {
+  return request<InternalNote>(`/api/tickets/${ticketId}/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
+  });
+}
+// POST /api/tickets/:id/resolve-intent — the requester's only
+// status-affecting action (ui-spec §7, BR-16, AD-02). State-dependent:
+// NEW/OPEN/IN_PROGRESS/WAITING_FOR_REQUESTER → RESOLVED,
+// RESOLVED/CLOSED → REOPENED.
+export function triggerResolveIntent(ticketId: number): Promise<{ id: number; status: TicketStatus }> {
+  return request<{ id: number; status: TicketStatus }>(`/api/tickets/${ticketId}/resolve-intent`, {
+    method: "POST",
   });
 }

@@ -5,6 +5,7 @@ import path from 'node:path';
 import multer from 'multer';
 import { z } from 'zod';
 import { getPrisma } from '../src/prisma.js';
+import type { AuthRequest } from '../src/auth.middleware.js';
 
 // BR-20: files are always stored under a fixed, non-user-controlled uploads
 // directory using server-generated UUID storage names. The client-supplied
@@ -38,25 +39,23 @@ if (!existsSync(UPLOADS_DIR)) {
 }
 
 async function resolveActiveRequester(req: Request, res: Response): Promise<number | null> {
-  const raw = req.headers['x-requester-id'];
-  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
+  // BR-03/BR-04: identity comes solely from the session. Any
+  // client-supplied requesterId (header or body) is ignored.
+  const sessionUser = (req as AuthRequest).user;
+  if (!sessionUser) {
     res.status(401).json({
-      error: { code: 'UNAUTHORIZED', message: 'Missing or invalid x-requester-id header' },
+      error: { code: 'UNAUTHORIZED', message: 'Missing or invalid session' },
     });
     return null;
   }
-
-  const requesterId = Number.parseInt(raw, 10);
-  if (!Number.isSafeInteger(requesterId) || requesterId <= 0) {
-    res.status(401).json({
-      error: { code: 'UNAUTHORIZED', message: 'Missing or invalid x-requester-id header' },
-    });
-    return null;
-  }
+  const requesterId = sessionUser.id;
 
   const prisma = getPrisma();
-  const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
-  if (!requester || !requester.isActive) {
+  const requester = await prisma.user.findUnique({
+    where: { id: requesterId },
+    select: { id: true, role: true, isActive: true },
+  });
+  if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'Requester is inactive or does not exist' },
     });

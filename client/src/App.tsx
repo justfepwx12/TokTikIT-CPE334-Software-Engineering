@@ -2,12 +2,18 @@ import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { checkSystem, type Category } from "./api.js";
 import Header from "./components/Header";
-import { RequesterProvider } from "./context/RequesterContext";
-import { useRequester } from "./hooks/useRequester";
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./hooks/useAuth";
 import MyTickets from "./pages/MyTickets";
-import RequesterSelection from "./pages/RequesterSelection.js";
+import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ChangePassword from "./pages/ChangePassword";
 import CreateTicket from "./pages/CreateTicket";
 import TicketDetail from "./pages/TicketDetail";
+import StaffTicketDetail from "./pages/StaffTicketDetail";
+import TicketQueue from "./pages/TicketQueue";
+import UserManagement from "./pages/UserManagement";
+import type { UserRole } from "./api.js";
 
 import "./App.css";
 
@@ -109,31 +115,88 @@ function SystemStatusHome() {
   );
 }
 
-// ป้องกัน Route: เด้งกลับไปหน้าเลือก Requester ทันทีถ้ายังไม่มี (FR-03)
+// Auth guard: no session → /login; mustChangePassword → /change-password
+// (BR-03 — cannot be routed around). Mirrors the server gate.
 function ProtectedRoute({ children }: { children: React.JSX.Element }) {
-  const { requester, isLoading } = useRequester();
+  const { user, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) return null;
 
-  if (!requester) {
+  if (!user) {
     const redirect = encodeURIComponent(location.pathname);
-    return <Navigate to={`/select-requester?redirect=${redirect}`} replace />;
+    return <Navigate to={`/login?redirect=${redirect}`} replace />;
+  }
+  if (user.mustChangePassword && location.pathname !== "/change-password") {
+    return <Navigate to="/change-password" replace />;
   }
   return children;
 }
 
+// Role guard on top of auth (ui-spec §2.2): visual only — the server
+// enforces. Disallowed roles get a 403 screen instead of the page.
+function RequireRole({ roles, children }: { roles: UserRole[]; children: React.JSX.Element }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return null;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!roles.includes(user.role)) {
+    return (
+      <div className="container py-5 text-center" data-testid="role-forbidden">
+        <h2 className="h4 fw-bold text-dark mb-2">403 — Forbidden</h2>
+        <p className="text-secondary">Your role cannot access this page.</p>
+      </div>
+    );
+  }
+  return children;
+}
+
+// Ticket detail resolves by role: staff/admin get the operational view,
+// requesters get their read-only view (Issue #100).
+function TicketDetailRoute() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return <div className="container py-5 text-center text-secondary">Loading ticket…</div>;
+  }
+  if (user && (user.role === "IT_STAFF" || user.role === "ADMIN")) {
+    return <StaffTicketDetail />;
+  }
+  return <TicketDetail />;
+}
+
+// Header is session-driven (BR-04): no signed-in user → no nav chrome.
+// This keeps public routes like /login and /forgot-password free of nav.
+function AppHeader() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <Header />;
+}
+
 function App() {
   return (
-    <RequesterProvider>
-      <Header />
+    <AuthProvider>
+      <AppHeader />
       <Routes>
-        <Route path="/" element={<SystemStatusHome />} />
-        <Route path="/select-requester" element={<RequesterSelection />} />
-        
+        <Route path="/" element={
+          <ProtectedRoute>
+            <SystemStatusHome />
+          </ProtectedRoute>
+        } />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/my-tickets" element={
           <ProtectedRoute>
             <MyTickets />
+          </ProtectedRoute>
+        } />
+        <Route path="/queue" element={
+          <ProtectedRoute>
+            <RequireRole roles={["IT_STAFF", "ADMIN"]}>
+              <TicketQueue />
+            </RequireRole>
           </ProtectedRoute>
         } />
         <Route path="/create-ticket" element={
@@ -143,11 +206,19 @@ function App() {
         } />
         <Route path="/tickets/:id" element={
           <ProtectedRoute>
-            <TicketDetail />
+            <TicketDetailRoute />
           </ProtectedRoute>
         } />
+        <Route path="/users" element={
+          <ProtectedRoute>
+            <RequireRole roles={["ADMIN"]}>
+              <UserManagement />
+            </RequireRole>
+          </ProtectedRoute>
+        } />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </RequesterProvider>
+    </AuthProvider>
   );
 }
 

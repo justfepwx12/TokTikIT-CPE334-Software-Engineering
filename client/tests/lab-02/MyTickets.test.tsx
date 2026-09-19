@@ -7,7 +7,7 @@ import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/re
 import { BrowserRouter } from "react-router-dom";
 import * as api from "../../src/api";
 import MyTickets from "../../src/pages/MyTickets";
-import { RequesterProvider } from "../../src/context/RequesterContext";
+import { AuthProvider } from "../../src/context/AuthContext";
 
 vi.mock("lucide-react", () => ({
   ChevronLeft: () => null,
@@ -32,8 +32,9 @@ const TICKETS: api.TicketSummary[] = [
     ticketNo: "TK-20260906-0001",
     title: "VPN drops every 5 minutes",
     description: "Cannot stay connected",
-    priority: "HIGH",
-    status: "PENDING",
+    requestedPriority: "HIGH",
+    itPriority: "HIGH",
+    status: "NEW",
     createdAt: "2026-09-06T04:18:20.000Z",
     category: { id: 3, name: "Network" },
     system: { id: 3, name: "VPN Service" },
@@ -43,7 +44,8 @@ const TICKETS: api.TicketSummary[] = [
     ticketNo: "TK-20260906-0002",
     title: "Printer jams on third floor",
     description: "Paper stuck",
-    priority: "LOW",
+    requestedPriority: "LOW",
+    itPriority: "MEDIUM",
     status: "IN_PROGRESS",
     createdAt: "2026-09-05T09:10:00.000Z",
     category: { id: 3, name: "Network" },
@@ -62,6 +64,17 @@ describe("MyTickets Component", () => {
     vi.spyOn(api, "getCategories").mockResolvedValue(CATEGORIES);
     vi.spyOn(api, "getSystems").mockResolvedValue(SYSTEMS);
     vi.spyOn(api, "getTickets").mockImplementation(getTicketsMock);
+    // Authenticated session fixture (replaces the Lab 2 simulated selector).
+    vi.spyOn(api, "getSessionUser").mockResolvedValue({
+      user: {
+        id: 2,
+        name: "Weerapong Chaiyaporn",
+        email: "weerapong.chaiyaporn@toktikit.com",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+      },
+    });
     window.localStorage.clear();
   });
 
@@ -70,15 +83,11 @@ describe("MyTickets Component", () => {
   });
 
   const renderPage = () => {
-    window.localStorage.setItem(
-      "toktickit.selectedRequester",
-      JSON.stringify({ id: 2, name: "Weerapong Chaiyaporn" })
-    );
     return render(
       <BrowserRouter>
-        <RequesterProvider>
+        <AuthProvider>
           <MyTickets />
-        </RequesterProvider>
+        </AuthProvider>
       </BrowserRouter>
     );
   };
@@ -94,14 +103,15 @@ describe("MyTickets Component", () => {
     expect(screen.getAllByText("TK-20260906-0001").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("passes the selected requester id as the ownership scope", async () => {
+  it("scopes the list server-side: no identity param is sent (BR-04)", async () => {
     renderPage();
 
     await waitFor(() => {
       expect(getTicketsMock).toHaveBeenCalled();
     });
-    const [, requesterId] = getTicketsMock.mock.calls[getTicketsMock.mock.calls.length - 1];
-    expect(requesterId).toBe(2);
+    const last = getTicketsMock.mock.calls[getTicketsMock.mock.calls.length - 1];
+    // Only the query object — identity comes from the session cookie.
+    expect(last).toHaveLength(1);
   });
 
   it("shows the empty state when there are no tickets and no filters", async () => {
@@ -153,11 +163,11 @@ describe("MyTickets Component", () => {
     fireEvent.change(screen.getByTestId("ticket-search"), { target: { value: "VPN" } });
     fireEvent.click(screen.getByRole("button", { name: /apply/i }));
 
-    fireEvent.change(screen.getByTestId("filter-status"), { target: { value: "PENDING" } });
+    fireEvent.change(screen.getByTestId("filter-status"), { target: { value: "NEW" } });
 
     await waitFor(() => {
       const last = getTicketsMock.mock.calls[getTicketsMock.mock.calls.length - 1];
-      expect(last[0]).toEqual(expect.objectContaining({ search: "VPN", status: "PENDING" }));
+      expect(last[0]).toEqual(expect.objectContaining({ search: "VPN", status: "NEW" }));
     });
   });
 
@@ -172,7 +182,7 @@ describe("MyTickets Component", () => {
 
     await waitFor(() => {
       const last = getTicketsMock.mock.calls[getTicketsMock.mock.calls.length - 1];
-      expect(last[0]).toEqual(expect.objectContaining({ sort: "priority", order: "desc" }));
+      expect(last[0]).toEqual(expect.objectContaining({ sort: "requestedPriority", order: "desc" }));
     });
   });
 

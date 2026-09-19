@@ -5,18 +5,19 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import App from "../../src/App.js";
 import * as api from "../../src/api.js";
-import { RequesterProvider } from "../../src/context/RequesterContext"; // เพิ่ม Import นี้
 
 describe("App", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // No session in these tests — AuthProvider restores to signed-out.
+    vi.spyOn(api, "getSessionUser").mockRejectedValue(new Error("Not signed in."));
   });
 
   afterEach(() => {
     cleanup();
   });
 
-it("renders the TokTickIT heading", () => {
+it("renders the TokTickIT heading", async () => {
     vi.spyOn(api, "checkSystem").mockResolvedValue({
       online: true,
       categories: [],
@@ -24,17 +25,29 @@ it("renders the TokTickIT heading", () => {
 
     render(
       <MemoryRouter>
-        <RequesterProvider>
-          <App />
-        </RequesterProvider>
+        <App />
       </MemoryRouter>
     );
-    
-    const elements = screen.getAllByText(/TokT.*kIT/i);
-    expect(elements.length).toBeGreaterThan(0);
+
+    // Signed out: no nav chrome renders, so `/` bounces to the login card,
+    // which carries the product heading once the session check settles.
+    const heading = await screen.findByText(/Log in to TokTikIT/i);
+    expect(heading).toBeDefined();
   });
 
   it("shows Online and the seeded categories on success", async () => {
+    // `/` is protected (Lab 3 BR-03): mock an authenticated session so the
+    // system-status home renders instead of redirecting to /login.
+    vi.spyOn(api, "getSessionUser").mockResolvedValue({
+      user: {
+        id: 1,
+        name: "Test Requester",
+        email: "test@toktikit.com",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+      },
+    });
     vi.spyOn(api, "checkSystem").mockResolvedValue({
       online: true,
       categories: [
@@ -47,9 +60,7 @@ it("renders the TokTickIT heading", () => {
 
     render(
       <MemoryRouter>
-        <RequesterProvider>
-          <App />
-        </RequesterProvider>
+        <App />
       </MemoryRouter>
     );
 
@@ -64,13 +75,21 @@ it("renders the TokTickIT heading", () => {
   });
 
   it("shows an Offline error message when the API is unavailable", async () => {
+    vi.spyOn(api, "getSessionUser").mockResolvedValue({
+      user: {
+        id: 1,
+        name: "Test Requester",
+        email: "test@toktikit.com",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+      },
+    });
     vi.spyOn(api, "checkSystem").mockRejectedValue(new Error("unavailable"));
 
     render(
       <MemoryRouter>
-        <RequesterProvider>
-          <App />
-        </RequesterProvider>
+        <App />
       </MemoryRouter>
     );
 

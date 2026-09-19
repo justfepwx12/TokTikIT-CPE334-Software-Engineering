@@ -1,21 +1,18 @@
 import { Request, Response } from 'express';
 import { getPrisma } from '../src/prisma.js';
-
-function requesterIdFromHeader(req: Request): number | null {
-  const raw = req.headers['x-requester-id'];
-  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) return null;
-  const id = Number.parseInt(raw, 10);
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
+import type { AuthRequest } from '../src/auth.middleware.js';
 
 export const getTicketById = async (req: Request, res: Response) => {
   try {
-    const requesterId = requesterIdFromHeader(req);
-    if (requesterId === null) {
+    // BR-03/BR-04: identity comes solely from the session. Any
+    // client-supplied requesterId (header or query) is ignored.
+    const sessionUser = (req as AuthRequest).user;
+    if (!sessionUser) {
       return res.status(401).json({
-        error: { code: 'UNAUTHORIZED', message: 'Missing or invalid x-requester-id header' },
+        error: { code: 'UNAUTHORIZED', message: 'Missing or invalid session' },
       });
     }
+    const requesterId = sessionUser.id;
 
     const raw = req.params.id;
     if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
@@ -32,8 +29,11 @@ export const getTicketById = async (req: Request, res: Response) => {
 
     const prisma = getPrisma();
 
-    const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
-    if (!requester || !requester.isActive) {
+    const requester = await prisma.user.findUnique({
+      where: { id: requesterId },
+      select: { id: true, role: true, isActive: true },
+    });
+    if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {
       return res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Requester is inactive or does not exist' },
       });
@@ -46,7 +46,8 @@ export const getTicketById = async (req: Request, res: Response) => {
         ticketNo: true,
         title: true,
         description: true,
-        priority: true,
+        requestedPriority: true,
+        itPriority: true,
         status: true,
         createdAt: true,
         updatedAt: true,

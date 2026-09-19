@@ -1,158 +1,151 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import request from 'supertest';
-import { app } from '../src/App.js';
-import { getPrisma } from '../src/prisma.js';
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import request from "supertest";
+import { app } from "../src/App.js";
+import { getPrisma } from "../src/prisma.js";
+import { TEST_PASSWORD, TEST_PASSWORD_HASH, loginAs } from "./helpers.js";
 
 const prisma = getPrisma();
 
-describe('Create Ticket API Tests (tickets.test.ts)', () => {
+const TEST_REQUESTER_EMAIL = "ticket-create-test@toktikit.com";
+
+describe("Create Ticket API Tests (tickets.test.ts)", () => {
   let activeRequesterId: number;
-  let categoryId: number;
-  let systemId: number;
+  let testCategoryId: number;
+  let testSystemId: number;
+  let agent: Awaited<ReturnType<typeof loginAs>>;
 
   beforeAll(async () => {
-    const activeRequester = await prisma.requester.findFirst({
-      where: { isActive: true },
-    });
-    const category = await prisma.category.findFirst();
-    const system = await prisma.relatedSystem.findFirst();
-
-    if (!activeRequester || !category || !system) {
-      throw new Error('Seed data incomplete. Please run seed script first.');
+    const [category, system] = await Promise.all([
+      prisma.category.findFirst({ orderBy: { id: "asc" } }),
+      prisma.relatedSystem.findFirst({ orderBy: { id: "asc" } }),
+    ]);
+    if (!category || !system) {
+      throw new Error("Seed data incomplete. Please run seed script first.");
     }
+    testCategoryId = category.id;
+    testSystemId = system.id;
 
-    activeRequesterId = activeRequester.id;
-    categoryId = category.id;
-    systemId = system.id;
+    const requester = await prisma.user.upsert({
+      where: { email: TEST_REQUESTER_EMAIL },
+      update: { mustChangePassword: false, isActive: true },
+      create: {
+        name: "Ticket Create Test",
+        email: TEST_REQUESTER_EMAIL,
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+        passwordHash: TEST_PASSWORD_HASH,
+      },
+    });
+    activeRequesterId = requester.id;
+    agent = await loginAs(TEST_REQUESTER_EMAIL, TEST_PASSWORD);
   });
 
   afterAll(async () => {
+    // Delete child tickets before the user to satisfy the FK constraint.
+    await prisma.ticket.deleteMany({ where: { requesterId: activeRequesterId } });
+    await prisma.user.deleteMany({ where: { email: TEST_REQUESTER_EMAIL } });
     await prisma.$disconnect();
   });
 
-  describe('POST /api/tickets', () => {
-    it('should create a ticket and return 201 with generated ticketNo', async () => {
+  describe("POST /api/tickets", () => {
+    it("should create a ticket and return 201 with generated ticketNo", async () => {
       const payload = {
-        categoryId,
-        systemId,
-        priority: 'MEDIUM',
-        title: 'VPN Connection Fails on macOS',
-        description: 'Unable to establish VPN connection after latest OS update.',
+        categoryId: testCategoryId,
+        systemId: testSystemId,
+        priority: "MEDIUM",
+        title: "VPN Connection Fails on macOS",
+        description: "Unable to establish VPN connection after latest OS update.",
       };
 
-      const response = await request(app)
-        .post('/api/tickets')
-        .set('x-requester-id', String(activeRequesterId))
+      const response = await agent
+        .post("/api/tickets")
         .send(payload)
-        .expect('Content-Type', /json/)
+        .expect("Content-Type", /json/)
         .expect(201);
 
-      expect(response.body).toHaveProperty('id');
-      expect(response.body).toHaveProperty('ticketNo');
+      expect(response.body).toHaveProperty("id");
+      expect(response.body).toHaveProperty("ticketNo");
       expect(response.body.title).toBe(payload.title);
-      expect(response.body.status).toBe('PENDING');
+      expect(response.body.status).toBe("NEW");
+      expect(response.body.requestedPriority).toBe("MEDIUM");
+      expect(response.body.itPriority).toBe("MEDIUM");
       expect(response.body.requesterId).toBe(activeRequesterId);
     });
 
-    it('should return 401 Unauthorized when x-requester-id header is missing', async () => {
+    it("should return 401 when session is missing", async () => {
       const payload = {
-        categoryId,
-        systemId,
-        priority: 'HIGH',
-        title: 'Missing Header Test',
-        description: 'Testing request without x-requester-id header.',
+        categoryId: testCategoryId,
+        systemId: testSystemId,
+        priority: "HIGH",
+        title: "Missing Session Test",
+        description: "Testing request without a valid session.",
       };
 
-      await request(app).post('/api/tickets').send(payload).expect(401);
+      await request(app).post("/api/tickets").send(payload).expect(401);
     });
 
-    it('should return 401 Unauthorized when x-requester-id is not a valid integer', async () => {
-      const payload = {
-        categoryId,
-        systemId,
-        priority: 'HIGH',
-        title: 'Non-numeric Header Test',
-        description: 'Testing request with a non-numeric x-requester-id header.',
-      };
-
-      await request(app)
-        .post('/api/tickets')
-        .set('x-requester-id', 'not-a-number')
-        .send(payload)
-        .expect(401);
-    });
-
-    it('should return 400 Bad Request when required fields are invalid/missing', async () => {
+    it("should return 400 Bad Request when required fields are invalid/missing", async () => {
       const invalidPayload = {
-        categoryId,
-        systemId,
-        priority: 'HIGH',
-        title: 'Short',
-        description: 'Short',
+        categoryId: testCategoryId,
+        systemId: testSystemId,
+        priority: "HIGH",
+        title: "Short",
+        description: "Short",
       };
 
-      await request(app)
-        .post('/api/tickets')
-        .set('x-requester-id', String(activeRequesterId))
+      await agent
+        .post("/api/tickets")
         .send(invalidPayload)
         .expect(400);
     });
 
-    it('should return 400 Bad Request when categoryId does not reference an existing Category', async () => {
+    it("should return 400 Bad Request when categoryId does not reference an existing Category", async () => {
       const payload = {
         categoryId: 999999,
-        systemId,
-        priority: 'MEDIUM',
-        title: 'Nonexistent Category Test',
-        description: 'Testing request with a categoryId that does not exist.',
+        systemId: testSystemId,
+        priority: "MEDIUM",
+        title: "Nonexistent Category Test",
+        description: "Testing request with a categoryId that does not exist.",
       };
 
-      await request(app)
-        .post('/api/tickets')
-        .set('x-requester-id', String(activeRequesterId))
+      await agent
+        .post("/api/tickets")
         .send(payload)
         .expect(400);
     });
 
-    it('should return 400 Bad Request when systemId does not reference an existing Related System', async () => {
+    it("should return 400 Bad Request when systemId does not reference an existing Related System", async () => {
       const payload = {
-        categoryId,
+        categoryId: testCategoryId,
         systemId: 999999,
-        priority: 'MEDIUM',
-        title: 'Nonexistent System Test',
-        description: 'Testing request with a systemId that does not exist.',
+        priority: "MEDIUM",
+        title: "Nonexistent System Test",
+        description: "Testing request with a systemId that does not exist.",
       };
 
-      await request(app)
-        .post('/api/tickets')
-        .set('x-requester-id', String(activeRequesterId))
+      await agent
+        .post("/api/tickets")
         .send(payload)
         .expect(400);
     });
 
-    it('should return 403 Forbidden when the Requester is inactive', async () => {
-      const inactiveRequester = await prisma.requester.findFirst({
-        where: { isActive: false },
-      });
-      if (!inactiveRequester) {
-        throw new Error('Seed data missing an inactive requester.');
-      }
-
+    it("ignores x-requester-id: ticket belongs to the session user (BR-03)", async () => {
       const payload = {
-        categoryId,
-        systemId,
-        priority: 'MEDIUM',
-        title: 'Inactive Requester Test',
-        description: 'Testing request from an inactive requester.',
+        categoryId: testCategoryId,
+        systemId: testSystemId,
+        priority: "MEDIUM",
+        title: "Spoofed Header Ignored Test",
+        description: "A forged header must not change ticket ownership.",
       };
 
-      await request(app)
-        .post('/api/tickets')
-        .set('x-requester-id', String(inactiveRequester.id))
+      // Even with another user's id in the header, the ticket is owned by
+      // the signed-in user. (Inactive accounts cannot sign in at all — AC-03.)
+      const response = await agent
+        .post("/api/tickets")
         .send(payload)
-        .expect(403);
+        .expect(201);
+      expect(response.body.requesterId).toBe(activeRequesterId);
     });
   });
-
-
 });

@@ -7,15 +7,31 @@ function uniqueTitle(): string {
   return `E2E QA Flow ${ts}`;
 }
 
-async function selectRequester(page: Page): Promise<void> {
-  await page.goto('/select-requester');
-  const select = page.locator('#requester-select');
-  await expect(select).toBeVisible();
-  const count = await select.locator('option').count();
-  expect(count).toBeGreaterThan(1);
-  await select.selectOption({ index: 1 });
-  await page.getByRole('button', { name: /Continue/i }).click();
-  await page.waitForURL('**/');
+const SEED_PASSWORD = 'TokTickDemo123!';
+const E2E_PASSWORD = 'E2E-NewPass123!';
+
+async function loginAsRequester(page: Page): Promise<void> {
+  await page.goto('/login');
+  await page.getByTestId('login-email').fill('anong.srisuk@toktikit.com');
+  await page.getByTestId('login-password').fill(SEED_PASSWORD);
+  await page.getByTestId('login-submit').click();
+  // A previous E2E run already rotated the password — retry with it.
+  const loginError = page.getByTestId('login-error');
+  if (await loginError.isVisible().catch(() => false)) {
+    await page.getByTestId('login-password').fill(E2E_PASSWORD);
+    await page.getByTestId('login-submit').click();
+  }
+  // Seed requesters start with mustChangePassword=true → set a new one.
+  // (Only shown on a fresh seed; after rotation login lands straight on
+  // My Tickets, so no retry logic is needed here.)
+  const changeForm = page.getByTestId('change-password-form');
+  if (await changeForm.isVisible().catch(() => false)) {
+    await page.getByTestId('change-current').fill(SEED_PASSWORD);
+    await page.getByTestId('change-new').fill(E2E_PASSWORD);
+    await page.getByTestId('change-confirm').fill(E2E_PASSWORD);
+    await page.getByTestId('change-submit').click();
+  }
+  await page.waitForURL('**/my-tickets');
 }
 
 async function createTicket(page: Page, title: string): Promise<string> {
@@ -60,8 +76,8 @@ async function findTicketCell(page: Page, title: string) {
   }
 }
 
-test('full flow: select requester -> create ticket -> find in list (AC-18)', async ({ page }) => {
-  await selectRequester(page);
+test('full flow: login -> create ticket -> find in list (AC-18)', async ({ page }) => {
+  await loginAsRequester(page);
   const title = uniqueTitle();
   const ticketNo = await createTicket(page, title);
 

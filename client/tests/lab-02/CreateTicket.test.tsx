@@ -6,7 +6,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import CreateTicket from "../../src/pages/CreateTicket";
-import { RequesterProvider } from "../../src/context/RequesterContext";
+import * as api from "../../src/api";
+import { AuthProvider } from "../../src/context/AuthContext";
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -33,6 +34,17 @@ function makeFile(name: string, type: string, size = 1000): File {
 describe("CreateTicket Component", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // Authenticated session fixture (replaces the Lab 2 simulated selector).
+    vi.spyOn(api, "getSessionUser").mockResolvedValue({
+      user: {
+        id: 1,
+        name: "Jane Doe",
+        email: "jane@toktikit.com",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+      },
+    });
     window.localStorage.clear();
   });
 
@@ -41,15 +53,11 @@ describe("CreateTicket Component", () => {
   });
 
   const renderWithContext = () => {
-    window.localStorage.setItem(
-      "toktickit.selectedRequester",
-      JSON.stringify({ id: 1, name: "Jane Doe" })
-    );
     return render(
       <BrowserRouter>
-        <RequesterProvider>
+        <AuthProvider>
           <CreateTicket />
-        </RequesterProvider>
+        </AuthProvider>
       </BrowserRouter>
     );
   };

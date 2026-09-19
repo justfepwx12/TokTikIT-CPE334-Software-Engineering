@@ -3,12 +3,14 @@ import { z } from 'zod';
 import { Prisma, Ticket } from '@prisma/client';
 import { getPrisma } from '../src/prisma.js';
 import { generateTicketNo } from '../services/ticketNumber.service.js';
+import type { AuthRequest } from '../src/auth.middleware.js';
 
 const createTicketSchema = z.object({
   title: z.string().trim().min(5).max(100),
   description: z.string().trim().min(10).max(1000),
   categoryId: z.number().int().positive(),
   systemId: z.number().int().positive(),
+  // BR-14: the Requester always expresses a Requested Priority at creation.
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
 });
 
@@ -16,24 +18,23 @@ const MAX_TICKET_NO_RETRIES = 5;
 
 export const createTicket = async (req: Request, res: Response) => {
   try {
-    const requesterIdHeader = req.headers['x-requester-id'];
-    if (!requesterIdHeader) {
+    // BR-03/BR-04: identity comes solely from the session. Any
+    // client-supplied requesterId (header or body) is ignored.
+    const sessionUser = (req as AuthRequest).user;
+    if (!sessionUser) {
       return res.status(401).json({
-        error: { code: 'UNAUTHORIZED', message: 'Missing x-requester-id header' },
+        error: { code: 'UNAUTHORIZED', message: 'Missing or invalid session' },
       });
     }
-
-    const requesterId = parseInt(requesterIdHeader as string, 10);
-    if (Number.isNaN(requesterId)) {
-      return res.status(401).json({
-        error: { code: 'UNAUTHORIZED', message: 'x-requester-id must be a valid integer' },
-      });
-    }
+    const requesterId = sessionUser.id;
 
     const prisma = getPrisma();
 
-    const requester = await prisma.requester.findUnique({ where: { id: requesterId } });
-    if (!requester || !requester.isActive) {
+    const requester = await prisma.user.findUnique({
+      where: { id: requesterId },
+      select: { id: true, role: true, isActive: true },
+    });
+    if (!requester || requester.role !== 'REQUESTER' || !requester.isActive) {
       return res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'Requester is inactive or does not exist' },
       });
@@ -73,9 +74,12 @@ export const createTicket = async (req: Request, res: Response) => {
               description: validatedData.description,
               categoryId: validatedData.categoryId,
               systemId: validatedData.systemId,
-              priority: validatedData.priority,
+              // BR-14: the Requester-submitted priority becomes Requested
+              // Priority and seeds the IT Priority as an initial copy.
+              requestedPriority: validatedData.priority,
+              itPriority: validatedData.priority,
               requesterId,
-              status: 'PENDING',
+              status: 'NEW',
             },
           });
         });

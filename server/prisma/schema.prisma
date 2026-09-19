@@ -7,8 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Issue 3 — Create and seed IT request categories
-// specification.md §7: read-only reference data in Lab 2; seeded only.
+// Lab 3 — Issue 3 Category list (read-only reference data; seeded only).
 model Category {
   id        Int      @id @default(autoincrement())
   name      String   @unique
@@ -17,8 +16,7 @@ model Category {
   tickets Ticket[]
 }
 
-// Issue 41 — Systems a ticket can be related to (e.g. "VPN Service")
-// read-only reference data in Lab 2; seeded only.
+// Lab 2 Issue 41 — Systems a ticket can be related to (read-only, seeded only).
 model RelatedSystem {
   id        Int      @id @default(autoincrement())
   name      String   @unique
@@ -27,35 +25,57 @@ model RelatedSystem {
   tickets Ticket[]
 }
 
-// Issue 41 — Development Requester: the simulated identity
-model Requester {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// Lab 3 §9.1 — every authenticated person. Lab 2 Requester rows migrate here
+// with role REQUESTER (AD-04). IT Staff and Administrators are seeded too.
+model User {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  role               Role
+  isActive           Boolean  @default(true)
+  // BR-03/AD-09: migrated users + newly created users must change their
+  // initial password at first login; seeded demo accounts may be false.
+  mustChangePassword Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  tickets Ticket[]
+  ownedTickets   Ticket[]       @relation("Owner")
+  requesterGroup Ticket[]       @relation("Requester")
+  comments       Comment[]
+  internalNotes  InternalNote[]
+
+  @@index([role])
 }
 
-// displays; IN_PROGRESS/RESOLVED/CLOSED exist for forward-compatibility
-// only — no transition logic is implemented this sprint (AD-05).
-enum Status {
-  PENDING
+enum Role {
+  REQUESTER
+  IT_STAFF
+  ADMIN
+}
+
+// Lab 3 §9.1 — eight-status lifecycle (AD-03). NEW replaces Lab 2 PENDING.
+enum TicketStatus {
+  NEW
+  OPEN
   IN_PROGRESS
+  WAITING_FOR_REQUESTER
   RESOLVED
   CLOSED
+  REOPENED
+  CANCELLED
 }
 
-enum Priority {
+enum TicketPriority {
   LOW
   MEDIUM
   HIGH
   URGENT
 }
 
-// Issue 41 — Core IT ticket
+// Lab 3 §9.1 — the core IT ticket. The old single `priority` splits into
+// requestedPriority (set by the Requester at creation) and itPriority
+// (initialized as a copy, changeable only by IT Staff/Admin — BR-14).
 model Ticket {
   id Int @id @default(autoincrement())
 
@@ -65,36 +85,83 @@ model Ticket {
   title       String
   description String
 
-  // BR-11: required field, no default — the Requester must choose one.
-  // Note: there is only ONE priority field. A separate "IT Priority" is
-  // explicitly out of scope for Lab 2.
-  priority Priority
+  requestedPriority TicketPriority
+  itPriority        TicketPriority
 
-  // BR-02 / AD-05: every new ticket starts PENDING; no other transition
-  // is implemented or exposed in Lab 2.
-  status Status @default(PENDING)
+  // Lab 2 visible-to-all statuses existed for forward-compat only; Lab 3
+  // implements the full transition matrix (AD-03).
+  status TicketStatus @default(NEW)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   requesterId Int
-  requester   Requester @relation(fields: [requesterId], references: [id], onDelete: Restrict)
+  requester   User @relation("Requester", fields: [requesterId], references: [id], onDelete: Restrict)
+
+  // BR-13: at most one primary Owner (active IT Staff/Admin); unassigned
+  // initially. Nullable — migrated Lab 2 tickets have no owner (AD-04).
+  ownerId Int?
+  owner   User? @relation("Owner", fields: [ownerId], references: [id], onDelete: SetNull)
 
   categoryId Int
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
-  // BR-11: required field — Related System must always be selected at creation.
   systemId Int
   system   RelatedSystem @relation(fields: [systemId], references: [id], onDelete: Restrict)
 
-  attachments Attachment[]
+  attachments   Attachment[]
+  comments      Comment[]
+  internalNotes InternalNote[]
 
   @@index([requesterId])
+  @@index([ownerId])
   @@index([categoryId])
   @@index([systemId])
 }
 
-// Issue 41 — Files attached to a ticket
+// Lab 3 §9.1 — public, append-only communication (BR-17).
+model Comment {
+  id        Int      @id @default(autoincrement())
+  body      String
+  createdAt DateTime @default(now())
+
+  // Deterministic key for idempotent seed upserts (AC-33). Nullable so
+  // real user-authored comments never carry one and are never touched by
+  // re-runs of prisma db seed.
+  seedKey String?
+
+  authorId Int
+  author   User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+
+  @@unique([ticketId, seedKey])
+  @@index([ticketId])
+}
+
+// Lab 3 §9.1 — IT Staff/Admin-only, append-only operational notes (BR-18).
+model InternalNote {
+  id        Int      @id @default(autoincrement())
+  body      String
+  createdAt DateTime @default(now())
+
+  // Deterministic key for idempotent seed upserts (AC-33). Nullable so
+  // real user-authored notes never carry one and are never touched by
+  // re-runs of prisma db seed.
+  seedKey String?
+
+  authorId Int
+  author   User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+
+  @@unique([ticketId, seedKey])
+  @@index([ticketId])
+}
+
+// Lab 2 Issue 41 — Files attached to a ticket
 model Attachment {
   id Int @id @default(autoincrement())
 
@@ -124,4 +191,3 @@ model Attachment {
 
   @@index([ticketId])
 }
-
