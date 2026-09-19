@@ -90,6 +90,9 @@ Changes the current user's password. Always available, including while `mustChan
 * **Status Codes**: `200 OK` (`{ "message": "Password changed." }`) · `400` (new password fails validation) · `401` (wrong current password) · `500`
 * **Behavior**: on success `mustChangePassword` is set to `false` (AC-07); the session remains valid.
 
+### No self-service password reset (intentional)
+There is deliberately **no** `POST /api/auth/forgot-password`. This system sends no email (AD-09), so an unauthenticated reset cannot verify identity without leaking accounts (BR-02). Password resets are administrator-mediated only (`POST /api/admin/users/:id/reset-password`, §5); the login UI directs users to their IT administrator instead.
+
 ---
 
 ## 2. IT Staff Ticket Queue
@@ -133,6 +136,32 @@ Operational queue for IT Staff and Administrators (BR-13, BR-17 visibility). Ret
       }
     ],
     "pagination": { "total": 1, "page": 1, "limit": 10, "totalPages": 1 }
+  }
+  ```
+
+### GET /api/staff/tickets/:id
+Full operational detail of one ticket for IT Staff and Administrators (all tickets visible). Requester → `403` even for owned tickets (staff view is never served to requesters; they use `GET /api/tickets/:id`).
+
+* **Method**: `GET`
+* **Roles**: IT_STAFF, ADMIN. Requester → `403`; no session → `401`.
+* **Status Codes**: `200 OK` · `400` (non-numeric id) · `401` · `403` · `404` (unknown id) · `500`
+* **Response Shape** (200): the queue item shape plus operational fields —
+  ```json
+  {
+    "id": 12,
+    "ticketNo": "TK-20260914-0001",
+    "title": "VPN connection drops every 5 minutes",
+    "description": "Cannot stay connected to the corporate VPN.",
+    "requestedPriority": "HIGH",
+    "itPriority": "HIGH",
+    "status": "IN_PROGRESS",
+    "createdAt": "2026-09-14T04:18:20.000Z",
+    "updatedAt": "2026-09-14T05:02:00.000Z",
+    "category": { "id": 3, "name": "Network" },
+    "system": { "id": 3, "name": "VPN Service" },
+    "requester": { "id": 6, "name": "Jane Doe" },
+    "owner": { "id": 8, "name": "Weerapong Chaiyaporn" },
+    "attachments": []
   }
   ```
 
