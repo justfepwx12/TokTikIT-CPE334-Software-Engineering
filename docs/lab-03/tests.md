@@ -165,7 +165,7 @@ Full passing runs recorded under PR #121 (Issue #84): server `tests/lab-03/` 81/
 ```
 (server: vitest run tests/lab-03/ → 8 files / 81 tests passed)
 (client: vitest run → 17 files / 116 tests passed)
-(e2e: playwright test tests/e2e/lab-03/ → 18/18 passed)
+(e2e: pnpm --filter client exec playwright test tests/e2e/lab-03/ → 18/18 passed)
 ```
 
 Plus responsive screenshot rows under Issue #109.
