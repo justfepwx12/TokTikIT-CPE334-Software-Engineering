@@ -2,6 +2,7 @@
 
 **Author:** Onsinee Chotchuangsakulchai — 67070501078 — GitHub: @justfepwx12  
 **Peer reviewer 1:** Pawarisa Thongchua — 67070501032 — GitHub: @itspxsh  
+**Peer reviewer 2:** Lappawat Laohasoot — 67070501039 — GitHub: @MacOverlorD
 
 All Lab 3 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (reviews verified via GitHub API).
 
@@ -20,7 +21,7 @@ All Lab 3 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (revie
 | #82 (PR #119) | feature/7-comments-internal-notes | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 | #83 (PR #120) | feature/8-admin-user-management | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 | #84 (PR #121) | feature/9-lab3-automated-tests | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
-| #85 (PR TBD) | feature/10-release-docs-pdf | Pawarisa Thongchua (@itspxsh) | Pending |
+| #85 (PR #122) | feature/10-release-docs-pdf | Pawarisa Thongchua (@itspxsh) | Approved (merge pending) |
 
 > Note: PR #111 (same spec branch) was closed superseded by PR #112/#113.
 
@@ -206,26 +207,59 @@ All Lab 3 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (revie
 
 ---
 
-### #85 (Issue 10 — Release · PR TBD)
+### #85 (Issue 10 — Release · PR #122)
 
-**Reviewed by:** TBD
+**Reviewed by:** Pawarisa Thongchua (@itspxsh)
 
-**Review-type:** Release — `reviewer.md`, `ai-use.md`, `artifacts/lab-03/screenshots/`, visual checklist, `Lab3_Submission.pdf`.
+**Review-type:** Release docs — `reviewer.md` per-PR detail, `ai-use.md` reflection, `api-spec.md`/`ui-spec.md`/`tests.md`/`specification.md` sync, refreshed `README.md`, `.gitignore`.
 
-**Reviewer comments given:**
-> TBD — add review comments received during partner review.
+**PR Overview & Details:**
+> Closes the #108 documentation scope: 10-prompt AI-use table with Thai reflection, per-PR review record #112–#121 sourced from GitHub API, staff-detail endpoint + no-self-service-reset notes in `api-spec.md`, header/forgot-password/table-layout/forgot screen/checklist updates in `ui-spec.md`, corrected paths + Passed rows + PR #121 evidence in `tests.md`, AD-12/D-04 path fix, Lab 3 README rewrite, `blob-report/` ignore. Screenshots + PDF remain #109/#110 follow-ups.
+
+**Reviewer comments given (CHANGES_REQUESTED, 1 point):**
+> `tests.md` §4 evidence command used `tests/e2e/lab-03/` — the real path is `client/tests/e2e/lab-03/`; correct it so another reviewer can run the command copy-paste from the repo root.
 
 **How I responded:**
-> TBD — add response/action taken.
+> Fix commit `ddb7df9` — evidence command corrected to `pnpm --filter client exec playwright test tests/e2e/lab-03/`; replied on the PR thread. (Follow-up commit `eb49d55` — README refresh + gitignore — landed after the approval below and is docs-only.)
 
-**Reviewer approved comment:**
-> TBD.
+**Reviewer approved comment (APPROVED 2026-09-19):**
+> "Re-reviewed commit `ddb7df9` — evidence command path correct, references consistent, `git diff --check` passed, docs-only. LGTM — approving this PR."
 
 ---
 
 ## Pull Requests I Reviewed for My Partner
 
-> TBD — add review records per PR as Lab 3 progresses (mirror of Lab 2 structure).
+Partner repo `itspxsh/toktickit` (Pawarisa Thongchua). My review routine is the same every time: read the scope from the PR description → check it against `specification.md`/`api-spec.md`/`tests.md` → run the tests and build locally → give a verdict (all states/dates below confirmed via the GitHub API).
+
+### L3-01 · #36 — Spec-DD/Test-DD contract (Approved 2026-09-14)
+The partner submitted the 11-section engineering contract (FR-01..18, BR-01..32, AC-01..20) for sprint approval. I checked the traceability in `tests.md` (every AC mapped to a test before implementation), plus security/workflow (server-side auth enforcement, anti-forgery coverage, admin safeguards, status matrix) and a forward-only migration that preserves Lab 2 data — all complete, so I approved directly with only non-blocking notes. The partner quoted this approval when merging.
+
+### L3-02 · #46 — Identity data foundation (Approved 2026-09-15)
+Scope was schema/enums/migration/seed/guarded test DB. I checked it against spec §7, `api-spec.md`, `tests.md` (T-MIG-01..05), and BR-25..BR-31 — everything matched, so I approved, leaving a single minor cleanup: the `SeedClient` type in `data-foundation.ts:48` is declared but never used. The partner replied they would carry that cleanup into the next branch, then merged at `8099912`.
+
+### L3-03 · #47 — Auth, sessions, first-login change (line comments → Approved)
+Scope was the login/session/must-change flow. I reproduced the whole flow myself (manual cookie relay): `POST /api/auth/login` normalizes email, verifies scrypt, rejects inactive users, and sets the `tt_session` cookie (`HttpOnly; Secure; SameSite=Lax; Max-Age=43200`) — product logic was fully correct, but I left 8 items as line comments (cookie forwarding, dummy password against timing leaks, isolated CSRF/Origin coverage, negative password-change tests, session/hash tests, `AUTH_ORIGIN` docs, CSRF-entry eviction). The partner fixed everything in `fe68adc` + `c8a9511` and asked for re-review; I re-checked and approved.
+
+### L3-04 · #48 — Server authorization + Lab 2 regression (Changes requested → Approved 2026-09-17)
+Per Issue #39. I praised the structure first (`requesterContext()` ignores untrusted headers when `req.auth` exists per BR-08, user IDs purely session-derived, solid workflow integrity), then requested 2 must-fix items: wire `requirePasswordChanged` in `app.ts` so first-login users cannot slip through (plus the remaining test points in the full review). The partner fixed them in `c4feea5`, `6146f18`, `34b771c` (gate on all requester/reference/workflow routes per BR-04/AC-02, CSRF middleware on writes, removed unused `requireRoles`, aligned `TICKET_NOT_FOUND` responses) and replied; I verified each item against the previous review, then approved.
+
+### L3-05 · #49 — Staff queue (Approved 2026-09-17)
+Per Issue #40. I checked spec and test contracts: enforced query defaults, safe projections (no password/notes leaks), deterministic ordering, pageSize ≤ 100, staff auth middleware — all server/client tests passed, builds clean, TDD chain verified. Approved directly with no fixes requested.
+
+### L3-06 · #50 — Staff detail, workflow, comms, notes (Changes requested → Approved 2026-09-17)
+I ran everything myself (server 67/67, client 37/37, clean builds). The architecture was solid (spec-exact error codes, atomic claims, `updateMany` status guards, server-derived authorship, CSRF on all 6 mutations), but 2 blocking issues plus test gaps remained: delete the dead duplicate comment route (keep one canonical endpoint) and restrict `CANCELLED → REOPENED` to Admins (403 + tests). The partner fixed and replied; I verified on `c262490` (new `comments-notes.api.test.ts` for T-COMMENT-01/03/05, mocks asserting query args), then approved.
+
+### L3-07 · #51 — Admin user management (Approved 2026-09-17)
+Per Issue #42. I ran it myself (server 76/76, client 41/41, clean builds + Prisma validate) — all green: self-check runs before the last-admin check, deactivate/reset invalidate sessions immediately, clean P2002 race handling, enforced `mustChangePassword` on creation, spec-exact response shapes, verified TDD chain. Approved directly.
+
+### L3-08 · #52 — Authenticated role shell + UI flows (Changes requested → Approved 2026-09-18)
+Per Issue #43. I ran it myself (client 51/51 across lab-01+02+03, build, diff-check, plus my own server 76/76 re-run on the branch) against `ui-spec.md` §2/5/8/9, FR-04..07, BR-05..07, AC-02..04/07..11/15..16, T-UI-01..09 — and requested the blocking gaps plus enhancements. The partner fixed them in `635b025` (requester "Problem appears resolved" action + `RequesterRegression.test.tsx` T-UI-06, `RoleGuard` with safe Forbidden state T-UI-03, CSRF state cleared on login, password fields cleared on failed change) and replied; I re-reviewed that commit, then approved.
+
+### L3-09 · #53 — E2E, security, responsive, a11y evidence (Changes requested ×2 → Approved 2026-09-18)
+First round I ran it myself (discovery 9 tests, client 56/56, clean build) and requested 3 blocking items: the broken `T-E2E-01` selector (`getByRole('link', /TKT-/)`) and missing live evidence for AC-18/T-E2E-04/05 (second round reiterated as line-level notes: no run log, screenshots, or migration output). The partner fixed and replied; I verified on `1c2226b` (ticket number read from the `<th scope="row">` cell, `T-E2E-02` with pagination + priority/status assertions, `T-E2E-03` with reset/activate/deactivate), then approved the merge into `lab3-staging`.
+
+### L3-10 · #54 — Evidence + release readiness (Changes requested ×2 → Approved 2026-09-19)
+First round was docs-only across 5 files, so I gated it: no promotion to `main` without real release evidence. The partner returned with live evidence (migrations on a fresh `_test` DB, integration suite 5/5, `artifacts/lab-03/migration/deploy.txt`, green Playwright matrix for all 3 roles, 42 screenshots). I accepted the evidence but requested 3 more items with exact patches (`T-AUTHZ-05` in tests.md + AC-03/AC-14 traceability, `setNotice("")` so ticket notices cannot leak across navigation, `AUTH_ORIGIN=http://127.0.0.1:5173` docs). The partner fixed all three in `1c45150` (+ `5782c0c`) and confirmed; I verified, then approved the promotion to `main`.
 
 ---
 
