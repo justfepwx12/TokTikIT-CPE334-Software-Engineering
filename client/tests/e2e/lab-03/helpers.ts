@@ -14,20 +14,35 @@ function uniqueTitle(prefix: string): string {
 export async function login(page: Page, email: string): Promise<void> {
   const banner = page.getByTestId('login-error');
   const changeForm = page.getByTestId('change-password-form');
-  const notLogin = (url: URL) => !url.pathname.includes('/login');
+
+  // Wait for EITHER navigation away from /login OR the 401 banner. A fixed
+  // waitForURL-then-banner sequence flakes when the response lands between
+  // the two waits (banner arrives just after waitForURL times out).
+  async function waitLoginSettled(): Promise<'navigated' | 'banner'> {
+    await expect
+      .poll(
+        async (): Promise<string> => {
+          if (!new URL(page.url()).pathname.includes('/login')) return 'navigated';
+          if (await banner.isVisible().catch(() => false)) return 'banner';
+          return 'waiting';
+        },
+        { timeout: 30000 },
+      )
+      .not.toBe('waiting');
+    if (!new URL(page.url()).pathname.includes('/login')) return 'navigated';
+    return 'banner';
+  }
 
   await page.goto('/login');
   await page.getByTestId('login-email').fill(email);
   await page.getByTestId('login-password').fill(SEED_PASSWORD);
   await page.getByTestId('login-submit').click();
-  // Either we leave /login (success) or the safe 401 banner appears.
-  await page.waitForURL(notLogin, { timeout: 20000 }).catch(() => undefined);
-  if (page.url().includes('/login')) {
+  if ((await waitLoginSettled()) === 'banner') {
     // Safe 401 — the account was rotated by an earlier run; retry with it.
-    await expect(banner).toBeVisible({ timeout: 10000 });
     await page.getByTestId('login-password').fill(E2E_PASSWORD);
     await page.getByTestId('login-submit').click();
-    await page.waitForURL(notLogin, { timeout: 20000 });
+    const outcome = await waitLoginSettled();
+    if (outcome === 'banner') throw new Error(`Login failed for ${email} with both known passwords.`);
   }
   // Either the role home (already rotated) or the mandatory change form.
   const { pathname } = new URL(page.url());
@@ -95,21 +110,33 @@ export { uniqueTitle };
  * (My Tickets table at md+, queue table at lg+), so probe visibility.
  */
 export async function openFirstEntry(page: Page, kind: 'ticket' | 'queue'): Promise<void> {
+  // Wait (don't instant-probe): the list renders after the API responds, and
+  // an immediate isVisible() races the fetch and picks the wrong layout.
   const row = page.getByTestId(`${kind}-row`).first();
-  if (await row.isVisible().catch(() => false)) {
+  try {
+    await row.waitFor({ state: 'visible', timeout: 10000 });
     await row.click();
     return;
+  } catch {
+    await page.getByTestId(`${kind}-card`).first().click();
   }
-  await page.getByTestId(`${kind}-card`).first().click();
 }
 
 /** Assert the list body is visible in whichever layout the viewport uses. */
 export async function expectListVisible(page: Page, kind: 'ticket' | 'queue'): Promise<void> {
   // NB: the requester table id is plural (tickets-table).
   const tableId = kind === 'ticket' ? 'tickets-table' : 'queue-table';
-  if (await page.getByTestId(tableId).isVisible().catch(() => false)) {
-    await expect(page.getByTestId(tableId)).toBeVisible();
-  } else {
-    await expect(page.getByTestId(`${kind}-card`).first()).toBeVisible();
-  }
+  // Poll until EITHER layout is visible — no instant probe that can race
+  // the data fetch and commit to the hidden layout's locator.
+  await expect
+    .poll(
+      async () => {
+        if (await page.getByTestId(tableId).isVisible().catch(() => false)) return true;
+        if (await page.getByTestId(`${kind}-card`).first().isVisible().catch(() => false))
+          return true;
+        return false;
+      },
+      { timeout: 15000 },
+    )
+    .toBe(true);
 }

@@ -40,7 +40,11 @@ test.describe('admin user administration', () => {
     await page.getByTestId('user-form-password').fill(TEMP_PASSWORD);
     await page.getByTestId('user-form-save').click();
     await expect(page.getByText('A user with this email already exists.')).toBeVisible();
-    await page.keyboard.press('Escape');
+    // Close explicitly and wait until it is really gone: a bare Escape is
+    // focus-dependent and the lingering overlay otherwise blocks the next
+    // row click until the test times out.
+    await page.getByTestId('user-modal').getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByTestId('user-modal')).toBeHidden();
 
     // 3. Self-deactivation is blocked with a guard message (AC-28).
     const ownRow = page.getByTestId('user-row').filter({ hasText: '(you)' });
@@ -51,7 +55,8 @@ test.describe('admin user administration', () => {
     await expect(page.getByTestId('user-form-banner')).toContainText(
       'You cannot deactivate your own account.'
     );
-    await page.keyboard.press('Escape');
+    await page.getByTestId('user-modal').getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByTestId('user-modal')).toBeHidden();
 
     // 4. Reset the created user's password (AC-26).
     await createdRow.getByRole('button', { name: 'Reset password' }).click();
@@ -59,6 +64,7 @@ test.describe('admin user administration', () => {
     await page.getByTestId('reset-submit').click();
     await expect(page.getByTestId('reset-success')).toBeVisible();
     await page.getByRole('button', { name: 'Close' }).click();
+    await expect(page.getByTestId('reset-modal')).toBeHidden();
 
     // 5. The reset user logs in with the temporary password and must
     // change it before reaching their home (BR-03).

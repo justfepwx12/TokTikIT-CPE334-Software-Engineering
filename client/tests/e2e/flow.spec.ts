@@ -10,28 +10,43 @@ function uniqueTitle(): string {
 const SEED_PASSWORD = 'TokTickDemo123!';
 const E2E_PASSWORD = 'E2E-NewPass123!';
 
+async function rotatePassword(page: Page, current: string): Promise<void> {
+  await page.getByTestId('change-current').fill(current);
+  await page.getByTestId('change-new').fill(E2E_PASSWORD);
+  await page.getByTestId('change-confirm').fill(E2E_PASSWORD);
+  await page.getByTestId('change-submit').click();
+}
+
 async function loginAsRequester(page: Page): Promise<void> {
+  const notLogin = (url: URL) => !url.pathname.includes('/login');
   await page.goto('/login');
   await page.getByTestId('login-email').fill('anong.srisuk@toktikit.com');
   await page.getByTestId('login-password').fill(SEED_PASSWORD);
   await page.getByTestId('login-submit').click();
-  // A previous E2E run already rotated the password — retry with it.
-  const loginError = page.getByTestId('login-error');
-  if (await loginError.isVisible().catch(() => false)) {
+  // Either we leave /login (success) or the safe 401 banner appears.
+  // Must WAIT — the login POST (bcrypt + session store) takes a moment and
+  // an instant isVisible() check races it and skips the retry/fill steps.
+  await page.waitForURL(notLogin, { timeout: 20000 }).catch(() => undefined);
+  if (page.url().includes('/login')) {
+    // A previous E2E run already rotated the password — retry with it.
+    await expect(page.getByTestId('login-error')).toBeVisible({ timeout: 10000 });
     await page.getByTestId('login-password').fill(E2E_PASSWORD);
     await page.getByTestId('login-submit').click();
+    await page.waitForURL(notLogin, { timeout: 20000 });
   }
-  // Seed requesters start with mustChangePassword=true → set a new one.
-  // (Only shown on a fresh seed; after rotation login lands straight on
-  // My Tickets, so no retry logic is needed here.)
-  const changeForm = page.getByTestId('change-password-form');
-  if (await changeForm.isVisible().catch(() => false)) {
-    await page.getByTestId('change-current').fill(SEED_PASSWORD);
-    await page.getByTestId('change-new').fill(E2E_PASSWORD);
-    await page.getByTestId('change-confirm').fill(E2E_PASSWORD);
-    await page.getByTestId('change-submit').click();
+  // Already rotated → straight to home. Fresh seed → mandatory change form.
+  if (new URL(page.url()).pathname.includes('/my-tickets')) return;
+  await expect(page.getByTestId('change-password-form')).toBeVisible({ timeout: 10000 });
+  const notChangePw = (url: URL) => !url.pathname.includes('/change-password');
+  await rotatePassword(page, SEED_PASSWORD);
+  await page.waitForURL(notChangePw, { timeout: 20000 }).catch(() => undefined);
+  if (page.url().includes('/change-password')) {
+    // Seeded password is no longer current (rotated by an earlier run).
+    await expect(page.getByTestId('change-password-error')).toBeVisible({ timeout: 10000 });
+    await rotatePassword(page, E2E_PASSWORD);
+    await page.waitForURL(notChangePw, { timeout: 20000 });
   }
-  await page.waitForURL('**/my-tickets');
+  await page.waitForURL('**/my-tickets', { timeout: 20000 });
 }
 
 async function createTicket(page: Page, title: string): Promise<string> {
