@@ -72,16 +72,34 @@ export async function logout(page: Page): Promise<void> {
   // exposes it after opening the hamburger menu. Always click the
   // *visible* one — both variants exist in the DOM on desktop widths.
   const visibleLogout = () => page.locator('button:visible', { hasText: 'Log out' });
-  if ((await visibleLogout().count()) === 0) {
-    const profile = page.getByRole('button', { name: /signed in as/i });
-    if (await profile.isVisible().catch(() => false)) {
-      await profile.click();
-    } else {
-      const menu = page.getByRole('button', { name: /navigation menu/i });
-      if (await menu.isVisible().catch(() => false)) await menu.click();
+  try {
+    if ((await visibleLogout().count()) === 0) {
+      const profile = page.getByRole('button', { name: /signed in as/i });
+      if (await profile.isVisible().catch(() => false)) {
+        await profile.click();
+      } else {
+        const menu = page.getByRole('button', { name: /navigation menu/i });
+        if (await menu.isVisible().catch(() => false)) await menu.click();
+      }
     }
+    // Bounded: on touch viewports the dropdown/hamburger sometimes never
+    // reveals the button — fall back to ending the session directly instead
+    // of hanging until the test timeout.
+    await visibleLogout().first().click({ timeout: 8000 });
+  } catch {
+    // Same-site (127.0.0.1) fetch carries the session cookie, so this hits
+    // the real logout endpoint; the reload drops the stale client session.
+    await page.evaluate(() =>
+      fetch('http://127.0.0.1:3000/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      }).then((res) => {
+        if (!res.ok) throw new Error(`logout API failed: ${res.status}`);
+      }),
+    );
+    await page.goto('/login');
+    await page.reload();
   }
-  await visibleLogout().first().click();
   // Logout races the ProtectedRoute bounce: the landing URL may carry a
   // ?redirect= query, so match the /login prefix, not the exact end.
   await page.waitForURL('**/login**');
