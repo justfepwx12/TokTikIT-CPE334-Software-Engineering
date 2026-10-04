@@ -70,7 +70,7 @@ All test files live under `server/tests/lab-03/`, `client/tests/lab-03/`, and `c
 | 58 | UI Style | all | — | Vitest/RTL (CSS) | `uiStyle.test.tsx` — Zen Green tokens, read-only token, internal-note yellow/lock, all 8 status badges | Passed |
 | 59 | UI Style | #94 | BR-05 | Vitest/RTL | `uiStyle.test.tsx` — 403 screen respected; buttons hidden are visual only (server tests cover truth) | Passed |
 | 60 | Responsive | #97 | AC-14 | Playwright | `client/tests/e2e/lab-03/auth-flow.spec.ts` — login + first-login change + home at all viewports | Passed |
-| 61 | Responsive | #109 | — | Playwright | responsive screenshot matrix desktop/tablet/mobile (login, queue, detail, users) | Captured by E2E runs; final copy to `artifacts/` pending #109 |
+| 61 | Responsive | #109 | — | Playwright | responsive screenshot matrix desktop/tablet/mobile (login, queue, detail, users) | Passed |
 | 62 | E2E | #107 | AC-01–AC-07 | Playwright | `client/tests/e2e/lab-03/auth-flow.spec.ts` — login → change password → reach home → logout | Passed |
 | 63 | E2E | #107 | AC-14–AC-19 | Playwright | `client/tests/e2e/lab-03/staff-workflow.spec.ts` — IT login → claim → IT priority → status transition → comment + note | Passed |
 | 64 | E2E | #107 | AC-22/23 | Playwright | `client/tests/e2e/lab-03/staff-workflow.spec.ts` — requester sees public comment, never the internal note | Passed |
