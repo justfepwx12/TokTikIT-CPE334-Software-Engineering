@@ -1,6 +1,6 @@
 # Lab 4 Docs — Scaffold (Owner: Issue #124)
 
-ไฟล์จริงจะถูกเติมใน Issue #131/#130/#132 ห้ามเติม Excluded Scope.
+Real content lands via Issues #131 / #130 / #132. Excluded Scope must stay out.
 
 - `specification.md` ← #131 (7 fields Actions Taken, permission matrix, 8 states)
 - `api-spec.md` ← #130 (aggregated dashboard, CRUD, 403/409)

@@ -12,14 +12,14 @@
 | 5 Test & Regression | #128 | #142 (5.1 backend), #143 (5.2 frontend) |
 | 6 Workflow & PDF | #129 | #144 (6.1 kanban/branch), #145 (6.2 PDF) |
 
-## Excluded Scope (ห้ามทำ)
+## Excluded Scope (forbidden)
 SLA auto-calc / on-call, Email/SMS/LINE/Push, Inventory/Purchase/Cost, Time-sheet/Payroll,
 Multi-step approval/e-signature, Advanced BI/custom report/Export, Multi-tenant Production.
 
-## วิธีหยิบงาน
+## How to Pick Up Work
 ```bash
 git fetch origin && git checkout lab4-staging && git pull
 git checkout -b feature/lab4-01-spec-dd lab4-staging
 gh issue develop 131 --checkout
-# ทำงาน -> PR เข้า lab4-staging -> link issue -> merge
+# work -> PR into lab4-staging -> link issue -> merge
 ```
