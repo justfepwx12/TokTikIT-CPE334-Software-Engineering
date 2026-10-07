@@ -87,7 +87,7 @@ Lab 3 BR-01–BR-21 carry forward unchanged. New rules:
   | `description` | String | Yes | 1–2000 chars after trim; whitespace-only rejected. |
   | `result` | String | Yes | 1–2000 chars after trim; whitespace-only rejected. |
   | `performedBy` | User ref | Auto | Taken from the JWT/session (`req.user.id`); never accepted from the request body (BR-23). |
-  | `followUpRequired` | Boolean | Yes | Defaults `false`. |
+  | `followUpRequired` | Boolean | No | Optional — defaults `false` when omitted. |
   | `followUpNote` | String? | Conditional | Mandatory (1–2000 chars after trim) when `followUpRequired = true`; must be absent-or-empty when `false` (server clears it). |
   | `attachmentNotes` | String? | No | 0–2000 chars; plain-text reference notes only (filenames, locations) — **not** a file store; the Lab 2/3 Attachment system is untouched. |
 
@@ -98,10 +98,10 @@ Lab 3 BR-01–BR-21 carry forward unchanged. New rules:
 
 * **BR-25 (Dashboard scoping)** — Formulas are computed server-side with mandatory scoping:
   * *Requester summary* pins every count to `requesterId = <me>`.
-  * *Staff summary* counts (a) tickets with `ownerId IS NULL` and non-terminal status (Unassigned), (b) tickets with `ownerId = <me>` (My load), (c) follow-ups on actions belonging to visible tickets (Follow-Up Due), (d) tickets transitioned to `RESOLVED` today UTC (Resolved Today).
+  * *Staff summary* counts (a) tickets with `ownerId IS NULL` and non-terminal status (Unassigned), (b) tickets with `ownerId = <me>` and non-terminal status (My load), (c) non-terminal tickets visible to the viewer having ≥ 1 action with `followUpRequired = true` (Follow-Up Due — identical predicate to the `followUp` list filter, AD-18), (d) tickets with status `RESOLVED` whose `updatedAt` falls in the current UTC day (Resolved Today, AD-19 — documented approximation).
   * Terminal statuses (`CLOSED`, `CANCELLED`) never appear in "needs attention" buckets.
 * **BR-26 (Aggregated-only responses)** — Dashboard endpoints return counts computed with `groupBy`/`count` in the database. Fetching ticket rows and counting client-side is forbidden; list payloads are never embedded in summaries.
-* **BR-29 (Empty states & drill-down)** — A zero metric returns `0` (plus `items: []` where a shape carries one) — never `null`, never 500. Each metric carries a `drillDown` descriptor (`{ endpoint, query }`) pointing at the existing filtered list from FR-31. Empty states show calm helper copy plus a next action (Requester: "Create your first ticket"; Staff: "Queue is clear").
+* **BR-29 (Empty states & drill-down)** — A zero metric returns `0` — never `null`, never 500. Each metric carries a `drillDown` descriptor (`{ endpoint, query }`) pointing at the existing filtered list from FR-31, and following it returns exactly the counted ticket set. Empty states show calm helper copy plus a next action (Requester: "Create your first ticket"; Staff: "Queue is clear").
 
 ### 5.3 Concurrency & Safety
 
@@ -244,6 +244,7 @@ Full request/response shapes in `docs/lab-04/api-spec.md`. Endpoint summary (all
 * A client-supplied `performedBy`/`performedById` is ignored/stripped (BR-23); `version` in the body is ignored — only `If-Match` counts (BR-27).
 * Stale update → `409` + `STALE_VERSION`; stored row untouched (BR-27).
 * Idempotency-Key reuse with different payload → `422` + `IDEMPOTENCY_KEY_REUSE` (BR-28).
+* Drill-down filters (`followUp`, `resolvedToday`, multi-status `status` on the staff queue) are optional query params on the existing list endpoints (FR-31); `followUpRequired` on create is optional and defaults `false`.
 * Dashboard responses contain counts + `drillDown` descriptors only — no ticket rows (BR-26).
 
 ---
@@ -264,7 +265,7 @@ Full request/response shapes in `docs/lab-04/api-spec.md`. Endpoint summary (all
 * **AC-42**: Given two Requesters (A with tickets, B with zero), when each fetches the requester summary, then A sees own counts only and B sees all zeros — no cross-user bleed.
 * **AC-43**: Given seeded unassigned + self-assigned tickets, when Staff fetch the staff summary, then `unassignedCount`, `myAssignedCount`, `followUpDueCount`, and `resolvedTodayCount` match direct database counts.
 * **AC-44**: Given a Requester calling the staff summary (or Staff calling with no session), then `403` (resp. `401`).
-* **AC-45**: Given an empty scope, when any summary is fetched, then every metric is `0` with `items: []` — never null, never 500.
+* **AC-45**: Given an empty scope, when any summary is fetched, then every metric is `0` — never null, never 500.
 * **AC-46**: Given any dashboard metric, when its drill-down descriptor is followed, then the existing filtered list shows exactly the counted tickets.
 * **AC-47**: Given query profiling, when summaries are fetched, then aggregation happens in-DB (`groupBy`/`count`) with no full-table fetch and no N+1.
 
@@ -310,8 +311,8 @@ Full request/response shapes in `docs/lab-04/api-spec.md`. Endpoint summary (all
 * **AD-15 (Idempotency-Key)**: Optional opaque header (≤ 64 chars), scoped per ticket, honored for 24h; replay returns the stored `201` payload verbatim (BR-28).
 * **AD-16 (Drill-down reuse)**: Drill-down navigates to existing filtered lists (`GET /api/tickets?status=` for Requesters; `GET /api/staff/tickets?…` for Staff) — no new endpoint, no new auth surface (D-06).
 * **AD-17 (Dashboard routes)**: New client routes `/dashboard/requester` and `/dashboard/staff`; post-login home redirects by role (Requester → requester dashboard; IT/Admin → staff dashboard).
-* **AD-18 (Follow-Up Due definition)**: Counts actions with `followUpRequired = true` on currently non-terminal tickets within the viewer's scope; resolving the follow-up is recording a newer action with `followUpRequired = false`, not deleting history.
-* **AD-19 (Resolved Today definition)**: Tickets whose status became `RESOLVED` during the current UTC calendar day (server-computed; no client clock involved).
+* **AD-18 (Follow-Up Due definition)**: Counts tickets having ≥ 1 action with `followUpRequired = true` on currently non-terminal tickets within the viewer's scope — the identical predicate served by the `followUp` list filter, so drill-down returns exactly the counted set; resolving the follow-up is recording a newer action with `followUpRequired = false`, not deleting history.
+* **AD-19 (Resolved Today definition)**: Tickets with status `RESOLVED` whose `updatedAt` falls in the current UTC calendar day (server-computed; no client clock involved). Documented approximation: a same-day non-status edit (e.g. a comment) on an already-`RESOLVED` ticket also counts it. A precise `resolvedAt` transition timestamp would require altering the `Ticket` table, which BR-31 excludes — deferred as a follow-up if the team accepts the scope.
 * **AD-20 (Test layout)**: Lab 4 tests live at `server/tests/lab-04/`, `client/tests/lab-04/`, `client/tests/e2e/lab-04/` — same grouping convention as Lab 3 AD-12.
 
 ---

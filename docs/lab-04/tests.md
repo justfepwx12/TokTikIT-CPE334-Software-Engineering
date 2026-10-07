@@ -32,8 +32,8 @@ Planned test files live under `server/tests/lab-04/`, `client/tests/lab-04/`, an
 | 14 | API | #136 | AC-42 | Supertest | `dashboard-api.test.ts` — Requester A sees own counts; Requester B sees all zeros; Staff sees only own requested tickets; no bleed | Planned |
 | 15 | API | #136 | AC-43 | Supertest | `dashboard-api.test.ts` — staff summary equals direct DB counts (unassigned/mine/followUp/resolvedToday) | Planned |
 | 16 | Authorization | #136 | AC-44 | Supertest | `dashboard-api.test.ts` — Requester on staff summary → 403; no session → 401 | Planned |
-| 17 | API | #136 | AC-45 | Supertest | `dashboard-api.test.ts` — empty scope returns 0s + items:[]; never null/500 | Planned |
-| 18 | API | #136 | AC-46 | Supertest | `dashboard-api.test.ts` — every drillDown descriptor resolves to the counted ticket set | Planned |
+| 17 | API | #136 | AC-45 | Supertest | `dashboard-api.test.ts` — empty scope returns all-zero metrics; never null/500 | Planned |
+| 18 | API | #136 | AC-46 | Supertest | `dashboard-api.test.ts` — every drillDown descriptor (incl. `followUp` + `resolvedToday` filters) resolves to the counted ticket set | Planned |
 | 19 | API | #136 | AC-47 | Supertest + query log | `dashboard-api.test.ts` — aggregation in-DB (groupBy/count), no full-table fetch, no N+1 | Planned |
 | 20 | UI | #139 | AC-48 | Vitest/RTL | `StaffDashboard.test.tsx` — cards + shortcuts + Loading/Empty/Error + drill-down links | Planned |
 | 21 | UI | #138 | AC-49 | Vitest/RTL | `RequesterDashboard.test.tsx` — own-only metrics, empty CTA, no staff metrics rendered | Planned |
@@ -89,12 +89,14 @@ myAssignedCount  = COUNT(*) FROM Ticket WHERE ownerId=:me AND status IN NON_TERM
 myInProgressCount= COUNT(*) FROM Ticket WHERE ownerId=:me AND status='IN_PROGRESS';
 waitingForRequesterCount = COUNT(*) FROM Ticket WHERE status='WAITING_FOR_REQUESTER';
 followUpDueCount = COUNT(DISTINCT t.id) FROM Ticket t JOIN ActionTaken a ON a.ticketId=t.id
-  WHERE t.status IN NON_TERMINAL AND (t.ownerId IS NULL OR t.ownerId=:me) AND a.followUpRequired=true;
+  WHERE t.status IN NON_TERMINAL AND a.followUpRequired=true; -- viewer-visible scope; identical predicate to the followUp list filter (AD-18)
 resolvedTodayCount = COUNT(*) FROM Ticket
-  WHERE status='RESOLVED' AND DATE_TRUNC('day', updatedAt) = DATE_TRUNC('day', NOW() AT TIME ZONE 'UTC'); -- AD-19
+  WHERE status='RESOLVED' AND DATE_TRUNC('day', updatedAt) = DATE_TRUNC('day', NOW() AT TIME ZONE 'UTC'); -- AD-19, documented approximation
 ```
 
-Zero-case rule: any `COUNT` returning no rows surfaces as `0` with `items: []` — never null (BR-29, row 17).
+Zero-case rule: any `COUNT` returning no rows surfaces as `0` — never null (BR-29, row 17).
+
+Known approximation (AD-19): `resolvedTodayCount` keys off `updatedAt`, so a same-day non-status edit on an already-`RESOLVED` ticket counts it. A precise transition timestamp would require a `Ticket`-table change (excluded by BR-31).
 
 ---
 
