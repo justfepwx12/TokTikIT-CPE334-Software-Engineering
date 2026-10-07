@@ -50,6 +50,7 @@ Planned test files live under `server/tests/lab-04/`, `client/tests/lab-04/`, an
 | 32 | E2E | #143 | AC-55 | Playwright | `lab4-hygiene.spec.ts` — console-error + broken-link sweep across all Lab 4 screens | Planned |
 | 33 | Workflow | #128 | AC-59 | Supertest | `workflow-spot.test.ts` — legal matrix edges 200, illegal edges 400 unchanged (Lab 3 matrix) | Planned |
 | 34 | Regression | #143 | AC-58 | Playwright | Lab 2+3 journeys re-run (login, create, queue, claim, priorities, transitions, resolve-intent, comments/notes, admin, attachments) — all green, no skips | Planned |
+| 35 | API | #136 | AC-42/43 | Supertest | `dashboard-api.test.ts` — recording a newer `followUpRequired=false` action clears the ticket from follow-up metrics and the `followUp=true` filter (AD-18) | Planned |
 
 ---
 
@@ -57,7 +58,7 @@ Planned test files live under `server/tests/lab-04/`, `client/tests/lab-04/`, an
 
 | AC | Rows | AC | Rows | AC | Rows |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| AC-34 | 5 | AC-43 | 4, 15 | AC-52 | 24 |
+| AC-34 | 5 | AC-43 | 4, 15, 35 | AC-52 | 24 |
 | AC-35 | 3, 6 | AC-44 | 16 | AC-53 | 27 |
 | AC-36 | 7 | AC-45 | 17 | AC-54 | 28 |
 | AC-37 | 8, 9, 25 | AC-46 | 18, 30, 31 | AC-55 | 32 |
@@ -65,7 +66,7 @@ Planned test files live under `server/tests/lab-04/`, `client/tests/lab-04/`, an
 | AC-39 | 11 | AC-48 | 20, 26 | AC-57 | 2 |
 | AC-40 | 12 | AC-49 | 21, 26 | AC-58 | 34 |
 | AC-41 | 13, 29 | AC-50 | 22 | AC-59 | 33 |
-| AC-42 | 14, 30 | AC-51 | 23 | | |
+| AC-42 | 14, 30, 35 | AC-51 | 23 | | |
 
 Every AC-34–AC-59 has ≥ 1 row; no row is skipped or pending-implementation by design.
 
@@ -81,7 +82,8 @@ myOpen    = COUNT(*) FROM Ticket WHERE requesterId=:me AND status IN ('NEW','OPE
 myWaiting = COUNT(*) FROM Ticket WHERE requesterId=:me AND status='WAITING_FOR_REQUESTER';
 my{Resolved,Closed,Reopened,Cancelled} = COUNT(*) ... per status;
 myFollowUpOpen = COUNT(DISTINCT t.id) FROM Ticket t JOIN ActionTaken a ON a.ticketId=t.id
-  WHERE t.requesterId=:me AND t.status IN NON_TERMINAL AND a.followUpRequired=true;
+  WHERE t.requesterId=:me AND t.status IN NON_TERMINAL AND a.followUpRequired=true
+  AND a.id = (SELECT MAX(a2.id) FROM ActionTaken a2 WHERE a2.ticketId=t.id); -- latest recorded action only (AD-18)
 
 -- Staff scope (BR-25): terminal CLOSED/CANCELLED excluded from attention buckets
 unassignedCount  = COUNT(*) FROM Ticket WHERE ownerId IS NULL AND status IN NON_TERMINAL;
@@ -89,7 +91,8 @@ myAssignedCount  = COUNT(*) FROM Ticket WHERE ownerId=:me AND status IN NON_TERM
 myInProgressCount= COUNT(*) FROM Ticket WHERE ownerId=:me AND status='IN_PROGRESS';
 waitingForRequesterCount = COUNT(*) FROM Ticket WHERE status='WAITING_FOR_REQUESTER';
 followUpDueCount = COUNT(DISTINCT t.id) FROM Ticket t JOIN ActionTaken a ON a.ticketId=t.id
-  WHERE t.status IN NON_TERMINAL AND a.followUpRequired=true; -- viewer-visible scope; identical predicate to the followUp list filter (AD-18)
+  WHERE t.status IN NON_TERMINAL AND a.followUpRequired=true
+  AND a.id = (SELECT MAX(a2.id) FROM ActionTaken a2 WHERE a2.ticketId=t.id); -- viewer-visible scope; latest recorded action only (AD-18)
 resolvedTodayCount = COUNT(*) FROM Ticket
   WHERE status='RESOLVED' AND DATE_TRUNC('day', updatedAt) = DATE_TRUNC('day', NOW() AT TIME ZONE 'UTC'); -- AD-19, documented approximation
 ```
@@ -117,7 +120,7 @@ Known approximation (AD-19): `resolvedTodayCount` keys off `updatedAt`, so a sam
 * `actions-api.test.ts` — rows 5–7, 13
 * `actions-concurrency.test.ts` — rows 8–10
 * `actions-authz.test.ts` — rows 11–12
-* `dashboard-api.test.ts` — rows 14–19
+* `dashboard-api.test.ts` — rows 14–19, 35
 * `workflow-spot.test.ts` — row 33
 
 ### `client/tests/lab-04/` (Vitest + RTL)

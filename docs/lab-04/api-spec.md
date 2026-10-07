@@ -132,11 +132,11 @@ Own-ticket counts for the caller (FR-29, BR-25).
       "myClosed": { "endpoint": "/api/tickets", "query": "status=CLOSED" },
       "myReopened": { "endpoint": "/api/tickets", "query": "status=REOPENED" },
       "myCancelled": { "endpoint": "/api/tickets", "query": "status=CANCELLED" },
-      "myFollowUpOpen": { "endpoint": "/api/tickets", "query": "followUp=true" }
+      "myFollowUpOpen": { "endpoint": "/api/tickets", "query": "status=NEW,OPEN,IN_PROGRESS,WAITING_FOR_REQUESTER,REOPENED&followUp=true" }
     }
   }
   ```
-* **Formula notes**: `myOpen` = own tickets in `NEW/OPEN/IN_PROGRESS`; `myWaiting` = own in `WAITING_FOR_REQUESTER`; the rest map 1:1 to their status; `myFollowUpOpen` = own non-terminal tickets having ≥ 1 action with `followUpRequired = true`. "Own" always means `requesterId = caller`, regardless of role. `myFollowUpOpen` drills into the new `followUp` filter (§3); requester scope is enforced server-side. Empty scope → every metric `0` (BR-29).
+* **Formula notes**: `myOpen` = own tickets in `NEW/OPEN/IN_PROGRESS`; `myWaiting` = own in `WAITING_FOR_REQUESTER`; the rest map 1:1 to their status; `myFollowUpOpen` = own non-terminal tickets whose latest recorded action (greatest `id`) has `followUpRequired = true` (AD-18). "Own" always means `requesterId = caller`, regardless of role. `myFollowUpOpen` drills into the `status` + `followUp` filters (§3); requester scope is enforced server-side. Empty scope → every metric `0` (BR-29).
 
 ### GET /api/dashboard/staff/summary
 Operational counts for staff (FR-30, BR-25).
@@ -166,15 +166,15 @@ Operational counts for staff (FR-30, BR-25).
     }
   }
   ```
-* **Formula notes**: `unassignedCount` = `ownerId IS NULL` AND status non-terminal (`NEW/OPEN/IN_PROGRESS/WAITING_FOR_REQUESTER/REOPENED`); `myAssignedCount` = `ownerId = me` AND non-terminal; `waitingForRequesterCount` = all tickets in `WAITING_FOR_REQUESTER`; `followUpDueCount` = non-terminal tickets visible to the viewer with ≥ 1 `followUpRequired` action (AD-18) — the same predicate as the `followUp` list filter, so the drill-down returns exactly the counted set; `resolvedTodayCount` = tickets with status `RESOLVED` whose `updatedAt` falls in the current UTC day (AD-19 — documented approximation). Terminal (`CLOSED`, `CANCELLED`) tickets never enter attention buckets (BR-25).
+* **Formula notes**: `unassignedCount` = `ownerId IS NULL` AND status non-terminal (`NEW/OPEN/IN_PROGRESS/WAITING_FOR_REQUESTER/REOPENED`); `myAssignedCount` = `ownerId = me` AND non-terminal; `waitingForRequesterCount` = all tickets in `WAITING_FOR_REQUESTER`; `followUpDueCount` = non-terminal tickets visible to the viewer whose latest recorded action (greatest `id`) has `followUpRequired = true` (AD-18) — the same predicate as the `followUp` list filter, so the drill-down returns exactly the counted set; `resolvedTodayCount` = tickets with status `RESOLVED` whose `updatedAt` falls in the current UTC day (AD-19 — documented approximation). Terminal (`CLOSED`, `CANCELLED`) tickets never enter attention buckets (BR-25).
 
 ---
 
 ## 3. Unchanged Lab 3 Surface
 
 All Lab 3 endpoints (`/auth/*`, `/staff/tickets*`, ticket operations, resolve-intent, comments, notes, `/admin/users*`, and the carried-forward Lab 2 requester endpoints) keep their behavior, including the `mustChangePassword` gate and safe-error behavior. Lab 4 adds only optional query params to the two existing list endpoints (requests without them behave byte-for-byte as Lab 3) so dashboard drill-down can return each metric's exact ticket set (FR-31, AC-46):
-* `GET /api/tickets` — `status` accepts comma-separated multi-values (unknown value → `400`); new `followUp` filter (`true` = tickets having ≥ 1 action with `followUpRequired = true`; `false` = the rest; anything else → `400`). Requester scope (`requesterId = me`) is still enforced server-side.
-* `GET /api/staff/tickets` — `status` accepts the same comma-separated multi-values (unknown value → `400`); new `followUp=true|false` (same action-based predicate, anything else → `400`); new `resolvedToday=true` (status `RESOLVED` with `updatedAt` in the current UTC day per AD-19). Existing filters including the `ownerId=0` unassigned sentinel are unchanged.
+* `GET /api/tickets` — `status` accepts comma-separated multi-values (unknown value → `400`); new `followUp` filter (`true` = tickets whose latest recorded action, greatest `id`, has `followUpRequired = true`; `false` = the rest; anything else → `400`). Requester scope (`requesterId = me`) is still enforced server-side.
+* `GET /api/staff/tickets` — `status` accepts the same comma-separated multi-values (unknown value → `400`); new `followUp=true|false` (same latest-action predicate, anything else → `400`); new `resolvedToday=true` (status `RESOLVED` with `updatedAt` in the current UTC day per AD-19). Existing filters including the `ownerId=0` unassigned sentinel are unchanged.
 
 ---
 
