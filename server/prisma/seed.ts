@@ -71,6 +71,9 @@ const SEED_USERS: SeedUser[] = [
   { name: 'Kanya Boonmee', email: 'kanya.boonmee@toktikit.com', role: 'REQUESTER', isActive: true, mustChangePassword: true },
   { name: 'Sirichai Thongdee', email: 'sirichai.thongdee@toktikit.com', role: 'REQUESTER', isActive: true, mustChangePassword: true },
   { name: 'Napat Wongsawat', email: 'napat.wongsawat@toktikit.com', role: 'REQUESTER', isActive: false, mustChangePassword: true },
+  // Lab 4 AC-57 — dashboard-zero case: an active Requester who owns zero
+  // tickets, so the requester summary can be verified as all-zeros.
+  { name: 'Busaba Jitdee', email: 'busaba.jitdee@toktikit.com', role: 'REQUESTER', isActive: true, mustChangePassword: true },
 
   // >= 3 active IT Staff + >= 1 inactive.
   { name: 'Somchai Jaidee', email: 'somchai.jaidee@toktikit.com', role: 'IT_STAFF', isActive: true, mustChangePassword: false },
@@ -118,6 +121,15 @@ async function seedUsers() {
 // ---- sample tickets + comments + notes ------------------------------------
 
 type SampleComment = { body: string; authorEmail: string }
+type SampleAction = {
+  actionAt: string
+  description: string
+  result: string
+  performerEmail: string
+  followUpRequired: boolean
+  followUpNote?: string
+  attachmentNotes?: string
+}
 type SampleTicket = {
   ticketNo: string
   title: string
@@ -131,6 +143,10 @@ type SampleTicket = {
   ownerEmail?: string
   comments?: SampleComment[]
   notes?: SampleComment[]
+  // Lab 4 AC-57 — deterministic fixtures giving 0/1/N action coverage plus
+  // followUpRequired true and false cases. Seed key pattern (spec §9.3):
+  // `seed:<ticketNo>:action:<index>`.
+  actions?: SampleAction[]
 }
 
 // Fixed, past-dated ticket numbers so they never collide with the live
@@ -164,6 +180,28 @@ const SAMPLE_TICKETS: SampleTicket[] = [
     notes: [
       { body: 'Portal team reported an incident window last night — confirmed.', authorEmail: 'somchai.jaidee@toktikit.com' },
     ],
+    // N-action case: latest action has followUpRequired=false, so this
+    // ticket is cleared from follow-up results under the AD-18
+    // latest-action rule (even though an older action flagged follow-up).
+    // Performer pimchanok differs from owner somchai (BR-23).
+    actions: [
+      {
+        actionAt: '2026-09-12T02:00:00.000Z',
+        description: 'Restarted the portal application pool.',
+        result: 'Login page loads again, monitoring for timeouts.',
+        performerEmail: 'somchai.jaidee@toktikit.com',
+        followUpRequired: true,
+        followUpNote: 'Re-check login success rate at end of shift.',
+        attachmentNotes: 'portal-pool-recycle-2026-09-12.log in /srv/logs',
+      },
+      {
+        actionAt: '2026-09-12T06:30:00.000Z',
+        description: 'Verified login success rate back above 99%.',
+        result: 'Timeouts gone for 4 hours straight.',
+        performerEmail: 'pimchanok.saelim@toktikit.com',
+        followUpRequired: false,
+      },
+    ],
   },
   {
     ticketNo: 'TK-20260821-0003',
@@ -181,6 +219,35 @@ const SAMPLE_TICKETS: SampleTicket[] = [
     ],
     notes: [
       { body: 'Spare feeding roller ordered, ETA 2 days.', authorEmail: 'pimchanok.saelim@toktikit.com' },
+    ],
+    // N-action case: latest action still flags follow-up, so this ticket
+    // stays in follow-up results (AD-18). Performer thanawat differs from
+    // owner pimchanok (BR-23).
+    actions: [
+      {
+        actionAt: '2026-09-14T03:00:00.000Z',
+        description: 'Cleaned the paper path and reseated the tray.',
+        result: 'Single-sided jobs print fine again.',
+        performerEmail: 'pimchanok.saelim@toktikit.com',
+        followUpRequired: false,
+      },
+      {
+        actionAt: '2026-09-15T04:00:00.000Z',
+        description: 'Replaced the feeding roller with the spare part.',
+        result: 'Double-sided jobs jam less often but still occur.',
+        performerEmail: 'pimchanok.saelim@toktikit.com',
+        followUpRequired: true,
+        followUpNote: 'Escalate to vendor if jams persist tomorrow.',
+      },
+      {
+        actionAt: '2026-09-16T05:00:00.000Z',
+        description: 'Vendor remote session: adjusted roller pressure.',
+        result: 'No jams in the last 50 test pages.',
+        performerEmail: 'thanawat.ruangtham@toktikit.com',
+        followUpRequired: true,
+        followUpNote: 'Watch the morning print batch before closing.',
+        attachmentNotes: 'vendor-session-2026-09-16.txt in /srv/logs',
+      },
     ],
   },
   {
@@ -200,6 +267,18 @@ const SAMPLE_TICKETS: SampleTicket[] = [
     notes: [
       { body: 'Waiting on the marketing lead sign-off before granting.', authorEmail: 'thanawat.ruangtham@toktikit.com' },
     ],
+    // 1-action case with follow-up flagged: requester sirichai sees
+    // myFollowUpOpen = 1 (non-zero dashboard demo).
+    actions: [
+      {
+        actionAt: '2026-09-18T07:00:00.000Z',
+        description: 'Emailed the marketing lead for folder approval.',
+        result: 'No reply yet; access still pending.',
+        performerEmail: 'thanawat.ruangtham@toktikit.com',
+        followUpRequired: true,
+        followUpNote: 'Chase the approver again in two days.',
+      },
+    ],
   },
   {
     ticketNo: 'TK-20260823-0005',
@@ -218,6 +297,17 @@ const SAMPLE_TICKETS: SampleTicket[] = [
     ],
     notes: [
       { body: 'Reset the signature cache and verified on a test message.', authorEmail: 'somchai.jaidee@toktikit.com' },
+    ],
+    // 1-action case without follow-up: requester anong sees
+    // myFollowUpOpen = 0 (zero follow-up demo on a non-zero ticket set).
+    actions: [
+      {
+        actionAt: '2026-09-20T08:00:00.000Z',
+        description: 'Pushed the fixed signature template to the mail client.',
+        result: 'Images attach correctly on test messages.',
+        performerEmail: 'somchai.jaidee@toktikit.com',
+        followUpRequired: false,
+      },
     ],
   },
   {
@@ -339,11 +429,118 @@ async function seedSampleTickets(userIds: Record<string, number>) {
   )
 }
 
+// ---- Lab 4 actions taken ----------------------------------------------------
+
+// Non-terminal statuses per tests.md §3 (dashboard attention buckets).
+const NON_TERMINAL = ['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'REOPENED'] as const
+
+async function seedSampleActions(userIds: Record<string, number>) {
+  let actionCount = 0
+  for (const t of SAMPLE_TICKETS) {
+    const row = await prisma.ticket.findUnique({ where: { ticketNo: t.ticketNo } })
+    if (!row || !t.actions?.length) continue
+    for (const [i, a] of t.actions.entries()) {
+      const seedKey = `seed:${t.ticketNo}:action:${i}`
+      await prisma.actionTaken.upsert({
+        where: { ticketId_seedKey: { ticketId: row.id, seedKey } },
+        // Idempotent: never overwrite on re-run (AC-57) — same convention
+        // as seeded comments/notes. BR-23 performer identity is fixed at
+        // seed time; followUpNote obeys the BR-22 conditional rule.
+        update: {},
+        create: {
+          ticketId: row.id,
+          actionAt: new Date(a.actionAt),
+          description: a.description,
+          result: a.result,
+          performedById: userIds[a.performerEmail],
+          followUpRequired: a.followUpRequired,
+          followUpNote: a.followUpRequired ? a.followUpNote : null,
+          attachmentNotes: a.attachmentNotes ?? null,
+          seedKey,
+        },
+      })
+      actionCount++
+    }
+  }
+
+  const perTicket = await prisma.actionTaken.groupBy({ by: ['ticketId'], _count: true })
+  const buckets = { zero: SAMPLE_TICKETS.length - perTicket.length, one: 0, many: 0 }
+  for (const g of perTicket) {
+    if (g._count === 1) buckets.one++
+    else buckets.many++
+  }
+  console.log(
+    `Processed ${actionCount} sample action upserts across ${perTicket.length} tickets ` +
+      `(0-action: ${buckets.zero}, 1-action: ${buckets.one}, N-action: ${buckets.many}).`,
+  )
+}
+
+// ---- Lab 4 verification log ---------------------------------------------------
+
+// Prints per-status counts plus both dashboard cases (zero + non-zero) so a
+// human re-running the seed can eyeball AC-57 without extra tooling. Uses the
+// same predicates as docs/lab-04 (BR-25, AD-18, AD-19).
+async function printVerificationSummary(userIds: Record<string, number>) {
+  const byStatus = await prisma.ticket.groupBy({ by: ['status'], _count: true })
+  const statusCounts = Object.fromEntries(byStatus.map((g) => [g.status, g._count]))
+
+  const tickets = await prisma.ticket.findMany({
+    select: { id: true, status: true, requesterId: true, ownerId: true, updatedAt: true },
+  })
+  const actions = await prisma.actionTaken.findMany({
+    select: { ticketId: true, id: true, followUpRequired: true },
+    orderBy: { id: 'asc' },
+  })
+  // AD-18 latest-action rule: only each ticket's greatest-id action decides
+  // (later writes overwrite earlier ones in id order).
+  const latestByTicket = new Map<number, boolean>()
+  for (const a of actions) latestByTicket.set(a.ticketId, a.followUpRequired)
+  const isFollowUpDue = (ticketId: number) => latestByTicket.get(ticketId) === true
+  const isNonTerminal = (status: string) => (NON_TERMINAL as readonly string[]).includes(status)
+
+  const requesterMetrics = (requesterId: number | undefined) => {
+    const mine = tickets.filter((t) => t.requesterId === requesterId)
+    const inStatus = (...s: string[]) => mine.filter((t) => s.includes(t.status)).length
+    return {
+      tickets: mine.length,
+      myOpen: mine.filter((t) => ['NEW', 'OPEN', 'IN_PROGRESS'].includes(t.status)).length,
+      myWaiting: inStatus('WAITING_FOR_REQUESTER'),
+      myResolved: inStatus('RESOLVED'),
+      myClosed: inStatus('CLOSED'),
+      myReopened: inStatus('REOPENED'),
+      myCancelled: inStatus('CANCELLED'),
+      myFollowUpOpen: mine.filter((t) => isNonTerminal(t.status) && isFollowUpDue(t.id)).length,
+    }
+  }
+
+  // AD-19: same UTC-calendar-day predicate as the staff summary.
+  const startOfTodayUtc = new Date()
+  startOfTodayUtc.setUTCHours(0, 0, 0, 0)
+  const staffMetrics = (viewerId: number) => ({
+    unassignedCount: tickets.filter((t) => t.ownerId === null && isNonTerminal(t.status)).length,
+    myAssignedCount: tickets.filter((t) => t.ownerId === viewerId && isNonTerminal(t.status)).length,
+    followUpDueCount: tickets.filter((t) => isNonTerminal(t.status) && isFollowUpDue(t.id)).length,
+    resolvedTodayCount: tickets.filter((t) => t.status === 'RESOLVED' && t.updatedAt >= startOfTodayUtc).length,
+  })
+
+  console.log('Verify per-status ticket counts:', statusCounts)
+  console.log('Verify requester summary (non-zero, sirichai):', requesterMetrics(userIds['sirichai.thongdee@toktikit.com']))
+  console.log('Verify requester summary (zero, busaba):', requesterMetrics(userIds['busaba.jitdee@toktikit.com']))
+  console.log('Verify staff summary (somchai):', staffMetrics(userIds['somchai.jaidee@toktikit.com']))
+}
+
 async function main() {
+  // #134 — seeds are environment-scoped (dev/staging) and must never run
+  // against production data.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Refusing to seed in NODE_ENV=production (Lab 4 #134).')
+  }
   await seedCategories()
   await seedRelatedSystems()
   const userIds = await seedUsers()
   await seedSampleTickets(userIds)
+  await seedSampleActions(userIds)
+  await printVerificationSummary(userIds)
 }
 
 main()
