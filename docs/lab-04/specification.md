@@ -117,7 +117,57 @@ Lab 3 BR-01–BR-21 carry forward unchanged. New rules:
 
 ## 6. Status Transition Matrix
 
-Unchanged. The authoritative contract is `docs/lab-03/specification.md` §6 (eight statuses; `Cancelled` terminal with no outgoing edges; Requester affects status only via resolve-intent; `Closed` reachable only by IT/Admin from `Resolved`). Lab 4 adds no edge, removes no edge, and re-tests the matrix as regression (AC-59).
+Unchanged. The authoritative (normative) contract is `docs/lab-03/specification.md` §6 (eight statuses; `Cancelled` terminal with no outgoing edges; Requester affects status only via resolve-intent; `Closed` reachable only by IT/Admin from `Resolved`). Lab 4 adds no edge, removes no edge, and re-tests the matrix as regression (AC-59).
+
+What follows is an **informative reference copy** transcribed from Lab 3 §6 so this document satisfies Issue #131 standalone (state diagram + transition table for all 8 states). If this copy ever disagrees with Lab 3 §6, **Lab 3 wins** — fix this copy, never the matrix.
+
+### 6.1 State diagram (happy path + branches)
+
+```text
+New → Open → In Progress → Resolved → Closed
+ │       ↕         ↕   ↓          │  ▲
+ │  Waiting for Requester          │  │
+ │                                 │  │
+ └──────▶ Cancelled (terminal,     └──┴──▶ Reopened ──▶ back to
+           no outgoing edges)               Open / In Progress /
+                                            Waiting / Resolved / Cancelled
+```
+
+* `⇄` between `Open` / `In Progress` / `Waiting for Requester`: work pauses, resumes, or waits for the Requester in any direction (IT/Admin only).
+* Requester moves are **resolve-intent only** (`POST /api/tickets/:id/resolve-intent`): `NEW / OPEN / IN_PROGRESS / WAITING_FOR_REQUESTER → RESOLVED`, and `RESOLVED / CLOSED → REOPENED`. A Requester can never set status directly and can never force `Closed`.
+* Recording or editing an Action Taken never moves status (BR-24) — a status change in the same gesture is a separate API call validated against the table below.
+
+### 6.2 Transition table (who may move a ticket where)
+
+`IT/Admin` = an authenticated active IT Staff or Administrator. `Requester (intent)` = the owning Requester via resolve-intent only. Anything not listed → HTTP 400, status unchanged (BR-15 carried forward).
+
+| From | To | Actors | Notes |
+| :--- | :--- | :--- | :--- |
+| `New` | `Open` | IT/Admin | Work formally started / accepted into the queue. |
+| `New` | `In Progress` | IT/Admin | Direct start of work from a fresh ticket. |
+| `New` | `Resolved` | IT/Admin · Requester (intent) | Requester may mark "Problem Appears Resolved". |
+| `New` | `Cancelled` | IT/Admin | Terminal; requester-created ticket withdrawn by staff. |
+| `Open` | `In Progress` | IT/Admin | |
+| `Open` | `Waiting for Requester` | IT/Admin | Staff need clarification/evidence from the Requester. |
+| `Open` | `Resolved` | IT/Admin · Requester (intent) | |
+| `Open` | `Cancelled` | IT/Admin | Terminal. |
+| `In Progress` | `Open` | IT/Admin | Work paused and returned to the open set. |
+| `In Progress` | `Waiting for Requester` | IT/Admin | |
+| `In Progress` | `Resolved` | IT/Admin · Requester (intent) | |
+| `In Progress` | `Cancelled` | IT/Admin | Terminal. |
+| `Waiting for Requester` | `Open` | IT/Admin | |
+| `Waiting for Requester` | `In Progress` | IT/Admin | Requester replied, work resumes. |
+| `Waiting for Requester` | `Resolved` | IT/Admin · Requester (intent) | |
+| `Waiting for Requester` | `Cancelled` | IT/Admin | Terminal. |
+| `Resolved` | `Closed` | IT/Admin | Closure confirmed by staff; Requester cannot force this. |
+| `Resolved` | `Reopened` | Requester (intent) · IT/Admin | Requester reports the problem still occurs, or staff reopen. |
+| `Closed` | `Reopened` | Requester (intent) · IT/Admin | Same reopen intent applies to closed tickets. |
+| `Reopened` | `Open` | IT/Admin | |
+| `Reopened` | `In Progress` | IT/Admin | |
+| `Reopened` | `Waiting for Requester` | IT/Admin | |
+| `Reopened` | `Resolved` | IT/Admin · Requester (intent) | |
+| `Reopened` | `Cancelled` | IT/Admin | Terminal. |
+| `Cancelled` | — | none | Terminal: no transitions out. |
 
 ---
 
