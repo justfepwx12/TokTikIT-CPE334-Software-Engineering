@@ -29,7 +29,7 @@ Planned test files live under `server/tests/lab-04/`, `client/tests/lab-04/`, an
 | 11 | Authorization | #135 | AC-39 | Supertest | `actions-authz.test.ts` — Requester POST/PATCH → 403 on own and foreign tickets | Planned |
 | 12 | Authorization | #135 | AC-40 | Supertest | `actions-authz.test.ts` — Requester GET own → 200; foreign → 403/404, no existence leak | Planned |
 | 13 | API | #135 | AC-41 | Supertest | `actions-api.test.ts` — newest-first order + pagination across N actions | Planned |
-| 14 | API | #136 | AC-42 | Supertest | `dashboard-api.test.ts` — Requester A sees own counts; Requester B sees all zeros; no bleed | Planned |
+| 14 | API | #136 | AC-42 | Supertest | `dashboard-api.test.ts` — Requester A sees own counts; Requester B sees all zeros; Staff sees only own requested tickets; no bleed | Planned |
 | 15 | API | #136 | AC-43 | Supertest | `dashboard-api.test.ts` — staff summary equals direct DB counts (unassigned/mine/followUp/resolvedToday) | Planned |
 | 16 | Authorization | #136 | AC-44 | Supertest | `dashboard-api.test.ts` — Requester on staff summary → 403; no session → 401 | Planned |
 | 17 | API | #136 | AC-45 | Supertest | `dashboard-api.test.ts` — empty scope returns 0s + items:[]; never null/500 | Planned |

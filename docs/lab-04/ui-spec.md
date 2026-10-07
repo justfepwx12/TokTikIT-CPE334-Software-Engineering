@@ -19,7 +19,7 @@ Tokens (unchanged): Primary `#006B3C` · Secondary `#0B7A46` · Pale `#EAF6EF` �
   * **Requester**: "Dashboard", "My Tickets", "Create Ticket".
   * **IT Staff**: "Dashboard", "Ticket Queue", "My Tickets".
   * **Administrator**: "Dashboard", "Ticket Queue", "My Tickets", "Users".
-* Route guards extend Lab 3 §2.2: `/dashboard/staff` renders a 403 screen for Requesters; `/dashboard/requester` for Staff/Admin shows their own requester-scoped view only if they own tickets, otherwise the empty state (dashboards never expose foreign data — BR-25).
+* Route guards extend Lab 3 §2.2: `/dashboard/staff` renders a 403 screen for Requesters; `/dashboard/requester` for Staff/Admin shows their own requester-scoped view (tickets they requested) only if any exist, otherwise the empty state (dashboards never expose foreign data — BR-25).
 
 ---
 

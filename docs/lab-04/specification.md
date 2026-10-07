@@ -62,7 +62,7 @@ Lab 3 FR-01–FR-24 carry forward unchanged. New requirements:
 * **FR-26**: An IT Staff member or Administrator can update an Action Taken (`PATCH /api/actions/:id`) under optimistic concurrency — the request carries the known `version`; a stale version is rejected with HTTP 409 and nothing is overwritten.
 * **FR-27**: Actions Taken list per ticket (`GET /api/tickets/:id/actions`), newest-first, with lightweight pagination.
 * **FR-28**: A Requester can read the Actions Taken of their **own** tickets only; any create/update attempt returns HTTP 403, and foreign tickets behave per the safe-error rule (BR-06 carried forward).
-* **FR-29**: A Requester can fetch their dashboard summary (`GET /api/dashboard/requester/summary`) — counts scoped strictly to `requesterId = me`, plus empty-state-friendly zeros.
+* **FR-29**: Any authenticated user can fetch their requester-scoped dashboard summary (`GET /api/dashboard/requester/summary`) — counts scoped strictly to `requesterId = me`, plus empty-state-friendly zeros. A Staff/Admin caller sees only tickets they requested themselves (BR-25).
 * **FR-30**: IT Staff and Administrators can fetch the staff dashboard summary (`GET /api/dashboard/staff/summary`) — unassigned work, own load, follow-ups due, resolved-today.
 * **FR-31**: Every dashboard metric drills down into tickets using the **existing** list endpoints with filters (`GET /api/tickets?status=…` for Requesters, `GET /api/staff/tickets?…` for Staff) — no new drill-down endpoint (AD-16).
 * **FR-32**: Replayed `POST` with the same `Idempotency-Key` returns the original record without creating a duplicate.
@@ -131,7 +131,7 @@ Lab 3 §7 carries forward in full. Additions for Lab 4 (`Y` = permitted; `—` =
 | Create an Action Taken | — (403) | Y | Y |
 | Update an Action Taken | — (403) | Y | Y |
 | Replay create with `Idempotency-Key` | — (403, same as create) | Y | Y |
-| Requester dashboard summary | Y (own counts only) | — | — |
+| Requester dashboard summary | Y (own counts only) | Y (own requested tickets only) | Y (own requested tickets only) |
 | Staff dashboard summary | — (403) | Y | Y |
 | Drill-down via `GET /api/tickets?status=` | Y (own only) | Y (all, via staff queue instead) | Y (all, via staff queue instead) |
 | All Lab 3 capabilities | per Lab 3 §7 | per Lab 3 §7 | per Lab 3 §7 |
@@ -186,7 +186,7 @@ Full request/response shapes in `docs/lab-04/api-spec.md`. Endpoint summary (all
 | GET | `/tickets/:id/actions` | List actions, newest-first + pagination | per visibility (§7) | 200 | 400, 401, 403, 404 |
 | POST | `/tickets/:id/actions` | Record an action (performer = self) | IT Staff, Admin | 201 | 400, 401, 403, 404, 422 |
 | PATCH | `/actions/:id` | Update an action (`If-Match: version`) | IT Staff, Admin | 200 | 400, 401, 403, 404, 409 |
-| GET | `/dashboard/requester/summary` | Own-ticket counts | Requester | 200 | 401, 403 |
+| GET | `/dashboard/requester/summary` | Own-ticket counts (`requesterId = me`) | Any authenticated role | 200 | 401 |
 | GET | `/dashboard/staff/summary` | Unassigned + own-load counts | IT Staff, Admin | 200 | 401, 403 |
 
 **Contract decisions:**

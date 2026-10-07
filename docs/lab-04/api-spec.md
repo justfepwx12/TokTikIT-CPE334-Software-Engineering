@@ -110,8 +110,8 @@ Both endpoints compute counts in-DB (`groupBy`/`count`) and return no ticket row
 Own-ticket counts for the caller (FR-29, BR-25).
 
 * **Method**: `GET`
-* **Roles**: REQUESTER only (Staff/Admin → `403`, AD scope rule). No session → `401`.
-* **Status Codes**: `200 OK` · `401` · `403` · `500`
+* **Roles**: Any authenticated role — REQUESTER, IT_STAFF, ADMIN — scoped strictly to the caller's own `requesterId` (BR-25). A Staff/Admin caller sees only tickets they requested themselves. No session → `401`.
+* **Status Codes**: `200 OK` · `401` · `500` (no `403` here: every authenticated user may read their own requester-scoped counts)
 * **Response Shape**:
   ```json
   {
@@ -135,7 +135,7 @@ Own-ticket counts for the caller (FR-29, BR-25).
     }
   }
   ```
-* **Formula notes**: `myOpen` = own tickets in `NEW/OPEN/IN_PROGRESS`; `myWaiting` = own in `WAITING_FOR_REQUESTER`; the rest map 1:1 to their status; `myFollowUpOpen` = own non-terminal tickets having ≥ 1 action with `followUpRequired = true`. Empty scope → every metric `0` (BR-29).
+* **Formula notes**: `myOpen` = own tickets in `NEW/OPEN/IN_PROGRESS`; `myWaiting` = own in `WAITING_FOR_REQUESTER`; the rest map 1:1 to their status; `myFollowUpOpen` = own non-terminal tickets having ≥ 1 action with `followUpRequired = true`. "Own" always means `requesterId = caller`, regardless of role. Empty scope → every metric `0` (BR-29).
 
 ### GET /api/dashboard/staff/summary
 Operational counts for staff (FR-30, BR-25).
@@ -180,6 +180,7 @@ All Lab 3 endpoints (`/auth/*`, `/staff/tickets*`, ticket operations, resolve-in
 | :--- | :---: | :--- |
 | Requester POST/PATCH on actions | 403 | Create/update is Staff/Admin-only (§7). |
 | Requester on staff summary | 403 | Dashboard scope is role-pinned. |
+| Staff/Admin on requester summary | 200 | Allowed — scoped to own `requesterId` only (BR-25); sees just tickets they requested. |
 | Missing `If-Match` on PATCH | 400 | Concurrency token required (AD-14). |
 | Stale `If-Match` on PATCH | 409 | `STALE_VERSION`; re-fetch and retry (BR-27). |
 | Reused `Idempotency-Key`, different payload | 422 | `IDEMPOTENCY_KEY_REUSE` (BR-28). |
