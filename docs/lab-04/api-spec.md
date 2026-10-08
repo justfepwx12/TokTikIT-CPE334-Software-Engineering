@@ -104,7 +104,7 @@ Partially updates one action under optimistic concurrency (FR-26, BR-27).
 
 ## 2. Dashboards (aggregated only)
 
-Both endpoints compute counts in-DB (`groupBy`/`count`) and return no ticket rows (BR-26). Every metric carries a `drillDown` descriptor the UI follows into an existing filtered list (FR-31, AD-16).
+Both endpoints compute counts in-DB (`groupBy`/`count`) and return no ticket rows (BR-26). Every metric carries a `drillDown` descriptor the UI follows into an existing filtered list (FR-31, AD-16). Requester-summary descriptors target `GET /api/tickets`, which requires the REQUESTER role: Staff/Admin callers receive counts but their drill-down links resolve only for REQUESTER callers (403 otherwise) — staff drill-down journeys start from the staff summary instead.
 
 ### GET /api/dashboard/requester/summary
 Own-ticket counts for the caller (FR-29, BR-25).

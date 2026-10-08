@@ -266,7 +266,7 @@ Full request/response shapes in `docs/lab-04/api-spec.md`. Endpoint summary (all
 * **AC-43**: Given seeded unassigned + self-assigned tickets, when Staff fetch the staff summary, then `unassignedCount`, `myAssignedCount`, `followUpDueCount`, and `resolvedTodayCount` match direct database counts.
 * **AC-44**: Given a Requester calling the staff summary (or Staff calling with no session), then `403` (resp. `401`).
 * **AC-45**: Given an empty scope, when any summary is fetched, then every metric is `0` — never null, never 500.
-* **AC-46**: Given any dashboard metric, when its drill-down descriptor is followed, then the existing filtered list shows exactly the counted tickets.
+* **AC-46**: Given any dashboard metric, when its drill-down descriptor is followed by a caller authorized for the target list, then the existing filtered list shows exactly the counted tickets. Requester-summary descriptors require the REQUESTER role (`GET /api/tickets`); Staff/Admin callers receive counts only.
 * **AC-47**: Given query profiling, when summaries are fetched, then aggregation happens in-DB (`groupBy`/`count`) with no full-table fetch and no N+1.
 
 **Actions Taken & Dashboard UI**
