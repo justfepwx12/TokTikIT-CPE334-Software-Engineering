@@ -44,6 +44,7 @@ model User {
   requesterGroup Ticket[]       @relation("Requester")
   comments       Comment[]
   internalNotes  InternalNote[]
+  actionsTaken   ActionTaken[]
 
   @@index([role])
 }
@@ -112,6 +113,7 @@ model Ticket {
   attachments   Attachment[]
   comments      Comment[]
   internalNotes InternalNote[]
+  actionsTaken  ActionTaken[]
 
   @@index([requesterId])
   @@index([ownerId])
@@ -159,6 +161,49 @@ model InternalNote {
 
   @@unique([ticketId, seedKey])
   @@index([ticketId])
+}
+
+// Lab 4 §9.1 — structured, auditable work log (BR-22). One Ticket holds N
+// Actions Taken; the recorder (performedBy, server-derived per BR-23) is
+// routinely not the ticket's Requester. Length limits live at the API layer
+// (same convention as Comment.body); recording/editing never drives status
+// (BR-24). Optimistic lock column `version` serves BR-27.
+model ActionTaken {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+
+  actionAt    DateTime
+  description String
+  result      String
+
+  // BR-23: server-derived from the session; never accepted from the client.
+  performedById Int
+  performedBy   User @relation(fields: [performedById], references: [id], onDelete: Restrict)
+
+  followUpRequired Boolean @default(false)
+  followUpNote     String?
+  // Plain-text reference notes only (filenames, locations) — not a file
+  // store; the Lab 2/3 Attachment system is untouched (BR-22).
+  attachmentNotes  String?
+
+  // BR-27: starts at 1, +1 per successful update; compared via If-Match.
+  version Int @default(1)
+
+  // Deterministic key for idempotent seed upserts (AC-57), same pattern as
+  // Comment/InternalNote seedKey: `seed:<ticketNo>:action:<index>`. Nullable
+  // so real user-recorded actions never carry one and are never touched by
+  // re-runs of prisma db seed.
+  seedKey String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ticketId, seedKey])
+  @@index([ticketId])
+  @@index([performedById])
+  @@index([actionAt])
 }
 
 // Lab 2 Issue 41 — Files attached to a ticket
