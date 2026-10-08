@@ -9,6 +9,7 @@ import { listComments, postComment } from "../controllers/comments.controller.js
 import { listNotes, postNote } from "../controllers/notes.controller.js";
 import { listStaffTickets, getStaffTicketById } from "../controllers/staffTickets.controller.js";
 import { listActions, postAction, patchAction } from "../controllers/actions.controller.js";
+import { requesterSummary, staffSummary } from "../controllers/dashboard.controller.js";
 import {
   claimTicket,
   assignTicket,
@@ -197,6 +198,12 @@ app.patch("/api/tickets/:id/status", ...staffOp, setTicketStatus);
 app.get("/api/tickets/:id/actions", requireAuth, gateMustChangePassword, listActions);
 app.post("/api/tickets/:id/actions", ...staffOp, postAction);
 app.patch("/api/actions/:id", ...staffOp, patchAction);
+
+// Lab 4 Dashboards (api-spec §2, BR-25–BR-26, BR-29). Requester summary is
+// open to any authenticated role scoped to requesterId = me (FR-29); staff
+// summary is Staff/Admin-only (Requester → 403 via requireRole).
+app.get("/api/dashboard/requester/summary", requireAuth, gateMustChangePassword, requesterSummary);
+app.get("/api/dashboard/staff/summary", ...staffOp, staffSummary);
 
 // Administrator user management (api-spec §5, BR-07–BR-12). Admin only;
 // no user is ever deleted (BR-12).

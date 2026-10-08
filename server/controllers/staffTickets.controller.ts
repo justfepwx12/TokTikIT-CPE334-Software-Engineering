@@ -1,24 +1,50 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma, type TicketStatus } from '@prisma/client';
 import { getPrisma } from '../src/prisma.js';
 import type { AuthRequest } from '../src/auth.middleware.js';
 import { parseTicketIdParam } from '../src/ticketId.js';
+import { resolveFollowUpTicketIds } from '../src/followUpScope.js';
+
+// Lab 4 api-spec §3: `status` accepts comma-separated multi-values
+// (unknown value → 400); single values keep working as Lab 3.
+const TICKET_STATUSES = [
+  'NEW',
+  'OPEN',
+  'IN_PROGRESS',
+  'WAITING_FOR_REQUESTER',
+  'RESOLVED',
+  'CLOSED',
+  'REOPENED',
+  'CANCELLED',
+] as const;
+
+const multiStatusSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine(
+    (raw) => raw.split(',').every((s) => (TICKET_STATUSES as readonly string[]).includes(s.trim())),
+    { message: 'status must be a comma-separated list of valid ticket statuses' },
+  )
+  .transform((raw) => raw.split(',').map((s) => s.trim() as TicketStatus));
 
 // GET /api/staff/tickets — operational queue for IT Staff/Admin (api-spec §2,
 // BR-13/BR-17). All tickets regardless of requester. Role guard runs in App.ts
 // via requireRole('IT_STAFF', 'ADMIN'); Requester → 403 there.
 const queueQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
-  status: z
-    .enum(['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CLOSED', 'REOPENED', 'CANCELLED'])
-    .optional(),
+  status: multiStatusSchema.optional(),
   // Matches the IT Priority (not the Requested Priority).
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   categoryId: z.coerce.number().int().positive().optional(),
   systemId: z.coerce.number().int().positive().optional(),
   // Filter by owner; sentinel 0 = unassigned (ownerId null).
   ownerId: z.coerce.number().int().min(0).optional(),
+  // Lab 4 api-spec §3: latest-action follow-up filter (AD-18) and the
+  // server-computed resolved-today flag (AD-19).
+  followUp: z.enum(['true', 'false']).optional(),
+  resolvedToday: z.enum(['true']).optional(),
   sort: z.enum(['updatedAt', 'status', 'priority']).default('updatedAt'),
   order: z.enum(['asc', 'desc']).default('desc'),
   page: z.coerce.number().int().min(1).default(1),
@@ -45,7 +71,7 @@ export const listStaffTickets = async (req: Request, res: Response) => {
             ],
           }
         : {}),
-      ...(query.status ? { status: query.status } : {}),
+      ...(query.status ? { status: { in: [...query.status] } } : {}),
       ...(query.priority ? { itPriority: query.priority } : {}),
       ...(query.categoryId ? { categoryId: query.categoryId } : {}),
       ...(query.systemId ? { systemId: query.systemId } : {}),
@@ -57,6 +83,18 @@ export const listStaffTickets = async (req: Request, res: Response) => {
     };
 
     const prisma = getPrisma();
+
+    if (query.followUp !== undefined) {
+      const ids = await resolveFollowUpTicketIds(prisma, {}, query.followUp === 'true');
+      where.id = { in: ids };
+    }
+    if (query.resolvedToday !== undefined) {
+      const midnight = new Date();
+      midnight.setUTCHours(0, 0, 0, 0);
+      where.status = 'RESOLVED';
+      where.updatedAt = { gte: midnight };
+    }
+
     const skip = (query.page - 1) * query.limit;
 
     const [tickets, total] = await prisma.$transaction([
