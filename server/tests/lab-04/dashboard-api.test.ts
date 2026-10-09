@@ -225,6 +225,15 @@ describe("Lab 4 Dashboard summaries API (AC-42–AC-47)", () => {
     // Multi-status keeps working as Lab 3 single values did.
     const single = await s.get("/api/staff/tickets?status=OPEN&limit=50");
     expect(single.status).toBe(200);
+
+    // resolvedToday intersects (not overwrites) a supplied status filter.
+    const conflict = await s.get("/api/staff/tickets?status=OPEN&resolvedToday=true&limit=50");
+    expect(conflict.status).toBe(200);
+    expect(conflict.body.pagination.total).toBe(0);
+    const narrow = await s.get("/api/staff/tickets?status=RESOLVED&resolvedToday=true&limit=50");
+    const plain = await s.get("/api/staff/tickets?resolvedToday=true&limit=50");
+    expect(narrow.status).toBe(200);
+    expect(narrow.body.pagination.total).toBe(plain.body.pagination.total);
   });
 
   it("summaries aggregate in-DB: no ticket-row fetch, no N+1 (AC-47)", async () => {
@@ -246,9 +255,13 @@ describe("Lab 4 Dashboard summaries API (AC-42–AC-47)", () => {
     expect(ops).toContain("Ticket.count");
     // No ticket-row reads anywhere in either summary path.
     expect(ops.filter((op) => op.startsWith("Ticket.") && op !== "Ticket.groupBy" && op !== "Ticket.count")).toEqual([]);
-    // Bounded operation count: requester = session + groupBy + 3 follow-up
-    // ops, staff = session + 5 counts + 3 follow-up ops (14 total). N+1
-    // would grow with the ticket/action rows instead of staying flat.
+    // Follow-up metrics are database-computed: the raw aggregation runs
+    // in-DB, and no unbounded id-list/action-row fetch may occur.
+    expect(ops.some((op) => op.includes("queryRaw"))).toBe(true);
+    expect(ops).not.toContain("ActionTaken.findMany");
+    // Bounded operation count: requester = session + groupBy + raw,
+    // staff = session + 5 counts + raw (10 total). N+1 would grow with the
+    // ticket/action rows instead of staying flat.
     expect(ops.length).toBeLessThanOrEqual(16);
   });
 });

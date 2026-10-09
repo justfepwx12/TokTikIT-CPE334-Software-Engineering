@@ -1,11 +1,12 @@
-import type { PrismaClient, Prisma, TicketStatus } from '@prisma/client';
+import { Prisma, type PrismaClient, type TicketStatus } from '@prisma/client';
 
 // Lab 4 AD-18 latest-action rule + BR-26 aggregated-only dashboards.
 // Resolves the ticket-id set whose LATEST recorded action (greatest `id`)
 // has `followUpRequired = <want>`, intersected with a caller-supplied ticket
-// scope. Transfer is bounded to id lists and booleans: ticket rows are never
-// fetched here, and every step is a fixed (non-growing) number of queries —
-// no N+1. Callers combine the result with their own `where` via `id: { in }`.
+// scope. Used ONLY by paginated list endpoints, where rows are the point and
+// the id set feeds a bounded `id: { in }` predicate — never by dashboard
+// summaries (those must return database-computed counts; see
+// countFollowUpDue below).
 export const NON_TERMINAL_STATUSES: TicketStatus[] = [
   'NEW',
   'OPEN',
@@ -41,4 +42,40 @@ export async function resolveFollowUpTicketIds(
   });
   const trueIds = new Set(flags.filter((f) => f.followUpRequired).map((f) => f.ticketId));
   return want ? [...trueIds] : scopedIds.filter((id) => !trueIds.has(id));
+}
+
+/**
+ * Database-computed follow-up-due COUNT for dashboard summaries (AC-47).
+ * One aggregated query: non-terminal tickets in scope whose latest recorded
+ * action flags follow-up. Only the count crosses the wire — no id lists, no
+ * rows. `requesterId` pins the requester summary; omit it for the staff
+ * (queue-wide) scope.
+ */
+export async function countFollowUpDue(
+  prisma: PrismaClient,
+  scope: { requesterId?: number },
+): Promise<number> {
+  // Parameterized enum list (cast to the Postgres enum type — a bare text
+  // parameter would not compare against the enum column).
+  const statuses = Prisma.join(NON_TERMINAL_STATUSES.map((s) => Prisma.sql`${s}::"TicketStatus"`));
+  const rows =
+    scope.requesterId === undefined
+      ? await prisma.$queryRaw<Array<{ count: number }>>`
+          SELECT COUNT(*)::int AS "count" FROM "Ticket" t
+          WHERE t."status" IN (${statuses})
+          AND EXISTS (
+            SELECT 1 FROM "ActionTaken" a
+            WHERE a."ticketId" = t."id" AND a."followUpRequired" IS TRUE
+            AND a."id" = (SELECT MAX(a2."id") FROM "ActionTaken" a2 WHERE a2."ticketId" = t."id")
+          )`
+      : await prisma.$queryRaw<Array<{ count: number }>>`
+          SELECT COUNT(*)::int AS "count" FROM "Ticket" t
+          WHERE t."status" IN (${statuses})
+          AND t."requesterId" = ${scope.requesterId}
+          AND EXISTS (
+            SELECT 1 FROM "ActionTaken" a
+            WHERE a."ticketId" = t."id" AND a."followUpRequired" IS TRUE
+            AND a."id" = (SELECT MAX(a2."id") FROM "ActionTaken" a2 WHERE a2."ticketId" = t."id")
+          )`;
+  return rows[0]?.count ?? 0;
 }

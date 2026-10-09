@@ -61,7 +61,7 @@ Records one action; the performer is always the caller (FR-25, BR-23).
 * **Headers**:
   | Header | Required | Notes |
   | :--- | :--- | :--- |
-  | `Idempotency-Key` | No | Opaque token ≤ 64 chars (AD-15). Replay of same key + same ticket within 24h returns the stored `201` payload. Same key + different payload → `422`. |
+  | `Idempotency-Key` | No | Opaque token ≤ 64 chars, persisted with a 24h TTL (AD-15). Replay of same key + same ticket within 24h returns the stored `201` payload. Same key + different payload → `422`. |
 * **Request Body**:
   ```json
   {
@@ -174,7 +174,7 @@ Operational counts for staff (FR-30, BR-25).
 
 All Lab 3 endpoints (`/auth/*`, `/staff/tickets*`, ticket operations, resolve-intent, comments, notes, `/admin/users*`, and the carried-forward Lab 2 requester endpoints) keep their behavior, including the `mustChangePassword` gate and safe-error behavior. Lab 4 adds only optional query params to the two existing list endpoints (requests without them behave byte-for-byte as Lab 3) so dashboard drill-down can return each metric's exact ticket set (FR-31, AC-46):
 * `GET /api/tickets` — `status` accepts comma-separated multi-values (unknown value → `400`); new `followUp` filter (`true` = tickets whose latest recorded action, greatest `id`, has `followUpRequired = true`; `false` = the rest; anything else → `400`). Requester scope (`requesterId = me`) is still enforced server-side.
-* `GET /api/staff/tickets` — `status` accepts the same comma-separated multi-values (unknown value → `400`); new `followUp=true|false` (same latest-action predicate, anything else → `400`); new `resolvedToday=true` (status `RESOLVED` with `updatedAt` in the current UTC day per AD-19). Existing filters including the `ownerId=0` unassigned sentinel are unchanged.
+* `GET /api/staff/tickets` — `status` accepts the same comma-separated multi-values (unknown value → `400`); new `followUp=true|false` (same latest-action predicate, anything else → `400`); new `resolvedToday=true` (status `RESOLVED` with `updatedAt` in the current UTC day per AD-19). Combined with `status`, filters intersect (a status excluding `RESOLVED` narrows to the empty set). Existing filters including the `ownerId=0` unassigned sentinel are unchanged.
 
 ---
 

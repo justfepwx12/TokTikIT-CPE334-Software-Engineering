@@ -91,7 +91,11 @@ export const listStaffTickets = async (req: Request, res: Response) => {
     if (query.resolvedToday !== undefined) {
       const midnight = new Date();
       midnight.setUTCHours(0, 0, 0, 0);
-      where.status = 'RESOLVED';
+      // Intersect with any caller-supplied status filter: a status that
+      // excludes RESOLVED narrows to the empty set instead of being
+      // overwritten (api-spec §3).
+      const narrowed = query.status ? query.status.filter((s) => s === 'RESOLVED') : (['RESOLVED'] as const);
+      where.status = { in: [...narrowed] };
       where.updatedAt = { gte: midnight };
     }
 

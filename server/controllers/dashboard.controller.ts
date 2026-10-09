@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { getPrisma } from '../src/prisma.js';
 import type { AuthRequest } from '../src/auth.middleware.js';
-import { NON_TERMINAL_STATUSES, resolveFollowUpTicketIds } from '../src/followUpScope.js';
+import { NON_TERMINAL_STATUSES, countFollowUpDue } from '../src/followUpScope.js';
 
 // Dashboard summaries (Lab 4 api-spec §2, BR-25–BR-26, BR-29).
 // Aggregated-only: every metric is computed in-DB with groupBy/count and no
@@ -44,11 +44,7 @@ export const requesterSummary = async (req: Request, res: Response) => {
     const counts = await statusCounts(prisma, scope);
     const at = (s: string) => counts[s] ?? 0;
 
-    const followUpIds = await resolveFollowUpTicketIds(
-      prisma,
-      { requesterId: sessionUser.id, status: { in: NON_TERMINAL } },
-      true,
-    );
+    const myFollowUpOpen = await countFollowUpDue(prisma, { requesterId: sessionUser.id });
 
     return res.status(200).json({
       scope: { requesterId: sessionUser.id },
@@ -59,7 +55,7 @@ export const requesterSummary = async (req: Request, res: Response) => {
         myClosed: at('CLOSED'),
         myReopened: at('REOPENED'),
         myCancelled: at('CANCELLED'),
-        myFollowUpOpen: followUpIds.length,
+        myFollowUpOpen,
       },
       drillDown: {
         myOpen: { endpoint: '/api/tickets', query: 'status=NEW,OPEN,IN_PROGRESS' },
@@ -103,8 +99,8 @@ export const staffSummary = async (req: Request, res: Response) => {
         prisma.ticket.count({ where: { status: 'RESOLVED', updatedAt: { gte: startOfTodayUtc() } } }),
       ]);
     // Viewer-visible scope for staff = the whole queue (Lab 3 BR-17: staff
-    // see all tickets), intersected with the AD-18 latest-action predicate.
-    const followUpIds = await resolveFollowUpTicketIds(prisma, { ...nonTerminal }, true);
+    // see all tickets), counted in-DB under the AD-18 latest-action predicate.
+    const followUpDueCount = await countFollowUpDue(prisma, {});
 
     return res.status(200).json({
       scope: { viewerId: sessionUser.id },
@@ -113,7 +109,7 @@ export const staffSummary = async (req: Request, res: Response) => {
         myAssignedCount,
         myInProgressCount,
         waitingForRequesterCount,
-        followUpDueCount: followUpIds.length,
+        followUpDueCount,
         resolvedTodayCount,
       },
       drillDown: {
