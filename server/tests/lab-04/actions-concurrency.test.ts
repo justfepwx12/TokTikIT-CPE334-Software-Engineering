@@ -156,4 +156,49 @@ describe("Lab 4 Actions concurrency + idempotency (AC-37, AC-38)", () => {
       .send(VALID_ACTION);
     expect(res.status).toBe(400);
   });
+
+  it("validation failures never consume a key (BR-28)", async () => {
+    const staff = await loginAs(STAFF_EMAIL, TEST_PASSWORD);
+    const ticketId = await makeTicket();
+    const key = `l4-conc-invalid-${randomInt(100000, 999999)}`;
+
+    const bad = await staff.post(`/api/tickets/${ticketId}/actions`).set("Idempotency-Key", key).send({
+      ...VALID_ACTION,
+      description: "   ",
+    });
+    expect(bad.status).toBe(400);
+
+    const good = await staff.post(`/api/tickets/${ticketId}/actions`).set("Idempotency-Key", key).send(VALID_ACTION);
+    expect(good.status).toBe(201);
+    expect(await prisma.actionTaken.count({ where: { ticketId } })).toBe(1);
+  });
+
+  it("keys persist in the database with a ~24h TTL; expired keys start a new record (BR-28)", async () => {
+    const staff = await loginAs(STAFF_EMAIL, TEST_PASSWORD);
+    const ticketId = await makeTicket();
+    const key = `l4-conc-ttl-${randomInt(100000, 999999)}`;
+
+    const first = await staff.post(`/api/tickets/${ticketId}/actions`).set("Idempotency-Key", key).send(VALID_ACTION);
+    expect(first.status).toBe(201);
+
+    const stored = await prisma.idempotencyKey.findUnique({
+      where: { ticketId_key: { ticketId, key } },
+    });
+    expect(stored).not.toBeNull();
+    expect(stored!.fingerprint).toEqual(expect.any(String));
+    expect((stored!.response as { id: number }).id).toBe(first.body.id);
+    const ttlMs = stored!.expiresAt.getTime() - stored!.createdAt.getTime();
+    expect(ttlMs).toBeGreaterThan(23 * 60 * 60 * 1000);
+    expect(ttlMs).toBeLessThanOrEqual(24 * 60 * 60 * 1000);
+
+    // Backdate past the window: the same payload becomes a new record.
+    await prisma.idempotencyKey.update({
+      where: { id: stored!.id },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+    const second = await staff.post(`/api/tickets/${ticketId}/actions`).set("Idempotency-Key", key).send(VALID_ACTION);
+    expect(second.status).toBe(201);
+    expect(second.body.id).not.toBe(first.body.id);
+    expect(await prisma.actionTaken.count({ where: { ticketId } })).toBe(2);
+  });
 });

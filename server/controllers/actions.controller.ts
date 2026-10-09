@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { getPrisma } from '../src/prisma.js';
 import type { AuthRequest } from '../src/auth.middleware.js';
 import { parseTicketIdParam } from '../src/ticketId.js';
@@ -18,8 +19,6 @@ const FUTURE_SKEW_MS = 5 * 60 * 1000;
 // AD-15: opaque client token, ≤ 64 chars, honored for 24h per ticket.
 const IDEMPOTENCY_KEY_MAX = 64;
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
-// In-memory cap so a hostile client cannot grow the key table without bound.
-const IDEMPOTENCY_MAX_ENTRIES = 1000;
 
 /** Action ids travel in the path the same way ticket ids do (400 if bad). */
 function parseActionIdParam(raw: unknown): number | null {
@@ -236,22 +235,16 @@ export const listActions = async (req: Request, res: Response) => {
   }
 };
 
-// --- Idempotency-Key store (BR-28, AD-15) -----------------------------------
-// The contract forbids new tables for keys (BR-31), so replay state lives in
-// this process: key = `${ticketId}:${header}` → fingerprint of the validated
-// payload + the stored 201 response, honored for 24h. Only successful creates
-// are stored; validation failures never consume a key. An in-flight map makes
-// simultaneous double-submits collapse onto the first insert (AC-52).
+// --- Idempotency-Key handling (BR-28, AD-15) --------------------------------
+// Keys persist in the IdempotencyKey table (24h TTL), so the replay guarantee
+// survives restarts and holds for the full window — an in-memory store can
+// promise neither. The action insert and the key insert run in ONE
+// transaction: simultaneous twins both insert the action, then exactly one
+// wins the @@unique(ticketId, key) race. The loser blocks on the unique index
+// until the winner commits, gets P2002, and replays the committed entry — so
+// twins collapse onto a single row with no hang path and no lost update.
 
-type IdempotencyRecord = {
-  fingerprint: string;
-  status: number;
-  body: unknown;
-  expiresAt: number;
-};
-
-const idempotencyStore = new Map<string, IdempotencyRecord>();
-const idempotencyInflight = new Map<string, Promise<IdempotencyRecord>>();
+type StoredIdempotencyBody = Record<string, unknown>;
 
 function fingerprintAction(input: ValidatedActionInput): string {
   return JSON.stringify([
@@ -264,33 +257,17 @@ function fingerprintAction(input: ValidatedActionInput): string {
   ]);
 }
 
-function readIdempotencyEntry(mapKey: string): IdempotencyRecord | null {
-  const entry = idempotencyStore.get(mapKey);
-  if (!entry) return null;
-  if (entry.expiresAt <= Date.now()) {
-    idempotencyStore.delete(mapKey);
-    return null;
-  }
-  return entry;
+function isFresh(entry: { expiresAt: Date }): boolean {
+  return entry.expiresAt.getTime() > Date.now();
 }
 
-function storeIdempotencyEntry(mapKey: string, record: IdempotencyRecord): void {
-  if (idempotencyStore.size >= IDEMPOTENCY_MAX_ENTRIES) {
-    const oldest = idempotencyStore.keys().next();
-    if (!oldest.done) idempotencyStore.delete(oldest.value);
-  }
-  idempotencyStore.set(mapKey, record);
-}
-
-/** One-shot gate so simultaneous twin submits collapse onto one insert. */
-function createGate(): { promise: Promise<IdempotencyRecord>; resolve: (r: IdempotencyRecord) => void } {
-  let resolve!: (r: IdempotencyRecord) => void;
-  const promise = new Promise<IdempotencyRecord>((res) => {
-    resolve = res;
-  });
-  // Swallow unobserved rejections: every waiter path resolves.
-  promise.catch(() => {});
-  return { promise, resolve };
+function idempotencyReuse() {
+  return {
+    status: 422 as const,
+    body: {
+      error: { code: 'IDEMPOTENCY_KEY_REUSE', message: 'This Idempotency-Key was already used with a different payload.' },
+    },
+  };
 }
 
 // POST /api/tickets/:id/actions — record one action; performer is the caller
@@ -309,81 +286,96 @@ export const postAction = async (req: Request, res: Response) => {
     }
     const input = validated.input as ValidatedActionInput;
 
-    // AD-15: optional opaque header. Overlong keys are rejected; anything
-    // else passes through to the replay check below.
+    // AD-15: optional opaque header (≤ 64 chars). Validation failures above
+    // never consume a key — only a validated payload reaches this point.
     const rawKey = req.headers['idempotency-key'];
-    let mapKey: string | null = null;
+    let key: string | null = null;
     if (rawKey !== undefined) {
-      const key = Array.isArray(rawKey) ? rawKey[0] : rawKey;
-      if (typeof key !== 'string' || key.length === 0 || key.length > IDEMPOTENCY_KEY_MAX) {
+      const header = Array.isArray(rawKey) ? rawKey[0] : rawKey;
+      if (typeof header !== 'string' || header.length === 0 || header.length > IDEMPOTENCY_KEY_MAX) {
         return res.status(400).json({
           error: { code: 'VALIDATION_ERROR', message: `Idempotency-Key must be 1–${IDEMPOTENCY_KEY_MAX} characters.` },
         });
       }
-      mapKey = `${ticket.id}:${key}`;
+      key = header;
     }
 
     const fingerprint = fingerprintAction(input);
-    if (mapKey) {
-      const existing = readIdempotencyEntry(mapKey);
+    if (key) {
+      const existing = await prisma.idempotencyKey.findUnique({
+        where: { ticketId_key: { ticketId: ticket.id, key } },
+      });
       if (existing) {
-        if (existing.fingerprint !== fingerprint) {
-          return res.status(422).json({
-            error: { code: 'IDEMPOTENCY_KEY_REUSE', message: 'This Idempotency-Key was already used with a different payload.' },
-          });
+        if (!isFresh(existing)) {
+          await prisma.idempotencyKey.delete({ where: { id: existing.id } });
+        } else if (existing.fingerprint !== fingerprint) {
+          const reuse = idempotencyReuse();
+          return res.status(reuse.status).json(reuse.body);
+        } else {
+          return res.status(201).json(existing.response as StoredIdempotencyBody);
         }
-        return res.status(existing.status).json(existing.body);
-      }
-      // A twin request is already inserting: wait for it, then replay or
-      // reject exactly as if we had arrived second (AC-52, no duplicates).
-      const pending = idempotencyInflight.get(mapKey);
-      if (pending) {
-        const done = await pending;
-        if (done.fingerprint !== fingerprint) {
-          return res.status(422).json({
-            error: { code: 'IDEMPOTENCY_KEY_REUSE', message: 'This Idempotency-Key was already used with a different payload.' },
-          });
-        }
-        return res.status(done.status).json(done.body);
       }
     }
 
-    // Registered synchronously before the first await so a simultaneous
-    // twin always observes the in-flight marker (single-threaded runtime:
-    // no interleave can slip between this line and the insert below).
-    const gate = mapKey ? createGate() : null;
-    if (mapKey && gate) idempotencyInflight.set(mapKey, gate.promise);
+    // BR-23/AD-14: performedBy comes from the session; any client-supplied
+    // performer/version/id/ticketId fields in the body are ignored above.
+    const actionData = {
+      ticketId: ticket.id,
+      actionAt: input.actionAt,
+      description: input.description,
+      result: input.result,
+      performedById: sessionUser.id,
+      followUpRequired: input.followUpRequired,
+      followUpNote: input.followUpNote,
+      attachmentNotes: input.attachmentNotes,
+    };
+
+    if (!key) {
+      const created = await prisma.actionTaken.create({ data: actionData, select: actionSelect });
+      return res.status(201).json(created);
+    }
 
     try {
-      // BR-23/AD-14: performedBy comes from the session; any client-supplied
-      // performer/version/id/ticketId fields in the body are ignored above.
-      const created = await prisma.actionTaken.create({
-        data: {
-          ticketId: ticket.id,
-          actionAt: input.actionAt,
-          description: input.description,
-          result: input.result,
-          performedById: sessionUser.id,
-          followUpRequired: input.followUpRequired,
-          followUpNote: input.followUpNote,
-          attachmentNotes: input.attachmentNotes,
-        },
-        select: actionSelect,
+      // One interactive transaction: the action row and its key snapshot
+      // commit atomically, so a twin can never observe a half-written entry.
+      // The twin blocks on @@unique until this commits, then takes the P2002
+      // path below and replays the complete entry.
+      const created = await prisma.$transaction(async (tx) => {
+        const row = await tx.actionTaken.create({ data: actionData, select: actionSelect });
+        await tx.idempotencyKey.create({
+          data: {
+            ticketId: ticket.id,
+            key,
+            fingerprint,
+            // Snapshot of the 201 payload: replays return the original body
+            // verbatim even if the row is edited later (BR-28).
+            response: JSON.parse(JSON.stringify(row)) as Prisma.InputJsonValue,
+            expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_MS),
+          },
+        });
+        return row;
       });
-
-      if (mapKey && gate) {
-        const record: IdempotencyRecord = {
-          fingerprint,
-          status: 201,
-          body: created,
-          expiresAt: Date.now() + IDEMPOTENCY_TTL_MS,
-        };
-        storeIdempotencyEntry(mapKey, record);
-        gate.resolve(record);
-      }
       return res.status(201).json(created);
-    } finally {
-      if (mapKey) idempotencyInflight.delete(mapKey);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        // Lost the key race: the winner committed first. Re-read its entry
+        // and replay (or 422 on payload mismatch) — exactly one action row
+        // exists across both requests.
+        const winner = await prisma.idempotencyKey.findUnique({
+          where: { ticketId_key: { ticketId: ticket.id, key } },
+        });
+        if (winner && isFresh(winner)) {
+          if (winner.fingerprint !== fingerprint) {
+            const reuse = idempotencyReuse();
+            return res.status(reuse.status).json(reuse.body);
+          }
+          return res.status(201).json(winner.response as StoredIdempotencyBody);
+        }
+      }
+      throw error;
     }
   } catch {
     return res.status(500).json({
