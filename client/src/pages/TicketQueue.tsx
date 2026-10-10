@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -47,6 +47,33 @@ const SORT_FIELDS: Array<{ value: QueueSortField; label: string }> = [
   { value: "status", label: "Status" },
   { value: "priority", label: "Priority" },
 ];
+
+// Dashboard drill-down arrives as URL params (api-spec §2, AD-16, FR-31).
+// Values are validated here so a tampered URL can never produce a server 400
+// — unknown statuses are dropped, unknown followUp/resolvedToday ignored.
+function parseStatusParam(raw: string | null): string | undefined {
+  if (!raw) return undefined;
+  const parts = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => (STATUSES as readonly string[]).includes(s));
+  return parts.length > 0 ? parts.join(",") : undefined;
+}
+
+function initialQueryFromParams(params: URLSearchParams): StaffTicketQuery {
+  const query: StaffTicketQuery = { ...DEFAULT_QUERY };
+  const ownerRaw = params.get("ownerId");
+  if (ownerRaw !== null && ownerRaw !== "") {
+    const n = Number(ownerRaw);
+    if (Number.isSafeInteger(n) && n >= 0) query.ownerId = n;
+  }
+  const status = parseStatusParam(params.get("status"));
+  if (status) query.status = status;
+  const followUp = params.get("followUp");
+  if (followUp === "true" || followUp === "false") query.followUp = followUp;
+  if (params.get("resolvedToday") === "true") query.resolvedToday = "true";
+  return query;
+}
 
 function formatDate(value: string): string {
   const d = new Date(value);
@@ -181,12 +208,13 @@ function QueueCards({ tickets, onOpen }: { tickets: StaffTicket[]; onOpen: (id: 
 export default function TicketQueue() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [systems, setSystems] = useState<RelatedSystem[]>([]);
 
   const [draftSearch, setDraftSearch] = useState("");
-  const [appliedQuery, setAppliedQuery] = useState<StaffTicketQuery>(DEFAULT_QUERY);
+  const [appliedQuery, setAppliedQuery] = useState<StaffTicketQuery>(() => initialQueryFromParams(searchParams));
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
@@ -290,8 +318,17 @@ export default function TicketQueue() {
       appliedQuery.systemId ||
       appliedQuery.status ||
       appliedQuery.priority ||
-      appliedQuery.ownerId !== undefined
+      appliedQuery.ownerId !== undefined ||
+      appliedQuery.followUp !== undefined ||
+      appliedQuery.resolvedToday !== undefined
   );
+
+  // Single-status select value: multi-status drill-down (e.g. NEW,OPEN) keeps
+  // filtering the API but shows "All" in the dropdown with a chip below.
+  const statusSelectValue =
+    appliedQuery.status && (STATUSES as readonly string[]).includes(appliedQuery.status)
+      ? appliedQuery.status
+      : "";
 
   return (
     <div className="container py-4" style={{ maxWidth: "1200px" }}>
@@ -331,9 +368,9 @@ export default function TicketQueue() {
               id="queue-status"
               data-testid="queue-status"
               className="form-select"
-              value={appliedQuery.status ?? ""}
+              value={statusSelectValue}
               onChange={(e) =>
-                updateQuery({ status: (e.target.value || undefined) as TicketStatus | undefined })
+                updateQuery({ status: e.target.value || undefined })
               }
             >
               <option value="">All</option>
@@ -471,6 +508,28 @@ export default function TicketQueue() {
           </div>
         </div>
       </div>
+
+      {(appliedQuery.followUp !== undefined || appliedQuery.resolvedToday !== undefined || (appliedQuery.status && appliedQuery.status.includes(","))) && (
+        <div className="alert alert-info d-flex flex-wrap align-items-center gap-2 py-2 small" data-testid="queue-drilldown-filters">
+          <span>Dashboard filter:</span>
+          {appliedQuery.status && appliedQuery.status.includes(",") && (
+            <span className="badge text-bg-primary" data-testid="queue-drilldown-status">status: {appliedQuery.status}</span>
+          )}
+          {appliedQuery.followUp !== undefined && (
+            <span className="badge text-bg-warning" data-testid="queue-drilldown-followup">follow-up: {appliedQuery.followUp}</span>
+          )}
+          {appliedQuery.resolvedToday !== undefined && (
+            <span className="badge text-bg-success" data-testid="queue-drilldown-resolved-today">resolved today</span>
+          )}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary ms-auto"
+            onClick={() => updateQuery({ status: undefined, followUp: undefined, resolvedToday: undefined })}
+          >
+            Clear dashboard filter
+          </button>
+        </div>
+      )}
 
       {isLoading && (
         <div data-testid="queue-loading" className="text-center py-5 text-secondary">
