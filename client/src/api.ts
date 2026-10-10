@@ -625,3 +625,89 @@ export function getRequesterSummary(): Promise<RequesterSummary> {
 export function getStaffSummary(): Promise<StaffSummary> {
   return request<StaffSummary>("/api/dashboard/staff/summary");
 }
+
+// ---------------------------------------------------------------------------
+// Lab 4 Actions Taken (api-spec §1, Issues #135/#137/#140). Performer identity
+// is server-derived (BR-23) — the client never sends performedBy/performedById.
+// Concurrency travels in If-Match (AD-14); idempotent creates carry an
+// Idempotency-Key header (AD-15). A `version` in the body is ignored.
+// ---------------------------------------------------------------------------
+
+export interface ActionPerformer {
+  id: number;
+  name: string;
+  role: UserRole;
+}
+
+export interface ActionTaken {
+  id: number;
+  ticketId: number;
+  actionAt: string;
+  description: string;
+  result: string;
+  performedBy: ActionPerformer;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActionsResponse {
+  actions: ActionTaken[];
+  pagination: Pagination;
+}
+
+// Client mirrors the server contract (api-spec §1, BR-22). The server is
+// authoritative; these only give instant feedback before sending.
+export const ACTION_TEXT_MIN = 1;
+export const ACTION_TEXT_MAX = 2000;
+export const ACTION_FUTURE_SKEW_MS = 5 * 60 * 1000;
+
+export interface CreateActionPayload {
+  actionAt: string;
+  description: string;
+  result: string;
+  followUpRequired?: boolean;
+  followUpNote?: string;
+  attachmentNotes?: string;
+}
+
+export interface UpdateActionPayload {
+  description?: string;
+  result?: string;
+  followUpRequired?: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+}
+
+export function getTicketActions(ticketId: number, page = 1, limit = 20): Promise<ActionsResponse> {
+  return request<ActionsResponse>(`/api/tickets/${ticketId}/actions?page=${page}&limit=${limit}`);
+}
+
+export function createTicketAction(
+  ticketId: number,
+  payload: CreateActionPayload,
+  idempotencyKey?: string
+): Promise<ActionTaken> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
+  return request<ActionTaken>(`/api/tickets/${ticketId}/actions`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateTicketAction(
+  actionId: number,
+  payload: UpdateActionPayload,
+  ifMatch: number
+): Promise<ActionTaken> {
+  return request<ActionTaken>(`/api/actions/${actionId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "If-Match": String(ifMatch) },
+    body: JSON.stringify(payload),
+  });
+}
