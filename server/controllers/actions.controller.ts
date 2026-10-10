@@ -307,7 +307,12 @@ export const postAction = async (req: Request, res: Response) => {
       });
       if (existing) {
         if (!isFresh(existing)) {
-          await prisma.idempotencyKey.delete({ where: { id: existing.id } });
+          // Race-safe expiry cleanup: two twins can both read the same
+          // expired row before either deletes it. deleteMany on the PK is
+          // idempotent (0 rows if the twin already removed it) and can only
+          // ever match this stale row — never a fresh row the twin just
+          // created — so both requests proceed instead of one hitting P2025.
+          await prisma.idempotencyKey.deleteMany({ where: { id: existing.id } });
         } else if (existing.fingerprint !== fingerprint) {
           const reuse = idempotencyReuse();
           return res.status(reuse.status).json(reuse.body);

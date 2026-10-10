@@ -147,6 +147,25 @@ describe("Lab 4 Actions concurrency + idempotency (AC-37, AC-38)", () => {
     expect(await prisma.actionTaken.count({ where: { ticketId } })).toBe(1);
   });
 
+  it("replay after an edit still returns the original 201 snapshot (BR-28)", async () => {
+    const staff = await loginAs(STAFF_EMAIL, TEST_PASSWORD);
+    const ticketId = await makeTicket();
+    const key = `l4-conc-snap-${randomInt(100000, 999999)}`;
+
+    const first = await staff.post(`/api/tickets/${ticketId}/actions`).set("Idempotency-Key", key).send(VALID_ACTION);
+    expect(first.status).toBe(201);
+
+    const edited = await staff.patch(`/api/actions/${first.body.id}`).set("If-Match", "1").send({ result: "Edited later." });
+    expect(edited.status).toBe(200);
+    expect(edited.body.version).toBe(2);
+
+    const replay = await staff.post(`/api/tickets/${ticketId}/actions`).set("Idempotency-Key", key).send(VALID_ACTION);
+    expect(replay.status).toBe(201);
+    expect(replay.body).toEqual(first.body);
+    expect(replay.body.version).toBe(1);
+    expect(await prisma.actionTaken.count({ where: { ticketId } })).toBe(1);
+  });
+
   it("overlong Idempotency-Key → 400", async () => {
     const staff = await loginAs(STAFF_EMAIL, TEST_PASSWORD);
     const ticketId = await makeTicket();
@@ -199,6 +218,40 @@ describe("Lab 4 Actions concurrency + idempotency (AC-37, AC-38)", () => {
     const second = await staff.post(`/api/tickets/${ticketId}/actions`).set("Idempotency-Key", key).send(VALID_ACTION);
     expect(second.status).toBe(201);
     expect(second.body.id).not.toBe(first.body.id);
+    expect(await prisma.actionTaken.count({ where: { ticketId } })).toBe(2);
+  });
+
+  it("concurrent requests with the same expired key never 500: one new row, same id (BR-28)", async () => {
+    const staff = await loginAs(STAFF_EMAIL, TEST_PASSWORD);
+    const ticketId = await makeTicket();
+    const key = `l4-conc-exp-race-${randomInt(100000, 999999)}`;
+
+    const first = await staff.post(`/api/tickets/${ticketId}/actions`).set("Idempotency-Key", key).send(VALID_ACTION);
+    expect(first.status).toBe(201);
+
+    // Expire the key so both racing requests take the cleanup path.
+    const stored = await prisma.idempotencyKey.findUnique({
+      where: { ticketId_key: { ticketId, key } },
+    });
+    expect(stored).not.toBeNull();
+    await prisma.idempotencyKey.update({
+      where: { id: stored!.id },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+
+    // Both twins read the same expired row before either deletes it. Before
+    // the fix the loser hit P2025 on delete-by-id and returned 500; with
+    // deleteMany both proceed and collapse onto a single new row via the
+    // @@unique(ticketId, key) race (loser replays the winner).
+    const [a, b] = await Promise.all([
+      staff.post(`/api/tickets/${ticketId}/actions`).set("Idempotency-Key", key).send(VALID_ACTION),
+      staff.post(`/api/tickets/${ticketId}/actions`).set("Idempotency-Key", key).send(VALID_ACTION),
+    ]);
+    expect(a.status).toBe(201);
+    expect(b.status).toBe(201);
+    expect(a.body.id).toBe(b.body.id);
+    expect(a.body.id).not.toBe(first.body.id);
+    // Original row + exactly one new row (not 3).
     expect(await prisma.actionTaken.count({ where: { ticketId } })).toBe(2);
   });
 });
