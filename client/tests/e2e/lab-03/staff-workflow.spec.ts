@@ -22,7 +22,10 @@ test.describe('staff workflow', () => {
     await page.getByTestId('login-email').fill(STAFF);
     await page.getByTestId('login-password').fill(STAFF_PASSWORD);
     await page.getByTestId('login-submit').click();
-    await page.waitForURL('**/queue');
+    // Staff role home is the staff dashboard (Lab 4 AD-17); the queue
+    // assertions below navigate there explicitly.
+    await page.waitForURL('**/dashboard/staff');
+    await page.goto('/queue');
     await expectListVisible(page, 'queue');
     await page.screenshot({ path: `../docs/lab-03/images/e2e-queue-${test.info().project.name}.png` });
 

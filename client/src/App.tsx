@@ -13,6 +13,7 @@ import TicketDetail from "./pages/TicketDetail";
 import StaffTicketDetail from "./pages/StaffTicketDetail";
 import TicketQueue from "./pages/TicketQueue";
 import StaffDashboard from "./pages/StaffDashboard";
+import RequesterDashboard from "./pages/RequesterDashboard";
 import UserManagement from "./pages/UserManagement";
 import type { UserRole } from "./api.js";
 
@@ -198,6 +199,11 @@ function App() {
             <RequireRole roles={["IT_STAFF", "ADMIN"]}>
               <StaffDashboard />
             </RequireRole>
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard/requester" element={
+          <ProtectedRoute>
+            <RequesterDashboard />
           </ProtectedRoute>
         } />
         <Route path="/queue" element={

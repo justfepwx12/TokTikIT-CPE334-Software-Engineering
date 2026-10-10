@@ -36,6 +36,8 @@ function renderLogin(initialEntries: string[] = ["/login"]) {
           <Route path="/login" element={<Login />} />
           <Route path="/my-tickets" element={<Probe />} />
           <Route path="/queue" element={<Probe />} />
+          <Route path="/dashboard/requester" element={<Probe />} />
+          <Route path="/dashboard/staff" element={<Probe />} />
           <Route path="/change-password" element={<Probe />} />
         </Routes>
       </MemoryRouter>
@@ -92,17 +94,17 @@ describe("Lab 3 Login (AC-01/02/03)", () => {
     expect(banner.textContent).toContain("Invalid email or password.");
   });
 
-  it("routes an already-signed-in requester straight to role home", async () => {
+  it("routes an already-signed-in requester straight to role home (Lab 4 AD-17)", async () => {
     vi.spyOn(api, "getSessionUser").mockResolvedValue({ user: REQUESTER });
     renderLogin();
     await waitFor(() => expect(screen.getByTestId("probe-path")).toBeDefined());
-    expect(screen.getByTestId("probe-path").textContent).toBe("/my-tickets");
+    expect(screen.getByTestId("probe-path").textContent).toBe("/dashboard/requester");
   });
 
-  it("routes an already-signed-in staff member to the queue", async () => {
+  it("routes an already-signed-in staff member to the staff dashboard (Lab 4 AD-17)", async () => {
     vi.spyOn(api, "getSessionUser").mockResolvedValue({ user: STAFF });
     renderLogin();
     await waitFor(() => expect(screen.getByTestId("probe-path")).toBeDefined());
-    expect(screen.getByTestId("probe-path").textContent).toBe("/queue");
+    expect(screen.getByTestId("probe-path").textContent).toBe("/dashboard/staff");
   });
 });

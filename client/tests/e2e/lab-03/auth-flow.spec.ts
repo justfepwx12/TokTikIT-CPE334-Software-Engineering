@@ -20,7 +20,10 @@ test.describe('auth flow', () => {
 
   test('login → session restore on reload → logout', async ({ page }) => {
     await login(page, EMAIL);
-    await page.waitForURL('**/my-tickets');
+    // Role home is the requester dashboard (Lab 4 AD-17); the list assertions
+    // below navigate to My Tickets explicitly.
+    await page.waitForURL('**/dashboard/requester');
+    await page.goto('/my-tickets');
     await expect(page.getByTestId('ticket-search')).toBeVisible();
 
     // Session restore: a full reload keeps the user signed in (AC-04).

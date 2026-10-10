@@ -45,8 +45,10 @@ export async function login(page: Page, email: string): Promise<void> {
     if (outcome === 'banner') throw new Error(`Login failed for ${email} with both known passwords.`);
   }
   // Either the role home (already rotated) or the mandatory change form.
+  // Role homes are the Lab 4 dashboards (AD-17); Lab 3 list homes are still
+  // accepted so older seeds resolve the same way.
   const { pathname } = new URL(page.url());
-  if (pathname.includes('/my-tickets') || pathname.includes('/queue')) return;
+  if (pathname.includes('/dashboard') || pathname.includes('/my-tickets') || pathname.includes('/queue')) return;
   await expect(changeForm).toBeVisible({ timeout: 10000 });
   const notChangePw = (url: URL) => !url.pathname.includes('/change-password');
   await rotatePassword(page, SEED_PASSWORD);
