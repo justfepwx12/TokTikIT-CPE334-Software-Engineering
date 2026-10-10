@@ -106,8 +106,8 @@ Lab 3 BR-01–BR-21 carry forward unchanged. New rules:
 ### 5.3 Concurrency & Safety
 
 * **BR-27 (Optimistic concurrency)** — Every action row carries `version` (starts at 1, +1 per successful update). Updates send `If-Match: <version>`; a mismatch returns HTTP `409` with code `STALE_VERSION`, the stored row is untouched, and the client must re-fetch and retry. Comparison and write are atomic (single conditional update).
-* **BR-28 (Idempotent creation)** — `POST` accepts an optional `Idempotency-Key` header (opaque client token, ≤ 64 chars). Replaying the same key + same ticket within 24h returns the original `201` payload without inserting a duplicate. Different payload with a reused key returns `422` (`IDEMPOTENCY_KEY_REUSE`).
-* **BR-31 (Migration & seed safety)** — The Lab 4 migration adds **only** the `ActionTaken` table (plus its indexes); zero alterations to existing tables' columns. Legacy row counts for `User`, `Ticket`, `Attachment`, `Comment`, `InternalNote`, `Category`, `RelatedSystem` are identical before and after. Seed upserts on stable keys (`seedKey` pattern reused from Lab 3 `Comment`/`InternalNote`); two consecutive runs produce identical counts.
+* **BR-28 (Idempotent creation)** — `POST` accepts an optional `Idempotency-Key` header (opaque client token, ≤ 64 chars). Keys persist in the `IdempotencyKey` table (24h TTL), so the guarantee survives restarts and holds for the full window. Replaying the same key + same ticket within 24h returns the original `201` payload without inserting a duplicate; simultaneous twins collapse onto one row via the `@@unique([ticketId, key])` race (loser blocks, then replays). Different payload with a reused key returns `422` (`IDEMPOTENCY_KEY_REUSE`).
+* **BR-31 (Migration & seed safety)** — Lab 4 migrations add **only new tables** (`ActionTaken`, `IdempotencyKey`); zero alterations to existing tables' columns. Legacy row counts for `User`, `Ticket`, `Attachment`, `Comment`, `InternalNote`, `Category`, `RelatedSystem` are identical before and after. Seed upserts on stable keys (`seedKey` pattern reused from Lab 3 `Comment`/`InternalNote`); two consecutive runs produce identical counts.
 
 ### 5.4 Presentation
 
@@ -207,12 +207,13 @@ Full detail lives in `docs/lab-04/ui-spec.md`. Summary:
 | Model | Change | Key fields |
 | :--- | :--- | :--- |
 | **ActionTaken** | New — the structured work log (BR-22) | `id`, `ticketId` → Ticket (Restrict), `actionAt`, `description` (≤ 2000), `result` (≤ 2000), `performedById` → User (Restrict), `followUpRequired` (default false), `followUpNote` Nullable, `attachmentNotes` Nullable, `version` (default 1), `seedKey` Nullable, `createdAt`, `updatedAt` |
+| **IdempotencyKey** | New — persisted POST replay keys (BR-28) | `id`, `ticketId` → Ticket (Cascade), `key`, `fingerprint`, `response` (201 snapshot), `expiresAt` (24h TTL), `createdAt`; `@@unique([ticketId, key])` |
 
 Existing models (`User`, `Ticket`, `Comment`, `InternalNote`, `Attachment`, `Category`, `RelatedSystem`) are **untouched** — no column added, removed, or re-typed.
 
 ### 9.2 Migration & data mapping
 
-* One forward migration creating `ActionTaken` + indexes only. Downgrade drops that table only.
+* Forward migrations creating `ActionTaken` (+ indexes) and `IdempotencyKey` (+ unique pair, expiry index) only. Downgrade drops those tables only.
 * No data backfill: pre-Lab-4 tickets simply have zero actions (a valid, specified state).
 * Legacy preservation check: row counts of all seven existing tables are asserted equal before/after (AC-56).
 
@@ -223,7 +224,7 @@ Existing models (`User`, `Ticket`, `Comment`, `InternalNote`, `Attachment`, `Cat
 
 ### 9.4 Indexes
 
-* `ActionTaken.ticketId` (list-by-ticket), `ActionTaken.performedById` (performer audit), `ActionTaken.actionAt` (newest-first ordering). All existing indexes retained.
+* `ActionTaken.ticketId` (list-by-ticket), `ActionTaken.performedById` (performer audit), `ActionTaken.actionAt` (newest-first ordering), `IdempotencyKey(ticketId, key)` (replay lookup), `IdempotencyKey.expiresAt` (TTL sweep). All existing indexes retained.
 
 ---
 
@@ -266,7 +267,7 @@ Full request/response shapes in `docs/lab-04/api-spec.md`. Endpoint summary (all
 * **AC-43**: Given seeded unassigned + self-assigned tickets, when Staff fetch the staff summary, then `unassignedCount`, `myAssignedCount`, `followUpDueCount`, and `resolvedTodayCount` match direct database counts.
 * **AC-44**: Given a Requester calling the staff summary (or Staff calling with no session), then `403` (resp. `401`).
 * **AC-45**: Given an empty scope, when any summary is fetched, then every metric is `0` — never null, never 500.
-* **AC-46**: Given any dashboard metric, when its drill-down descriptor is followed, then the existing filtered list shows exactly the counted tickets.
+* **AC-46**: Given any dashboard metric, when its drill-down descriptor is followed by a caller authorized for the target list, then the existing filtered list shows exactly the counted tickets. Requester-summary descriptors require the REQUESTER role (`GET /api/tickets`); Staff/Admin callers receive counts only.
 * **AC-47**: Given query profiling, when summaries are fetched, then aggregation happens in-DB (`groupBy`/`count`) with no full-table fetch and no N+1.
 
 **Actions Taken & Dashboard UI**
@@ -308,7 +309,7 @@ Full request/response shapes in `docs/lab-04/api-spec.md`. Endpoint summary (all
 
 * **AD-13 (Version column)**: Optimistic locking uses an integer `version` (default 1) rather than comparing `updatedAt` timestamps, so retries and tests are deterministic (BR-27, D-07).
 * **AD-14 (If-Match header)**: Update concurrency travels in the HTTP `If-Match` header (canonical REST), not the body; a missing header is `400`, a stale one is `409`.
-* **AD-15 (Idempotency-Key)**: Optional opaque header (≤ 64 chars), scoped per ticket, honored for 24h; replay returns the stored `201` payload verbatim (BR-28).
+* **AD-15 (Idempotency-Key)**: Optional opaque header (≤ 64 chars), scoped per ticket, persisted with a 24h TTL; replay returns the stored `201` payload verbatim, twins collapse via the unique pair (BR-28).
 * **AD-16 (Drill-down reuse)**: Drill-down navigates to existing filtered lists (`GET /api/tickets?status=` for Requesters; `GET /api/staff/tickets?…` for Staff) — no new endpoint, no new auth surface (D-06).
 * **AD-17 (Dashboard routes)**: New client routes `/dashboard/requester` and `/dashboard/staff`; post-login home redirects by role (Requester → requester dashboard; IT/Admin → staff dashboard).
 * **AD-18 (Follow-Up Due definition)**: A ticket counts as follow-up-due when its latest recorded action (greatest `id` on that ticket) has `followUpRequired = true`, on a currently non-terminal ticket within the viewer's scope. Recording a newer action with `followUpRequired = false` therefore clears the ticket from the follow-up results — history is never deleted. Dashboards (BR-25) and the `followUp` list filter serve this identical predicate, so drill-down returns exactly the counted set.

@@ -1,16 +1,41 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma, type TicketStatus } from '@prisma/client';
 import { getPrisma } from '../src/prisma.js';
 import type { AuthRequest } from '../src/auth.middleware.js';
+import { resolveFollowUpTicketIds } from '../src/followUpScope.js';
+
+const TICKET_STATUSES = [
+  'NEW',
+  'OPEN',
+  'IN_PROGRESS',
+  'WAITING_FOR_REQUESTER',
+  'RESOLVED',
+  'CLOSED',
+  'REOPENED',
+  'CANCELLED',
+] as const;
+
+// Lab 4 api-spec §3: `status` accepts comma-separated multi-values
+// (unknown value → 400); single values keep working as Lab 3.
+const multiStatusSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine(
+    (raw) => raw.split(',').every((s) => (TICKET_STATUSES as readonly string[]).includes(s.trim())),
+    { message: 'status must be a comma-separated list of valid ticket statuses' },
+  )
+  .transform((raw) => raw.split(',').map((s) => s.trim() as TicketStatus));
 
 const listQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   categoryId: z.coerce.number().int().positive().optional(),
   systemId: z.coerce.number().int().positive().optional(),
-  status: z
-    .enum(['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CLOSED', 'REOPENED', 'CANCELLED'])
-    .optional(),
+  status: multiStatusSchema.optional(),
+  // Lab 4 api-spec §3: latest-action follow-up filter (AD-18). Requester
+  // scope (requesterId = me) is still enforced server-side.
+  followUp: z.enum(['true', 'false']).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   sort: z.enum(['createdAt', 'requestedPriority']).default('createdAt'),
   order: z.enum(['asc', 'desc']).default('desc'),
@@ -56,10 +81,14 @@ export const listTickets = async (req: Request, res: Response) => {
         : {}),
       ...(query.categoryId ? { categoryId: query.categoryId } : {}),
       ...(query.systemId ? { systemId: query.systemId } : {}),
-      ...(query.status ? { status: query.status } : {}),
+      ...(query.status ? { status: { in: [...query.status] } } : {}),
       // The Requester filters by what they submitted (Requested Priority).
       ...(query.priority ? { requestedPriority: query.priority } : {}),
     };
+    if (query.followUp !== undefined) {
+      const ids = await resolveFollowUpTicketIds(prisma, { requesterId }, query.followUp === 'true');
+      where.id = { in: ids };
+    }
     const orderBy =
       query.sort === 'requestedPriority'
         ? { requestedPriority: query.order }
