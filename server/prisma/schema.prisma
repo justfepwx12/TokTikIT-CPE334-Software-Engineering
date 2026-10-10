@@ -110,10 +110,11 @@ model Ticket {
   systemId Int
   system   RelatedSystem @relation(fields: [systemId], references: [id], onDelete: Restrict)
 
-  attachments   Attachment[]
-  comments      Comment[]
-  internalNotes InternalNote[]
-  actionsTaken  ActionTaken[]
+  attachments     Attachment[]
+  comments        Comment[]
+  internalNotes   InternalNote[]
+  actionsTaken    ActionTaken[]
+  idempotencyKeys IdempotencyKey[]
 
   @@index([requesterId])
   @@index([ownerId])
@@ -204,6 +205,28 @@ model ActionTaken {
   @@index([ticketId])
   @@index([performedById])
   @@index([actionAt])
+}
+
+// Lab 4 BR-28/AD-15 — persisted idempotency keys for action creation.
+// Retried POSTs with the same key + ticket replay the stored 201 payload
+// instead of inserting a duplicate; the @@unique pair plus a single
+// transaction makes simultaneous twins collapse onto one row. Ephemeral
+// infrastructure (24h TTL), not domain data: Cascade so keys can never block
+// ticket lifecycle, and rows are never read except for replay checks.
+model IdempotencyKey {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  key         String
+  fingerprint String
+  response    Json
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([ticketId, key])
+  @@index([expiresAt])
 }
 
 // Lab 2 Issue 41 — Files attached to a ticket

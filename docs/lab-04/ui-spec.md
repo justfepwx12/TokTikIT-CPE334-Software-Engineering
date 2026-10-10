@@ -25,7 +25,7 @@ Tokens (unchanged): Primary `#006B3C` · Secondary `#0B7A46` · Pale `#EAF6EF` �
 
 ## 2. Screen: Requester Dashboard (`/dashboard/requester`)
 
-Summary cards over the caller's own tickets (FR-29), each card clickable into its filtered list (FR-31).
+Summary cards over the caller's own tickets (FR-29), each card clickable into its filtered list for REQUESTER callers (FR-31). Staff/Admin visiting this screen see counts only and drill down from the staff dashboard instead (api-spec §2).
 
 * **Cards**: My Open (`NEW/OPEN/IN_PROGRESS`), Waiting for Me (`WAITING_FOR_REQUESTER`, amber accent), Resolved, Closed, Reopened, Cancelled — big count + label + chevron affordance. A Follow-Up attention strip appears when `myFollowUpOpen > 0` ("IT flagged N of your ticket(s) for follow-up").
 * **States**: Loading (skeleton cards) → Loaded → **Empty** ("You have no tickets yet." + primary button "Create your first ticket" → `/tickets/new`) → Error (safe banner + Retry, drafts unaffected).

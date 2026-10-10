@@ -33,7 +33,7 @@ Planned test files live under `server/tests/lab-04/`, `client/tests/lab-04/`, an
 | 15 | API | #136 | AC-43 | Supertest | `dashboard-api.test.ts` — staff summary equals direct DB counts (unassigned/mine/followUp/resolvedToday) | Planned |
 | 16 | Authorization | #136 | AC-44 | Supertest | `dashboard-api.test.ts` — Requester on staff summary → 403; no session → 401 | Planned |
 | 17 | API | #136 | AC-45 | Supertest | `dashboard-api.test.ts` — empty scope returns all-zero metrics; never null/500 | Planned |
-| 18 | API | #136 | AC-46 | Supertest | `dashboard-api.test.ts` — every drillDown descriptor (incl. `followUp` + `resolvedToday` filters) resolves to the counted ticket set | Planned |
+| 18 | API | #136 | AC-46 | Supertest | `dashboard-api.test.ts` — every drillDown descriptor (followed with the target list's role; incl. `followUp` + `resolvedToday` filters) resolves to the counted ticket set | Planned |
 | 19 | API | #136 | AC-47 | Supertest + query log | `dashboard-api.test.ts` — aggregation in-DB (groupBy/count), no full-table fetch, no N+1 | Planned |
 | 20 | UI | #139 | AC-48 | Vitest/RTL | `StaffDashboard.test.tsx` — cards + shortcuts + Loading/Empty/Error + drill-down links | Planned |
 | 21 | UI | #138 | AC-49 | Vitest/RTL | `RequesterDashboard.test.tsx` — own-only metrics, empty CTA, no staff metrics rendered | Planned |
