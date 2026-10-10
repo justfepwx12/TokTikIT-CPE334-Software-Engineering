@@ -1,6 +1,13 @@
 :root {
-  --primary-color: #004d2d;
+  --primary-color: #006B3C;
   --bg-light-green: #e6f4ea;
+  /* Zen Green tokens (Lab 4 ui-spec §1) — single source for utilities below. */
+  --zen-primary: #006B3C;
+  --zen-secondary: #0B7A46;
+  --zen-pale: #EAF6EF;
+  --zen-page: #F5F7F6;
+  --zen-text: #1F2A24;
+  --zen-error: #B3261E;
 }
 
 .brand-title {
@@ -34,6 +41,77 @@
 .btn-custom:focus {
   background-color: #003620;
   border-color: #003620;
+}
+
+/* Brand utilities used across pages (Lab 4 ui-spec §1 tokens). These classes
+   were referenced but undefined — buttons/links now actually render Zen
+   Green instead of falling back to unstyled Bootstrap defaults. */
+.btn-brand {
+  background-color: var(--zen-primary);
+  border-color: var(--zen-primary);
+  color: #FFFFFF;
+}
+
+.btn-brand:hover,
+.btn-brand:focus-visible {
+  background-color: var(--zen-secondary);
+  border-color: var(--zen-secondary);
+  color: #FFFFFF;
+}
+
+.text-brand {
+  color: var(--zen-primary) !important;
+}
+
+.bg-brand {
+  background-color: var(--zen-primary) !important;
+}
+
+.alert-backend-success {
+  background-color: var(--zen-pale);
+  border-color: var(--zen-primary);
+  color: var(--zen-primary);
+}
+
+.max-w-400 {
+  max-width: 400px;
+}
+
+.max-w-500 {
+  max-width: 500px;
+}
+
+/* Lab 4 BR-30 hardening: keyboard focus is always visible (Secondary Green
+   outline — never outline:none alone), and the page itself never scrolls
+   horizontally at any viewport (wide tables scroll inside their cards via
+   local overflow-auto wrappers). `clip` preserves sticky positioning. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--zen-secondary);
+  outline-offset: 2px;
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+@supports not (overflow: clip) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* Touch targets are at least 40px on mobile viewports. */
+@media (max-width: 767.98px) {
+  .btn {
+    min-height: 40px;
+  }
 }
 
 /* Stable table layout: fixed column widths so columns never shift when row
