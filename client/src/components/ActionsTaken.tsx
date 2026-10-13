@@ -104,6 +104,30 @@ function isCreateDraft(value: unknown): value is CreateDraft {
   );
 }
 
+// The persisted create entry: the draft travels together with its
+// Idempotency-Key so a retry after a reload/remount replays the same key
+// instead of minting a fresh one (which would create a duplicate when the
+// first response was lost after the server committed).
+interface StoredCreateEntry {
+  draft: CreateDraft;
+  key: string;
+}
+
+function isStoredCreateEntry(value: unknown): value is StoredCreateEntry {
+  if (typeof value !== "object" || value === null) return false;
+  const e = value as Record<string, unknown>;
+  return isCreateDraft(e.draft) && typeof e.key === "string" && e.key.length > 0;
+}
+
+function readStoredCreateEntry(ticketId: number): StoredCreateEntry {
+  const raw = readStored<unknown>(draftKey(ticketId));
+  if (isStoredCreateEntry(raw)) return raw;
+  // Legacy shape (draft-only, written before the key was persisted): adopt
+  // the draft and mint its key once, so even old drafts retry idempotently.
+  if (isCreateDraft(raw)) return { draft: raw, key: newIdempotencyKey() };
+  return { draft: defaultCreateDraft(), key: newIdempotencyKey() };
+}
+
 function newIdempotencyKey(): string {
   try {
     if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -206,15 +230,13 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
   const [listError, setListError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
-  const [createDraft, setCreateDraft] = useState<CreateDraft>(() => {
-    const stored = readStored<CreateDraft>(draftKey(ticketId));
-    return stored && isCreateDraft(stored) ? stored : defaultCreateDraft();
-  });
+  const [storedEntry] = useState<StoredCreateEntry>(() => readStoredCreateEntry(ticketId));
+  const [createDraft, setCreateDraft] = useState<CreateDraft>(storedEntry.draft);
   const [createErrors, setCreateErrors] = useState<FieldErrors>({});
   const [createServerError, setCreateServerError] = useState<string | null>(null);
   const [createReuseError, setCreateReuseError] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const idempotencyKeyRef = useRef<string>(newIdempotencyKey());
+  const idempotencyKeyRef = useRef<string>(storedEntry.key);
   const createHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const [editing, setEditing] = useState<ActionTaken | null>(null);
@@ -225,9 +247,11 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const editHeadingRef = useRef<HTMLHeadingElement>(null);
 
-  // Draft survives failed loads and errors until success or explicit Discard.
+  // Draft AND its idempotency key survive failed loads, errors, and even a
+  // page reload/remount — both persist until success or explicit Discard, so
+  // a retried draft always replays the same key (no duplicate on retry).
   useEffect(() => {
-    writeStored(draftKey(ticketId), createDraft);
+    writeStored(draftKey(ticketId), { draft: createDraft, key: idempotencyKeyRef.current } satisfies StoredCreateEntry);
   }, [createDraft, ticketId]);
 
   useEffect(() => {

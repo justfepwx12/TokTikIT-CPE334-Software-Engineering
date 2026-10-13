@@ -207,8 +207,7 @@ describe("ActionsTaken (AC-50/51/52, AC-37)", () => {
     expect((screen.getByTestId("action-description") as HTMLTextAreaElement).value).toBe("Unsaved draft.");
   });
 
-  it("stale edit shows refresh-and-retry; refresh reloads the latest (AC-37)", async () => {
-    const stored = actionFixture(5, { result: "v2", version: 2 });
+  it("stale edit shows refresh-and-retry; refresh reloads the latest (AC-37)", async () => {    const stored = actionFixture(5, { result: "v2", version: 2 });
     getActionsMock.mockResolvedValue(pageOf([stored], 1));
     updateMock.mockRejectedValueOnce(new api.ApiError(409, "Stale.", "STALE_VERSION", 3));
     renderSection();
@@ -243,5 +242,36 @@ describe("ActionsTaken (AC-50/51/52, AC-37)", () => {
     fireEvent.click(screen.getByTestId("actions-load-more"));
     await waitFor(() => expect(screen.getByTestId("action-row-76")).toBeDefined());
     expect(screen.queryByTestId("actions-load-more")).toBeNull();
+  });
+
+  it("retry after a lost response + remount reuses the same key: exactly one record (BR-28)", async () => {
+    getActionsMock.mockResolvedValue(pageOf([], 0));
+    // First attempt: the server commits but the response never arrives.
+    createMock.mockRejectedValueOnce(new Error("Network down."));
+    renderSection(105);
+    await waitFor(() => expect(screen.getByTestId("action-create-form")).toBeDefined());
+
+    fireEvent.change(screen.getByTestId("action-description"), { target: { value: "Did the work." } });
+    fireEvent.change(screen.getByTestId("action-result"), { target: { value: "It worked." } });
+    fireEvent.click(screen.getByTestId("action-submit"));
+    await waitFor(() => expect(screen.getByTestId("action-server-error")).toBeDefined());
+    expect(createMock).toHaveBeenCalledTimes(1);
+    const firstKey = createMock.mock.calls[0][2];
+    expect(firstKey).toEqual(expect.any(String));
+
+    // Page reload / remount: the restored draft must carry the same key, so
+    // the retry replays the original creation instead of duplicating it.
+    cleanup();
+    renderSection(105);
+    await waitFor(() => expect(screen.getByTestId("action-create-form")).toBeDefined());
+    expect((screen.getByTestId("action-description") as HTMLTextAreaElement).value).toBe("Did the work.");
+
+    createMock.mockResolvedValueOnce(actionFixture(21, { description: "Did the work.", result: "It worked." }));
+    fireEvent.click(screen.getByTestId("action-submit"));
+    await waitFor(() => expect(screen.getByTestId("action-row-21")).toBeDefined());
+
+    expect(createMock).toHaveBeenCalledTimes(2);
+    expect(createMock.mock.calls[1][2]).toBe(firstKey);
+    expect(screen.getByTestId("actions-heading").textContent).toMatch(/\(1\)/);
   });
 });
