@@ -418,4 +418,84 @@ describe("ActionsTaken (AC-50/51/52, AC-37)", () => {
     expect(screen.queryAllByText("Action from ticket A.")).toHaveLength(0);
     expect(screen.getByTestId("actions-heading").textContent).toMatch(/\(1\)/);
   });
+
+  it("ignores a stale create response after switching tickets (no cross-ticket prepend)", async () => {
+    getActionsMock.mockImplementation(async () => pageOf([], 0));
+    let resolveCreate!: (v: api.ActionTaken) => void;
+    createMock.mockImplementation(() => new Promise<api.ActionTaken>((r) => (resolveCreate = r)));
+    const createdOnA = actionFixture(911, {
+      ticketId: 301,
+      description: "Created on ticket A.",
+      result: "Result A.",
+    });
+
+    // Submit on Ticket A; the create stays pending.
+    const view = renderSection(301);
+    await waitFor(() => expect(screen.getByTestId("action-create-form")).toBeDefined());
+    fireEvent.change(screen.getByTestId("action-description"), { target: { value: "Created on ticket A." } });
+    fireEvent.change(screen.getByTestId("action-result"), { target: { value: "Result A." } });
+    fireEvent.click(screen.getByTestId("action-submit"));
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));
+
+    // Switch A -> B while the create is still in flight.
+    view.rerender(
+      <BrowserRouter>
+        <AuthProvider>
+          <ActionsTaken ticketId={302} />
+        </AuthProvider>
+      </BrowserRouter>
+    );
+    await waitFor(() => expect(screen.getByTestId("action-create-form")).toBeDefined());
+    // B starts with a blank form (A's draft must not leak).
+    expect((screen.getByTestId("action-description") as HTMLTextAreaElement).value).toBe("");
+
+    // A's create resolves late: it must not prepend to B's list, must not
+    // touch B's draft, but must clear A's own stored draft (server committed).
+    await act(async () => {
+      resolveCreate(createdOnA);
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(screen.queryByTestId("action-row-911")).toBeNull();
+    expect(screen.queryByTestId("actions-list")).toBeNull();
+    expect((screen.getByTestId("action-description") as HTMLTextAreaElement).value).toBe("");
+    expect(window.localStorage.getItem("l4-action-draft:301")).toBeNull();
+  });
+
+  it("ignores a stale Load more response after switching tickets", async () => {
+    const first20 = Array.from({ length: 20 }, (_, i) => actionFixture(100 - i, { ticketId: 301 }));
+    const last5 = Array.from({ length: 5 }, (_, i) => actionFixture(80 - i, { ticketId: 301 }));
+    let resolvePage2!: (v: api.ActionsResponse) => void;
+    getActionsMock.mockImplementation((tid: number, page: number) => {
+      if (tid === 301 && page === 1) return Promise.resolve(pageOf(first20, 25, 1, 20));
+      if (tid === 301) return new Promise<api.ActionsResponse>((r) => (resolvePage2 = r));
+      return Promise.resolve(pageOf([], 0));
+    });
+
+    // Ticket A shows 20/25 with Load more; page 2 stays pending.
+    const view = renderSection(301);
+    await waitFor(() => expect(screen.getByTestId("actions-load-more")).toBeDefined());
+    fireEvent.click(screen.getByTestId("actions-load-more"));
+    await waitFor(() => expect(getActionsMock).toHaveBeenCalledWith(301, 2, 20));
+
+    // Switch A -> B while page 2 is still in flight; B loads empty.
+    view.rerender(
+      <BrowserRouter>
+        <AuthProvider>
+          <ActionsTaken ticketId={302} />
+        </AuthProvider>
+      </BrowserRouter>
+    );
+    await waitFor(() => expect(screen.getByTestId("actions-empty")).toBeDefined());
+
+    // A's page 2 resolves late: its rows must never appear under B.
+    await act(async () => {
+      resolvePage2(pageOf(last5, 25, 2, 20));
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(screen.queryByTestId("action-row-76")).toBeNull();
+    expect(screen.getByTestId("actions-empty")).toBeDefined();
+    expect(screen.queryByTestId("actions-load-more")).toBeNull();
+  });
 });
