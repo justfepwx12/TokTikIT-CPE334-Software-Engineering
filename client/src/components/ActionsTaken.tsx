@@ -253,6 +253,13 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
   // visible and the persist effect below would overwrite B's storage key with
   // A's content (and reuse A's key for B's create).
   const [draftTicketId, setDraftTicketId] = useState(ticketId);
+  // Generation guard against stale async responses after a ticket switch.
+  // Incremented on every fresh list load and whenever the list effect is
+  // torn down (ticket change, retry, unmount), so a slow response for Ticket
+  // A can never overwrite Ticket B's state. Each async handler captures the
+  // sequence at start and ignores its result when it is no longer current.
+  // (Only touched in effects/event handlers — never during render.)
+  const requestSeqRef = useRef(0);
   if (draftTicketId !== ticketId) {
     const entry = readStoredCreateEntry(ticketId);
     setDraftTicketId(ticketId);
@@ -285,45 +292,56 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
   }, [editing, editDraft, ticketId]);
 
   const loadFirst = useCallback(async () => {
+    const myTicket = ticketId;
+    const mySeq = ++requestSeqRef.current;
     setIsLoading(true);
     setListError(null);
     try {
-      const res = await getTicketActions(ticketId, 1, PAGE_LIMIT);
+      const res = await getTicketActions(myTicket, 1, PAGE_LIMIT);
+      // Stale response (ticket switched, retry, or unmount): ignore so Ticket
+      // A's slow list can never replace Ticket B's list.
+      if (requestSeqRef.current !== mySeq) return;
       setActions(res.actions);
       setTotal(res.pagination.total);
       setPage(1);
     } catch (err) {
+      if (requestSeqRef.current !== mySeq) return;
       setActions([]);
       setListError(err instanceof Error ? err.message : "Failed to load actions.");
     } finally {
-      setIsLoading(false);
+      if (requestSeqRef.current === mySeq) setIsLoading(false);
     }
   }, [ticketId]);
 
   useEffect(() => {
-    let cancelled = false;
     const run = async () => {
-      if (cancelled) return;
       await loadFirst();
     };
     void run();
     return () => {
-      cancelled = true;
+      // Invalidate in-flight requests when the ticket changes, on retry, or
+      // on unmount, so a late resolve never touches the wrong ticket's state.
+      requestSeqRef.current += 1;
     };
   }, [loadFirst, retryKey]);
 
   const handleLoadMore = async () => {
     if (isLoadingMore || actions.length >= total) return;
+    const myTicket = ticketId;
+    const mySeq = requestSeqRef.current;
+    const nextPage = page + 1;
     setIsLoadingMore(true);
     try {
-      const res = await getTicketActions(ticketId, page + 1, PAGE_LIMIT);
+      const res = await getTicketActions(myTicket, nextPage, PAGE_LIMIT);
+      if (requestSeqRef.current !== mySeq) return;
       setActions((prev) => [...prev, ...res.actions]);
       setTotal(res.pagination.total);
-      setPage((p) => p + 1);
+      setPage(nextPage);
     } catch (err) {
+      if (requestSeqRef.current !== mySeq) return;
       setListError(err instanceof Error ? err.message : "Failed to load more actions.");
     } finally {
-      setIsLoadingMore(false);
+      if (requestSeqRef.current === mySeq) setIsLoadingMore(false);
     }
   };
 
@@ -353,31 +371,37 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
       document.getElementById(first === "followUpNote" ? "action-followup-note" : `action-${first}`)?.focus();
       return;
     }
+    const myTicket = ticketId;
+    const mySeq = requestSeqRef.current;
+    const myKey = idempotencyKey;
+    const payload = {
+      actionAt: new Date(createDraft.actionAt).toISOString(),
+      description: createDraft.description.trim(),
+      result: createDraft.result.trim(),
+      followUpRequired: createDraft.followUpRequired,
+      ...(createDraft.followUpRequired ? { followUpNote: createDraft.followUpNote.trim() } : {}),
+      ...(createDraft.attachmentNotes ? { attachmentNotes: createDraft.attachmentNotes } : {}),
+    };
     setIsCreating(true);
     setCreateServerError(null);
     setCreateReuseError(false);
     try {
-      const created = await createTicketAction(
-        ticketId,
-        {
-          actionAt: new Date(createDraft.actionAt).toISOString(),
-          description: createDraft.description.trim(),
-          result: createDraft.result.trim(),
-          followUpRequired: createDraft.followUpRequired,
-          ...(createDraft.followUpRequired ? { followUpNote: createDraft.followUpNote.trim() } : {}),
-          ...(createDraft.attachmentNotes ? { attachmentNotes: createDraft.attachmentNotes } : {}),
-        },
-        idempotencyKey
-      );
+      const created = await createTicketAction(myTicket, payload, myKey);
+      // The server committed for myTicket: its stored draft must go even when
+      // the UI has since moved to another ticket (the retry key already did
+      // its idempotent job). Never touch the *current* ticket's draft/list
+      // from a stale ticket's response.
+      clearStored(draftKey(myTicket));
+      if (requestSeqRef.current !== mySeq) return;
       // Newest-first: the record leads the list.
       setActions((prev) => [created, ...prev]);
       setTotal((t) => t + 1);
       setCreateDraft(defaultCreateDraft());
       setCreateErrors({});
-      clearStored(draftKey(ticketId));
       setIdempotencyKey(newIdempotencyKey());
       requestAnimationFrame(() => focusActionRow(created.id));
     } catch (err) {
+      if (requestSeqRef.current !== mySeq) return;
       if (isApiError(err) && err.status === 422) {
         setCreateReuseError(true);
         setCreateServerError("This form was already submitted with different content. Discard to start fresh, or reload the list.");
@@ -386,7 +410,7 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
         setCreateServerError(err instanceof Error ? err.message : "Could not save the action.");
       }
     } finally {
-      setIsCreating(false);
+      if (requestSeqRef.current === mySeq) setIsCreating(false);
     }
   };
 
@@ -422,49 +446,57 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
     const errors = validateEdit(editDraft);
     setEditErrors(errors);
     if (Object.keys(errors).length > 0) return;
+    const myTicket = ticketId;
+    const mySeq = requestSeqRef.current;
+    const editingId = editing.id;
+    const editingVersion = editing.version;
+    const payload = {
+      description: editDraft.description.trim(),
+      result: editDraft.result.trim(),
+      followUpRequired: editDraft.followUpRequired,
+      ...(editDraft.followUpRequired ? { followUpNote: editDraft.followUpNote.trim() } : {}),
+      attachmentNotes: editDraft.attachmentNotes,
+    };
     setIsSavingEdit(true);
     setEditServerError(null);
     try {
-      const updated = await updateTicketAction(
-        editing.id,
-        {
-          description: editDraft.description.trim(),
-          result: editDraft.result.trim(),
-          followUpRequired: editDraft.followUpRequired,
-          ...(editDraft.followUpRequired ? { followUpNote: editDraft.followUpNote.trim() } : {}),
-          attachmentNotes: editDraft.attachmentNotes,
-        },
-        editing.version
-      );
+      const updated = await updateTicketAction(editingId, payload, editingVersion);
+      clearStored(editKey(myTicket, editingId));
+      if (requestSeqRef.current !== mySeq) return;
       setActions((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
-      clearStored(editKey(ticketId, editing.id));
       const updatedId = updated.id;
       setEditing(null);
       setEditDraft(null);
       setEditConflict(null);
       requestAnimationFrame(() => focusActionRow(updatedId));
     } catch (err) {
+      if (requestSeqRef.current !== mySeq) return;
       if (isApiError(err) && err.status === 409) {
         // Stale write: the stored row is untouched; the client must re-fetch
         // and retry (api-spec §1). Draft is preserved for retry after refresh.
-        setEditConflict({ currentVersion: err.currentVersion ?? editing.version + 1 });
+        setEditConflict({ currentVersion: err.currentVersion ?? editingVersion + 1 });
       } else {
         setEditServerError(err instanceof Error ? err.message : "Could not save the action.");
       }
     } finally {
-      setIsSavingEdit(false);
+      if (requestSeqRef.current === mySeq) setIsSavingEdit(false);
     }
   };
 
   const handleRefreshEdit = async () => {
     if (!editing) return;
+    const myTicket = ticketId;
+    const mySeq = requestSeqRef.current;
+    const editingId = editing.id;
+    const loadedCount = Math.max(actions.length, PAGE_LIMIT);
     try {
       // Re-read everything loaded so far so the edited row is found wherever
       // it sits in newest-first order; pagination position is preserved.
-      const res = await getTicketActions(ticketId, 1, Math.max(actions.length, PAGE_LIMIT));
+      const res = await getTicketActions(myTicket, 1, loadedCount);
+      if (requestSeqRef.current !== mySeq) return;
       setActions(res.actions);
       setTotal(res.pagination.total);
-      const fresh = res.actions.find((a) => a.id === editing.id);
+      const fresh = res.actions.find((a) => a.id === editingId);
       if (!fresh) {
         setEditServerError("Could not reload the latest version. Retry.");
         return;
@@ -482,6 +514,7 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
       setEditServerError(null);
       requestAnimationFrame(() => editHeadingRef.current?.focus());
     } catch (err) {
+      if (requestSeqRef.current !== mySeq) return;
       setEditServerError(err instanceof Error ? err.message : "Could not reload the latest version.");
     }
   };

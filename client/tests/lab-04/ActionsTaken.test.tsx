@@ -3,7 +3,7 @@
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, cleanup, act } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import * as api from "../../src/api";
 import ActionsTaken from "../../src/components/ActionsTaken";
@@ -363,5 +363,59 @@ describe("ActionsTaken (AC-50/51/52, AC-37)", () => {
     expect(createMock.mock.calls[1][0]).toBe(202);
     expect(createMock.mock.calls[1][2]).toBe(key202);
     expect(createMock.mock.calls[1][2]).not.toBe(createMock.mock.calls[0][2]);
+  });
+
+  it("ignores a stale list response when Ticket A resolves after Ticket B (stale-request race)", async () => {
+    const actionA = actionFixture(901, {
+      ticketId: 301,
+      description: "Action from ticket A.",
+      result: "Result A.",
+    });
+    const actionB = actionFixture(902, {
+      ticketId: 302,
+      description: "Action from ticket B.",
+      result: "Result B.",
+    });
+    let resolveA!: (v: api.ActionsResponse) => void;
+    let resolveB!: (v: api.ActionsResponse) => void;
+    getActionsMock.mockImplementation((tid: number) => {
+      if (tid === 301) return new Promise<api.ActionsResponse>((r) => (resolveA = r));
+      if (tid === 302) return new Promise<api.ActionsResponse>((r) => (resolveB = r));
+      return Promise.resolve(pageOf([], 0));
+    });
+
+    // Mount on Ticket A; its list request stays pending.
+    const view = renderSection(301);
+    await waitFor(() => expect(getActionsMock).toHaveBeenCalledWith(301, 1, 20));
+
+    // Switch A -> B while A is still in flight; B's request starts too.
+    view.rerender(
+      <BrowserRouter>
+        <AuthProvider>
+          <ActionsTaken ticketId={302} />
+        </AuthProvider>
+      </BrowserRouter>
+    );
+    await waitFor(() => expect(getActionsMock).toHaveBeenCalledWith(302, 1, 20));
+
+    // B (fast) resolves first, then A (slow) resolves late. The UI must keep
+    // showing only B's actions — A's stale payload must be ignored.
+    // NOTE: each action renders twice (desktop table + mobile card), so use
+    // the *AllBy* queries.
+    await act(async () => {
+      resolveB(pageOf([actionB], 1));
+    });
+    await waitFor(() => expect(screen.getAllByText("Action from ticket B.").length).toBeGreaterThanOrEqual(1));
+
+    await act(async () => {
+      resolveA(pageOf([actionA], 1));
+      // Flush the stale promise continuation so a buggy last-writer-wins
+      // implementation would have replaced the list by now.
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(screen.getAllByText("Action from ticket B.").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryAllByText("Action from ticket A.")).toHaveLength(0);
+    expect(screen.getByTestId("actions-heading").textContent).toMatch(/\(1\)/);
   });
 });
