@@ -236,7 +236,7 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
   const [createServerError, setCreateServerError] = useState<string | null>(null);
   const [createReuseError, setCreateReuseError] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const idempotencyKeyRef = useRef<string>(storedEntry.key);
+  const [idempotencyKey, setIdempotencyKey] = useState<string>(storedEntry.key);
   const createHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const [editing, setEditing] = useState<ActionTaken | null>(null);
@@ -257,7 +257,7 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
     const entry = readStoredCreateEntry(ticketId);
     setDraftTicketId(ticketId);
     setCreateDraft(entry.draft);
-    idempotencyKeyRef.current = entry.key;
+    setIdempotencyKey(entry.key);
     setCreateErrors({});
     setCreateServerError(null);
     setCreateReuseError(false);
@@ -277,8 +277,8 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
   // ticket's storage key.
   useEffect(() => {
     if (draftTicketId !== ticketId) return;
-    writeStored(draftKey(ticketId), { draft: createDraft, key: idempotencyKeyRef.current } satisfies StoredCreateEntry);
-  }, [createDraft, ticketId, draftTicketId]);
+    writeStored(draftKey(ticketId), { draft: createDraft, key: idempotencyKey } satisfies StoredCreateEntry);
+  }, [createDraft, idempotencyKey, ticketId, draftTicketId]);
 
   useEffect(() => {
     if (editing && editDraft) writeStored(editKey(ticketId, editing.id), editDraft);
@@ -339,7 +339,7 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
     setCreateServerError(null);
     setCreateReuseError(false);
     clearStored(draftKey(ticketId));
-    idempotencyKeyRef.current = newIdempotencyKey();
+    setIdempotencyKey(newIdempotencyKey());
     createHeadingRef.current?.focus();
   };
 
@@ -367,7 +367,7 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
           ...(createDraft.followUpRequired ? { followUpNote: createDraft.followUpNote.trim() } : {}),
           ...(createDraft.attachmentNotes ? { attachmentNotes: createDraft.attachmentNotes } : {}),
         },
-        idempotencyKeyRef.current
+        idempotencyKey
       );
       // Newest-first: the record leads the list.
       setActions((prev) => [created, ...prev]);
@@ -375,7 +375,7 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
       setCreateDraft(defaultCreateDraft());
       setCreateErrors({});
       clearStored(draftKey(ticketId));
-      idempotencyKeyRef.current = newIdempotencyKey();
+      setIdempotencyKey(newIdempotencyKey());
       requestAnimationFrame(() => focusActionRow(created.id));
     } catch (err) {
       if (isApiError(err) && err.status === 422) {

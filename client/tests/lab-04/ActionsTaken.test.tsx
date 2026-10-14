@@ -9,10 +9,7 @@ import * as api from "../../src/api";
 import ActionsTaken from "../../src/components/ActionsTaken";
 import { AuthProvider } from "../../src/context/AuthContext";
 
-vi.mock("lucide-react", () => {
-  const stub = () => null;
-  return {};
-});
+vi.mock("lucide-react", () => ({}) );
 
 const STAFF_USER: api.AuthUser = {
   id: 8, name: "Weerapong Chaiyaporn", email: "weerapong@toktikit.com",
