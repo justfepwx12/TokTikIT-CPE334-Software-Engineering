@@ -247,12 +247,38 @@ export default function ActionsTaken({ ticketId }: { ticketId: number }) {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const editHeadingRef = useRef<HTMLHeadingElement>(null);
 
+  // Which ticket the in-memory draft/key currently belong to. When the parent
+  // navigates Ticket A -> B while this component stays mounted, the draft and
+  // idempotency key must be reloaded for B — otherwise A's draft would remain
+  // visible and the persist effect below would overwrite B's storage key with
+  // A's content (and reuse A's key for B's create).
+  const [draftTicketId, setDraftTicketId] = useState(ticketId);
+  if (draftTicketId !== ticketId) {
+    const entry = readStoredCreateEntry(ticketId);
+    setDraftTicketId(ticketId);
+    setCreateDraft(entry.draft);
+    idempotencyKeyRef.current = entry.key;
+    setCreateErrors({});
+    setCreateServerError(null);
+    setCreateReuseError(false);
+    setIsCreating(false);
+    setEditing(null);
+    setEditDraft(null);
+    setEditErrors({});
+    setEditServerError(null);
+    setEditConflict(null);
+  }
+
   // Draft AND its idempotency key survive failed loads, errors, and even a
   // page reload/remount — both persist until success or explicit Discard, so
   // a retried draft always replays the same key (no duplicate on retry).
+  // Skipped while a ticket switch is still being applied (see above) so a
+  // stale render never persists the previous ticket's draft under the new
+  // ticket's storage key.
   useEffect(() => {
+    if (draftTicketId !== ticketId) return;
     writeStored(draftKey(ticketId), { draft: createDraft, key: idempotencyKeyRef.current } satisfies StoredCreateEntry);
-  }, [createDraft, ticketId]);
+  }, [createDraft, ticketId, draftTicketId]);
 
   useEffect(() => {
     if (editing && editDraft) writeStored(editKey(ticketId, editing.id), editDraft);

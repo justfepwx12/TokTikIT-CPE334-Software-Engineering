@@ -274,4 +274,97 @@ describe("ActionsTaken (AC-50/51/52, AC-37)", () => {
     expect(createMock.mock.calls[1][2]).toBe(firstKey);
     expect(screen.getByTestId("actions-heading").textContent).toMatch(/\(1\)/);
   });
+
+  it("switching ticketId without unmount keeps per-ticket drafts and keys isolated", async () => {
+    getActionsMock.mockImplementation(async () => pageOf([], 0));
+    const view = renderSection(201);
+    await waitFor(() => expect(screen.getByTestId("action-create-form")).toBeDefined());
+
+    fireEvent.change(screen.getByTestId("action-description"), { target: { value: "Draft for 201." } });
+    fireEvent.change(screen.getByTestId("action-result"), { target: { value: "Result 201." } });
+    await waitFor(() =>
+      expect(
+        (JSON.parse(window.localStorage.getItem("l4-action-draft:201") ?? "null") as { draft?: { description?: string } } | null)?.draft
+          ?.description
+      ).toBe("Draft for 201.")
+    );
+    const key201 = (JSON.parse(window.localStorage.getItem("l4-action-draft:201") ?? "null") as { key?: string } | null)?.key;
+    expect(typeof key201).toBe("string");
+
+    // Navigate Ticket 201 -> 202 while ActionsTaken stays mounted.
+    view.rerender(
+      <BrowserRouter>
+        <AuthProvider>
+          <ActionsTaken ticketId={202} />
+        </AuthProvider>
+      </BrowserRouter>
+    );
+    await waitFor(() => expect(screen.getByTestId("action-create-form")).toBeDefined());
+    // New ticket must not show the previous ticket's draft.
+    expect((screen.getByTestId("action-description") as HTMLTextAreaElement).value).toBe("");
+    // The switch itself must not overwrite either storage entry.
+    expect(
+      (JSON.parse(window.localStorage.getItem("l4-action-draft:201") ?? "null") as { draft?: { description?: string } } | null)?.draft
+        ?.description
+    ).toBe("Draft for 201.");
+
+    fireEvent.change(screen.getByTestId("action-description"), { target: { value: "Draft for 202." } });
+    fireEvent.change(screen.getByTestId("action-result"), { target: { value: "Result 202." } });
+    await waitFor(() =>
+      expect(
+        (JSON.parse(window.localStorage.getItem("l4-action-draft:202") ?? "null") as { draft?: { description?: string } } | null)?.draft
+          ?.description
+      ).toBe("Draft for 202.")
+    );
+    const key202 = (JSON.parse(window.localStorage.getItem("l4-action-draft:202") ?? "null") as { key?: string } | null)?.key;
+    expect(typeof key202).toBe("string");
+    expect(key202).not.toBe(key201);
+    // Editing ticket 202 must leave ticket 201's stored draft untouched.
+    expect(
+      (JSON.parse(window.localStorage.getItem("l4-action-draft:201") ?? "null") as { draft?: { description?: string } } | null)?.draft
+        ?.description
+    ).toBe("Draft for 201.");
+
+    // Switch back: ticket 201 restores its own draft and key.
+    view.rerender(
+      <BrowserRouter>
+        <AuthProvider>
+          <ActionsTaken ticketId={201} />
+        </AuthProvider>
+      </BrowserRouter>
+    );
+    await waitFor(() => expect(screen.getByTestId("action-create-form")).toBeDefined());
+    expect((screen.getByTestId("action-description") as HTMLTextAreaElement).value).toBe("Draft for 201.");
+    expect((JSON.parse(window.localStorage.getItem("l4-action-draft:201") ?? "null") as { key?: string } | null)?.key).toBe(
+      key201
+    );
+
+    // Each ticket submits with its own key.
+    createMock.mockImplementation(async (tid: number) =>
+      actionFixture(tid === 201 ? 31 : 32, {
+        ticketId: tid,
+        description: tid === 201 ? "Draft for 201." : "Draft for 202.",
+        result: tid === 201 ? "Result 201." : "Result 202.",
+      })
+    );
+    fireEvent.click(screen.getByTestId("action-submit"));
+    await waitFor(() => expect(screen.getByTestId("action-row-31")).toBeDefined());
+    expect(createMock.mock.calls[0][0]).toBe(201);
+    expect(createMock.mock.calls[0][2]).toBe(key201);
+
+    view.rerender(
+      <BrowserRouter>
+        <AuthProvider>
+          <ActionsTaken ticketId={202} />
+        </AuthProvider>
+      </BrowserRouter>
+    );
+    await waitFor(() => expect(screen.getByTestId("action-create-form")).toBeDefined());
+    expect((screen.getByTestId("action-description") as HTMLTextAreaElement).value).toBe("Draft for 202.");
+    fireEvent.click(screen.getByTestId("action-submit"));
+    await waitFor(() => expect(screen.getByTestId("action-row-32")).toBeDefined());
+    expect(createMock.mock.calls[1][0]).toBe(202);
+    expect(createMock.mock.calls[1][2]).toBe(key202);
+    expect(createMock.mock.calls[1][2]).not.toBe(createMock.mock.calls[0][2]);
+  });
 });
