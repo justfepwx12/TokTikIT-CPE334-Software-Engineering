@@ -18,6 +18,7 @@ import Button from "../components/Button";
 import TextInput from "../components/TextInput";
 import PublicComments from "../components/PublicComments";
 import InternalNotes from "../components/InternalNotes";
+import ActionsTaken from "../components/ActionsTaken";
 
 // Legal IT/Admin status edges (spec §6 matrix — mirrored from the server).
 const MATRIX: Record<TicketStatus, TicketStatus[]> = {
@@ -335,6 +336,11 @@ export default function StaffTicketDetail() {
         <div className="col-12 col-lg-6">
           <InternalNotes ticketId={ticket.id} />
         </div>
+      </div>
+
+      {/* Actions Taken (Lab 4 FR-33): full List + Create/Edit for Staff/Admin. */}
+      <div className="mt-3">
+        <ActionsTaken ticketId={ticket.id} />
       </div>
     </div>
   );

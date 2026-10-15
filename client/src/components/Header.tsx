@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Clock, FileText, PlusCircle, Inbox, Users, UserCircle, Menu, X, ChevronDown, LogOut } from 'lucide-react'
+import { Clock, FileText, PlusCircle, Inbox, Users, UserCircle, Menu, X, ChevronDown, LogOut, LayoutDashboard } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import Badge from './Badge'
 import type { BadgeColor } from './Badge'
 import type { UserRole } from '../api.js'
 import styles from './Header.module.css'
 
-// Role-aware links (ui-spec §2.1): Requester gets creation; staff get the
-// queue; Admin additionally gets Users.
+// Role-aware links (Lab 3 ui-spec §2.1 + Lab 4 ui-spec §1): Requester gets
+// creation; staff get the queue; Admin additionally gets Users. Every
+// authenticated role lands on its dashboard first (AD-17).
 function navLinksFor(role: UserRole | undefined) {
   if (role === 'ADMIN') {
     return [
+      { label: 'Dashboard', href: '/dashboard/staff', icon: LayoutDashboard },
       { label: 'Ticket Queue', href: '/queue', icon: Inbox },
       { label: 'My Tickets', href: '/my-tickets', icon: FileText },
       { label: 'Users', href: '/users', icon: Users },
@@ -19,11 +21,13 @@ function navLinksFor(role: UserRole | undefined) {
   }
   if (role === 'IT_STAFF') {
     return [
+      { label: 'Dashboard', href: '/dashboard/staff', icon: LayoutDashboard },
       { label: 'Ticket Queue', href: '/queue', icon: Inbox },
       { label: 'My Tickets', href: '/my-tickets', icon: FileText },
     ]
   }
   return [
+    { label: 'Dashboard', href: '/dashboard/requester', icon: LayoutDashboard },
     { label: 'My Tickets', href: '/my-tickets', icon: FileText },
     { label: 'Create Ticket', href: '/create-ticket', icon: PlusCircle },
   ]

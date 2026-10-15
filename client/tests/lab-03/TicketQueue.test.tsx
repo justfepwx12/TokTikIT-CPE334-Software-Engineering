@@ -33,6 +33,7 @@ vi.mock("lucide-react", () => {
     EyeOff: stub,
     Home: stub,
     ChevronRightIcon: stub,
+    LayoutDashboard: stub,
   };
 });
 

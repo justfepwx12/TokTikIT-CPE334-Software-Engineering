@@ -34,7 +34,8 @@ async function loginAsRequester(page: Page): Promise<void> {
     await page.getByTestId('login-submit').click();
     await page.waitForURL(notLogin, { timeout: 20000 });
   }
-  // Already rotated → straight to home. Fresh seed → mandatory change form.
+  // Already rotated → straight to home (Lab 4 AD-17 dashboard). Fresh seed → mandatory change form.
+  if (new URL(page.url()).pathname.includes('/dashboard/requester')) return;
   if (new URL(page.url()).pathname.includes('/my-tickets')) return;
   await expect(page.getByTestId('change-password-form')).toBeVisible({ timeout: 10000 });
   const notChangePw = (url: URL) => !url.pathname.includes('/change-password');
@@ -46,7 +47,7 @@ async function loginAsRequester(page: Page): Promise<void> {
     await rotatePassword(page, E2E_PASSWORD);
     await page.waitForURL(notChangePw, { timeout: 20000 });
   }
-  await page.waitForURL('**/my-tickets', { timeout: 20000 });
+  await page.waitForURL('**/dashboard/requester', { timeout: 20000 });
 }
 
 async function createTicket(page: Page, title: string): Promise<string> {

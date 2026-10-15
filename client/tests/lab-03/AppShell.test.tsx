@@ -14,6 +14,7 @@ vi.mock("lucide-react", () => {
   return {
     Clock: stub, FileText: stub, PlusCircle: stub, Inbox: stub, Users: stub,
     UserCircle: stub, Menu: stub, X: stub, ChevronDown: stub, LogOut: stub,
+    LayoutDashboard: stub,
   };
 });
 

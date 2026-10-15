@@ -1,15 +1,19 @@
 import type { AuthUser } from "../api.js";
 
-// Role home (ui-spec §3): Requester → My Tickets; IT Staff/Admin → Ticket Queue.
+// Role home (Lab 4 ui-spec §1, AD-17 — supersedes the Lab 3 §3 homes):
+// Requester → requester dashboard; IT Staff/Admin → staff dashboard.
 export function roleHome(user: AuthUser): string {
-  return user.role === "REQUESTER" ? "/my-tickets" : "/queue";
+  return user.role === "REQUESTER" ? "/dashboard/requester" : "/dashboard/staff";
 }
 
 // Post-login redirects must stay inside the app's known routes — never follow
-// an attacker-supplied path (open-redirect hardening).
+// an attacker-supplied path (open-redirect hardening). Query strings are
+// allowed only as suffixes of whitelisted paths (drill-down targets).
 export const ALLOWED_REDIRECTS = [
-  /^\/my-tickets$/,
-  /^\/queue$/,
+  /^\/dashboard\/requester(\?.*)?$/,
+  /^\/dashboard\/staff(\?.*)?$/,
+  /^\/my-tickets(\?.*)?$/,
+  /^\/queue(\?.*)?$/,
   /^\/create-ticket$/,
   /^\/tickets\/\d+$/,
   /^\/change-password$/,
