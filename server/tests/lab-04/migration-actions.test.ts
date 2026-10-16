@@ -67,7 +67,10 @@ describe("Lab 4 migration & seed safety (AC-56, AC-57)", () => {
       SELECT column_name FROM information_schema.columns
       WHERE table_name = 'Ticket'`;
     const names = cols.map((c) => c.column_name);
-    for (const leaked of ["actionAt", "description", "performedById", "followUpRequired", "version", "seedKey"]) {
+    // NOTE: Ticket.description is a legitimate Lab 2 field (schema.prisma
+    // Ticket.description) also present on ActionTaken — it is NOT a Lab 4
+    // leak, so it is excluded here. Only ActionTaken-only columns are listed.
+    for (const leaked of ["actionAt", "result", "performedById", "followUpRequired", "followUpNote", "attachmentNotes", "version", "seedKey"]) {
       // seedKey exists on Comment/InternalNote/ActionTaken — never on Ticket.
       if (leaked === "seedKey") {
         expect(names).not.toContain(leaked);
@@ -177,10 +180,7 @@ describe("Lab 4 migration & seed safety (AC-56, AC-57)", () => {
     ).map((t) => t.id);
     const after = {
       tickets: afterIds.length,
-      actions: await prisma.actionTaken.count({ where: { id: { in: afterIds } } }).catch(async () => {
-        // Fallback if the id-list form flakes under concurrency: same predicate as before.
-        return prisma.actionTaken.count({ where: { ticketId: { in: afterIds } } });
-      }),
+      actions: await prisma.actionTaken.count({ where: { ticketId: { in: afterIds } } }),
       seededActions: await prisma.actionTaken.count({
         where: { ticketId: { in: afterIds }, seedKey: { startsWith: "seed:" } },
       }),
