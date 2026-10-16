@@ -105,8 +105,8 @@ Known approximation (AD-19): `resolvedTodayCount` keys off `updatedAt`, so a sam
 
 ## 4. Empty-State & Drill-Down Contract (rows 17, 18, 20, 21)
 
-* **Requester empty**: "You have no tickets yet." + `Create your first ticket` → `/tickets/new`. Zero metrics show `0`.
-* **Staff empty**: "Queue is clear. Nice work." + `Browse all tickets` → `/staff/tickets`. Zero metrics show `0`.
+* **Requester empty**: "You have no tickets yet." + `Create your first ticket` → `/create-ticket` (client route; the API lives at `POST /api/tickets`). Zero metrics show `0`.
+* **Staff empty**: "Queue is clear. Nice work." + `Browse all tickets` → `/queue` (client route; the API lives at `GET /api/staff/tickets`). Zero metrics show `0`.
 * **Drill-down**: each metric's `drillDown: { endpoint, query }` (api-spec §2) must resolve through an existing filtered list to exactly the counted set (row 18 asserts set equality; rows 30–31 assert the click journey).
 
 ---

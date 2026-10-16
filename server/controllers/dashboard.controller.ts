@@ -2,20 +2,16 @@ import { Request, Response } from 'express';
 import { getPrisma } from '../src/prisma.js';
 import type { AuthRequest } from '../src/auth.middleware.js';
 import { NON_TERMINAL_STATUSES, countFollowUpDue } from '../src/followUpScope.js';
+import { startOfTodayUtc } from '../src/dashboardFormulas.js';
 
 // Dashboard summaries (Lab 4 api-spec §2, BR-25–BR-26, BR-29).
 // Aggregated-only: every metric is computed in-DB with groupBy/count and no
 // ticket row is ever fetched here (AC-47). Follow-up metrics share the exact
 // predicate of the `followUp` list filter (AD-18), so each drillDown
 // descriptor resolves to precisely the counted set (AC-46).
+// Pure formula mirror lives in src/dashboardFormulas.ts (unit-tested).
 
 const NON_TERMINAL = [...NON_TERMINAL_STATUSES];
-
-function startOfTodayUtc(): Date {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
-}
 
 async function statusCounts(
   prisma: ReturnType<typeof getPrisma>,
