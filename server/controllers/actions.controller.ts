@@ -4,21 +4,22 @@ import { Prisma } from '@prisma/client';
 import { getPrisma } from '../src/prisma.js';
 import type { AuthRequest } from '../src/auth.middleware.js';
 import { parseTicketIdParam } from '../src/ticketId.js';
+import {
+  IDEMPOTENCY_KEY_MAX,
+  IDEMPOTENCY_TTL_MS,
+  fingerprintAction,
+  isFreshEntry as isFresh,
+  validateActionInput,
+  type ValidatedActionInput,
+} from '../src/actionValidation.js';
 
 // Actions Taken engine (Lab 4 api-spec §1, BR-22–BR-24, BR-27–BR-28).
 // List is visible to the owning Requester + IT Staff/Admin; create/update is
 // Staff/Admin-only (enforced by requireRole in App.ts — Requester → 403).
 // The performer is always the session user (BR-23); recording or editing an
 // action never drives ticket status (BR-24).
-
-const TEXT_MIN = 1;
-const TEXT_MAX = 2000;
-// BR-22: actionAt must not be in the future beyond a 5-minute clock-skew
-// allowance.
-const FUTURE_SKEW_MS = 5 * 60 * 1000;
-// AD-15: opaque client token, ≤ 64 chars, honored for 24h per ticket.
-const IDEMPOTENCY_KEY_MAX = 64;
-const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
+// Validation lives in src/actionValidation.ts (pure, unit-tested); this file
+// keeps only transport + persistence.
 
 /** Action ids travel in the path the same way ticket ids do (400 if bad). */
 function parseActionIdParam(raw: unknown): number | null {
@@ -26,106 +27,6 @@ function parseActionIdParam(raw: unknown): number | null {
   const id = Number.parseInt(raw, 10);
   if (!Number.isSafeInteger(id) || id <= 0) return null;
   return id;
-}
-
-function isValidActionAt(raw: unknown): raw is string {
-  if (typeof raw !== 'string' || raw.length === 0) return false;
-  const ms = Date.parse(raw);
-  if (Number.isNaN(ms)) return false;
-  return ms <= Date.now() + FUTURE_SKEW_MS;
-}
-
-const textField = z.string().trim().min(TEXT_MIN).max(TEXT_MAX);
-
-// POST body: every field optional-checked here; cross-field rules
-// (followUpNote conditional) are enforced in validateActionInput so POST and
-// PATCH share one contract ("validated exactly as POST when present").
-const actionInputSchema = z.object({
-  actionAt: z.unknown().optional(),
-  description: z.unknown().optional(),
-  result: z.unknown().optional(),
-  followUpRequired: z.boolean().optional(),
-  followUpNote: z.unknown().optional(),
-  attachmentNotes: z.unknown().optional(),
-});
-
-type ValidatedActionInput = {
-  actionAt: Date;
-  description: string;
-  result: string;
-  followUpRequired: boolean;
-  followUpNote: string | null;
-  attachmentNotes: string | null;
-};
-
-/**
- * Validates a create-or-update payload. `forUpdate` allows every mutable
- * field to be absent (PATCH); present mutable fields are validated exactly
- * as POST. Immutable-after-creation fields (actionAt/ticketId/performedById)
- * are ignored entirely on update. Returns the normalized input or a 400
- * message.
- */
-function validateActionInput(
-  body: unknown,
-  forUpdate: boolean,
-  existing: { followUpRequired: boolean; followUpNote: string | null } | null = null,
-): { ok: true; input: Partial<ValidatedActionInput> } | { ok: false; message: string } {
-  const parsed = actionInputSchema.safeParse(body);
-  if (!parsed.success || typeof body !== 'object' || body === null) {
-    return { ok: false, message: 'Request body must be a JSON object.' };
-  }
-  const { actionAt, description, result, followUpRequired, followUpNote, attachmentNotes } = parsed.data;
-  const input: Partial<ValidatedActionInput> = {};
-
-  if (!forUpdate) {
-    if (!isValidActionAt(actionAt)) {
-      return { ok: false, message: 'actionAt must be a valid ISO datetime no more than 5 minutes in the future.' };
-    }
-    input.actionAt = new Date(actionAt as string);
-  }
-  if (description !== undefined || !forUpdate) {
-    const check = textField.safeParse(description);
-    if (!check.success) return { ok: false, message: `description must be ${TEXT_MIN}–${TEXT_MAX} characters after trim.` };
-    input.description = check.data;
-  }
-  if (result !== undefined || !forUpdate) {
-    const check = textField.safeParse(result);
-    if (!check.success) return { ok: false, message: `result must be ${TEXT_MIN}–${TEXT_MAX} characters after trim.` };
-    input.result = check.data;
-  }
-  // BR-22: followUpRequired is optional and defaults to false on create; on
-  // update an absent flag keeps the stored value.
-  const wantFollowUp = followUpRequired ?? (forUpdate ? existing?.followUpRequired : false);
-  if (wantFollowUp !== undefined) input.followUpRequired = wantFollowUp;
-  const effectiveFollowUp = wantFollowUp ?? false;
-
-  if (effectiveFollowUp) {
-    // A true flag needs a note: supplied in this request, or already stored
-    // on the row for PATCH edits that leave the flag on.
-    if (followUpNote !== undefined) {
-      const check = textField.safeParse(followUpNote);
-      if (!check.success) {
-        return { ok: false, message: `followUpNote is required (${TEXT_MIN}–${TEXT_MAX} characters after trim) when followUpRequired is true.` };
-      }
-      input.followUpNote = check.data;
-    } else if (!(forUpdate && existing?.followUpNote)) {
-      return { ok: false, message: `followUpNote is required (${TEXT_MIN}–${TEXT_MAX} characters after trim) when followUpRequired is true.` };
-    }
-    // else: keep the stored note; nothing to normalize.
-  } else {
-    // Server clears the note when the flag is off (BR-22).
-    input.followUpNote = null;
-  }
-
-  if (attachmentNotes !== undefined) {
-    if (typeof attachmentNotes !== 'string' || attachmentNotes.length > TEXT_MAX) {
-      return { ok: false, message: `attachmentNotes must be plain text of at most ${TEXT_MAX} characters.` };
-    }
-    input.attachmentNotes = attachmentNotes.length === 0 ? null : attachmentNotes;
-  } else if (!forUpdate) {
-    input.attachmentNotes = null;
-  }
-  return { ok: true, input };
 }
 
 /** Shared: session check + numeric id parse + ticket existence. */
@@ -245,21 +146,6 @@ export const listActions = async (req: Request, res: Response) => {
 // twins collapse onto a single row with no hang path and no lost update.
 
 type StoredIdempotencyBody = Record<string, unknown>;
-
-function fingerprintAction(input: ValidatedActionInput): string {
-  return JSON.stringify([
-    input.actionAt.toISOString(),
-    input.description,
-    input.result,
-    input.followUpRequired,
-    input.followUpNote,
-    input.attachmentNotes,
-  ]);
-}
-
-function isFresh(entry: { expiresAt: Date }): boolean {
-  return entry.expiresAt.getTime() > Date.now();
-}
 
 function idempotencyReuse() {
   return {

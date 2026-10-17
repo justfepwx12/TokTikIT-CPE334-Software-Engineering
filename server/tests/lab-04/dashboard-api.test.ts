@@ -264,4 +264,82 @@ describe("Lab 4 Dashboard summaries API (AC-42–AC-47)", () => {
     // ticket/action rows instead of staying flat.
     expect(ops.length).toBeLessThanOrEqual(16);
   });
+
+  it("newer followUp=false clears the ticket from follow-up metrics and filter (AC-42/43 row 35, AD-18)", async () => {
+    // Isolated requester so hardcoded REQ_A counts above stay stable.
+    const reqCEmail = `l4-dash-reqc-${randomInt(100000, 999999)}@toktikit.com`;
+    const reqC = await prisma.user.create({
+      data: {
+        name: "Dash ReqC",
+        email: reqCEmail,
+        isActive: true,
+        role: "REQUESTER",
+        passwordHash: TEST_PASSWORD_HASH,
+        mustChangePassword: false,
+      },
+    });
+    const ticketNo = makeTicketNo();
+    const ticket = await prisma.ticket.create({
+      data: {
+        ticketNo,
+        title: `Dash clear fixture ${randomInt(100000, 999999)}`,
+        description: "Ticket used to verify AD-18 clearing.",
+        requestedPriority: "MEDIUM",
+        itPriority: "MEDIUM",
+        status: "OPEN",
+        requesterId: reqC.id,
+        ownerId: staffId,
+        categoryId: testCategoryId,
+        systemId: testSystemId,
+      },
+    });
+    ticketIds.push(ticket.id);
+
+    try {
+      const staff = await loginAs(STAFF_EMAIL, TEST_PASSWORD);
+      const flagged = await staff.post(`/api/tickets/${ticket.id}/actions`).send({
+        actionAt: "2026-09-18T07:00:00.000Z",
+        description: "Flagged for follow-up.",
+        result: "Waiting on vendor.",
+        followUpRequired: true,
+        followUpNote: "Chase tomorrow.",
+      });
+      expect(flagged.status).toBe(201);
+
+      const reqCClient = await loginAs(reqCEmail, TEST_PASSWORD);
+      const before = await reqCClient.get("/api/dashboard/requester/summary");
+      expect(before.status).toBe(200);
+      expect(before.body.metrics.myFollowUpOpen).toBe(1);
+
+      const trueList = await reqCClient.get("/api/tickets?followUp=true&limit=50");
+      expect(trueList.status).toBe(200);
+      expect(trueList.body.tickets.map((t: { id: number }) => t.id)).toContain(ticket.id);
+      const falseList = await reqCClient.get("/api/tickets?followUp=false&limit=50");
+      expect(falseList.body.tickets.map((t: { id: number }) => t.id)).not.toContain(ticket.id);
+
+      // Newer action with followUpRequired=false clears it (history kept).
+      const cleared = await staff.post(`/api/tickets/${ticket.id}/actions`).send({
+        actionAt: "2026-09-19T07:00:00.000Z",
+        description: "Vendor replied, all good.",
+        result: "No further action.",
+        followUpRequired: false,
+      });
+      expect(cleared.status).toBe(201);
+
+      const after = await reqCClient.get("/api/dashboard/requester/summary");
+      expect(after.body.metrics.myFollowUpOpen).toBe(0);
+      const trueAfter = await reqCClient.get("/api/tickets?followUp=true&limit=50");
+      expect(trueAfter.body.tickets.map((t: { id: number }) => t.id)).not.toContain(ticket.id);
+      const falseAfter = await reqCClient.get("/api/tickets?followUp=false&limit=50");
+      expect(falseAfter.body.tickets.map((t: { id: number }) => t.id)).toContain(ticket.id);
+
+      // Staff queue filter mirrors the same predicate (AD-18).
+      const staffTrue = await staff.get(`/api/staff/tickets?followUp=true&limit=50`);
+      expect(staffTrue.body.tickets.map((t: { id: number }) => t.id)).not.toContain(ticket.id);
+    } finally {
+      await prisma.actionTaken.deleteMany({ where: { ticketId: ticket.id } });
+      await prisma.ticket.deleteMany({ where: { id: ticket.id } });
+      await prisma.user.deleteMany({ where: { id: reqC.id } });
+    }
+  });
 });
