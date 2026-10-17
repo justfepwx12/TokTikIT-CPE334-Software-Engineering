@@ -5,6 +5,8 @@ import {
   logout,
   createTicket,
   openFirstEntry,
+  expectListVisible,
+  clickStable,
   uniqueTitle,
   REQUESTER_A,
 } from './helpers';
@@ -27,17 +29,20 @@ test.describe('actions taken flow', () => {
     // 2. Staff finds it in the queue and claims it.
     await loginStaff(page);
     await page.goto('/queue');
+    // The queue renders a table at lg+ and cards below — wait for whichever
+    // layout this viewport uses before searching and drilling in.
+    await expectListVisible(page, 'queue');
     await page.getByTestId('queue-search').fill(title);
-    // Debounced search (400ms) — wait for the filtered row.
-    await expect(page.getByTestId('queue-row').first()).toBeVisible({ timeout: 15000 });
     await openFirstEntry(page, 'queue');
     await expect(page.getByTestId('staff-ticket-detail')).toBeVisible();
     const ticketId = new URL(page.url()).pathname.split('/').pop()!;
 
     // Claim so the dashboard "My Assigned" reflects it (best-effort).
+    // NB: in-flow buttons use clickStable — see helpers.ts for the
+    // focus-scroll race that otherwise swallows clicks on narrow viewports.
     const claim = page.getByTestId('staff-claim');
     if (await claim.isVisible().catch(() => false)) {
-      await claim.click();
+      await clickStable(claim);
     }
 
     // 3. Record an action (AC-34: performedBy = me, version = 1).
@@ -45,8 +50,15 @@ test.describe('actions taken flow', () => {
     await expect(page.getByTestId('action-recording-as')).toContainText('Somchai');
     await page.getByTestId('action-description').fill(description);
     await page.getByTestId('action-result').fill('Initial E2E result.');
-    await page.getByTestId('action-submit').click();
-    await expect(page.getByText(description).first()).toBeVisible({ timeout: 15000 });
+    await clickStable(page.getByTestId('action-submit'));
+    // NB: getByText(description) alone also matches the still-filled create
+    // textarea, so it passes before the POST lands. Wait for the list entry
+    // itself — table row at md+, card below md.
+    const newRow = page
+      .locator('[data-testid^="action-row-"]:visible, [data-testid^="action-card-"]:visible')
+      .filter({ hasText: description })
+      .first();
+    await expect(newRow).toBeVisible({ timeout: 15000 });
 
     // Recording never drives status (BR-24): still the pre-action status.
     const statusBefore = await page
@@ -57,24 +69,29 @@ test.describe('actions taken flow', () => {
       .catch(() => '');
 
     // 4. Edit it inline (AC-36: version + 1) and verify the update renders.
-    const rowId = await page
-      .evaluate(() => {
-        const el = document.querySelector('[data-testid^="action-row-"]');
-        return el?.getAttribute('data-testid')?.replace('action-row-', '') ?? null;
-      })
-      .catch(() => null);
-    expect(rowId).toBeTruthy();
-    const editButton = page.getByTestId(`action-edit-${rowId}`).first();
-    // Mobile renders card edit buttons instead of row buttons.
-    const editTarget = (await editButton.count()) > 0 ? editButton : page.getByTestId(`action-card-edit-${rowId}`).first();
-    await editTarget.click();
+    const rowTestId = await newRow.getAttribute('data-testid');
+    expect(rowTestId).toBeTruthy();
+    const rowId = (rowTestId ?? '').replace(/^action-(row|card)-/, '');
+    expect(rowId).not.toBe('');
+    // The desktop table stays in the DOM on narrow viewports (d-none), so pick
+    // the edit button that is actually visible for this layout.
+    const editTarget = page
+      .locator(
+        `[data-testid="action-edit-${rowId}"]:visible, [data-testid="action-card-edit-${rowId}"]:visible`,
+      )
+      .first();
+    await expect(editTarget).toBeVisible();
+    await clickStable(editTarget);
     await expect(page.getByTestId('action-edit-form')).toBeVisible();
     await page.getByTestId('action-edit-result').fill(editedResult);
-    await page.getByTestId('action-edit-submit').click();
-    await expect(page.getByText(editedResult).first()).toBeVisible({ timeout: 15000 });
+    await clickStable(page.getByTestId('action-edit-submit'));
+    // The edit textarea still holds editedResult while the save is in flight —
+    // wait for the form to close and the list to render the new value.
+    await expect(page.getByTestId('action-edit-form')).toBeHidden({ timeout: 15000 });
+    await expect(newRow).toContainText(editedResult, { timeout: 15000 });
 
     // 5. Stale-retry: bump the row behind the UI's back, then save → 409 banner.
-    await editTarget.click();
+    await clickStable(editTarget);
     await expect(page.getByTestId('action-edit-form')).toBeVisible();
     const bumped = await page.evaluate(
       async ({ ticketId, rowId }) => {
@@ -96,11 +113,12 @@ test.describe('actions taken flow', () => {
     );
     expect(bumped).toBe(true);
     await page.getByTestId('action-edit-result').fill('Stale UI attempt.');
-    await page.getByTestId('action-edit-submit').click();
+    await clickStable(page.getByTestId('action-edit-submit'));
     await expect(page.getByTestId('action-conflict')).toBeVisible({ timeout: 15000 });
-    await page.getByTestId('action-conflict-refresh').click();
+    await clickStable(page.getByTestId('action-conflict-refresh'));
     await expect(page.getByTestId('action-conflict')).toBeHidden({ timeout: 15000 });
-    await expect(page.getByText('Bumped behind the UI.').first()).toBeVisible();
+    // Assert on the list row (the edit textarea shows the same refreshed text).
+    await expect(newRow).toContainText('Bumped behind the UI.', { timeout: 15000 });
     void statusBefore;
 
     await logout(page);
@@ -112,7 +130,13 @@ test.describe('actions taken flow', () => {
     await page.getByRole('button', { name: /apply/i }).click();
     await openFirstEntry(page, 'ticket');
     await expect(page.getByTestId('ticket-detail')).toBeVisible();
-    await expect(page.getByText(description).first()).toBeVisible();
+    // Visible layout only: the hidden desktop table also contains the text.
+    await expect(
+      page
+        .locator('[data-testid^="action-row-"]:visible, [data-testid^="action-card-"]:visible')
+        .filter({ hasText: description })
+        .first(),
+    ).toBeVisible({ timeout: 15000 });
     // Zero create/edit affordances for requesters.
     expect(await page.getByTestId('action-create-form').count()).toBe(0);
     expect(await page.getByTestId('action-edit-form').count()).toBe(0);

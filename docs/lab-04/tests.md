@@ -47,7 +47,7 @@ Planned test files live under `server/tests/lab-04/`, `client/tests/lab-04/`, an
 | 29 | E2E | #143 | AC-34–41 | Playwright | `actions-flow.spec.ts` — staff login → record → edit → stale-retry → requester reads own list | Planned |
 | 30 | E2E | #143 | AC-42/46 | Playwright | `requester-dashboard.spec.ts` — requester journey: summary → drill-down → detail → empty-state CTA | Planned |
 | 31 | E2E | #143 | AC-43/46 | Playwright | `staff-dashboard.spec.ts` — staff journey: summary → drill-down → queue → record action | Planned |
-| 32 | E2E | #143 | AC-55 | Playwright | `lab4-hygiene.spec.ts` — console-error + broken-link sweep across all Lab 4 screens | Planned |
+| 32 | E2E | #143 | AC-55 | Playwright | `hygiene.spec.ts` — console-error + broken-link sweep across all Lab 4 screens | Planned |
 | 33 | Workflow | #128 | AC-59 | Supertest | `workflow-spot.test.ts` — legal matrix edges 200, illegal edges 400 unchanged (Lab 3 matrix) | Planned |
 | 34 | Regression | #143 | AC-58 | Playwright | Lab 2+3 journeys re-run (login, create, queue, claim, priorities, transitions, resolve-intent, comments/notes, admin, attachments) — all green, no skips | Planned |
 | 35 | API | #136 | AC-42/43 | Supertest | `dashboard-api.test.ts` — recording a newer `followUpRequired=false` action clears the ticket from follow-up metrics and the `followUp=true` filter (AD-18) | Planned |
@@ -135,7 +135,7 @@ Known approximation (AD-19): `resolvedTodayCount` keys off `updatedAt`, so a sam
 * `actions-flow.spec.ts` — row 29
 * `requester-dashboard.spec.ts` — row 30
 * `staff-dashboard.spec.ts` — row 31
-* `lab4-hygiene.spec.ts` — row 32
-* `lab23-regression.spec.ts` — row 34 (reuses Lab 2/3 journeys, asserts zero skips)
+* `hygiene.spec.ts` — row 32
+* `regression.spec.ts` — row 34 (reuses Lab 2/3 journeys, asserts zero skips)
 
 *End of test plan. Results flip Planned → Passed under Epic #128 with PR evidence.*

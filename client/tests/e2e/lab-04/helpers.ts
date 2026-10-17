@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 // Lab 4 E2E helpers (tests.md §5, AC-34–AC-59). Re-uses the battle-tested
 // Lab 3 login/logout/ticket primitives so Lab 4 specs stay focused on
@@ -37,6 +37,26 @@ export async function loginRequester(page: Page, email: string): Promise<void> {
   await lab3Login(page, email);
 }
 
+/**
+ * Click a control without losing the race against the browser's own
+ * mid-gesture scrolling. Two failure modes were observed on narrow viewports:
+ *  - a control flush against the edge of a scrollable ancestor slides out from
+ *    under the pointer when focusing it scrolls that ancestor, so mouseup
+ *    lands on the container and no click is dispatched;
+ *  - on touch-emulating projects (tablet/mobile) a synthesized mouse press can
+ *    still be dropped when the page scrolls mid-press.
+ * Centering the control on both axes removes the first, and using the device's
+ * real input (a tap) removes the second.
+ */
+export async function clickStable(locator: Locator): Promise<void> {
+  await locator.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }));
+  const touch = await locator
+    .page()
+    .evaluate(() => 'ontouchstart' in window || navigator.maxTouchPoints > 0);
+  if (touch) await locator.tap();
+  else await locator.click();
+}
+
 /** Open a dashboard card and assert the drill-down list matches the card count. */
 export async function expectDrillDownMatchesCard(
   page: Page,
@@ -71,8 +91,15 @@ export async function recordActionViaUI(
     await page.getByTestId('action-followup').check();
     await page.getByTestId('action-followup-note').fill(followUpNote);
   }
-  await page.getByTestId('action-submit').click();
-  await expect(page.getByText(description).first()).toBeVisible({ timeout: 15000 });
+  await clickStable(page.getByTestId('action-submit'));
+  // NB: getByText(description) also matches the still-filled create textarea,
+  // so it can pass before the POST lands — wait for the list entry itself.
+  await expect(
+    page
+      .locator('[data-testid^="action-row-"]:visible, [data-testid^="action-card-"]:visible')
+      .filter({ hasText: description })
+      .first(),
+  ).toBeVisible({ timeout: 15000 });
 }
 
 /** Collect console errors during a callback for the AC-55 hygiene sweep. */

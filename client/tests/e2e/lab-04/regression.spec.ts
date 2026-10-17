@@ -29,7 +29,7 @@ function uniqueEmail(prefix: string): string {
   return `${prefix}-${ts}-${Math.floor(Math.random() * 1000)}@toktikit.com`;
 }
 
-test.describe('lab23 regression', () => {
+test.describe('regression', () => {
   test('create with attachment → queue → claim → priority → status → comments/notes', async ({
     page,
   }) => {
@@ -44,9 +44,11 @@ test.describe('lab23 regression', () => {
     await page.getByTestId('field-system').selectOption({ index: 1 });
     await page.getByTestId('field-priority').selectOption('LOW');
     await page.getByTestId('field-description').fill(`E2E regression ticket: ${title}.`);
+    // The form only stages JPEG/PNG/WEBP/PDF (ALLOWED_TYPES) — a text/plain
+    // file is rejected before staging and `staged-attachments` never renders.
     await page.getByTestId('field-attachments').setInputFiles({
-      name: 'e2e-note.txt',
-      mimeType: 'text/plain',
+      name: 'e2e-note.png',
+      mimeType: 'image/png',
       buffer: Buffer.from('e2e attachment body'),
     });
     await expect(page.getByTestId('staged-attachments')).toBeVisible();
@@ -76,10 +78,16 @@ test.describe('lab23 regression', () => {
     // Comments + notes (Lab 3 append-only).
     await page.getByTestId('comment-composer').fill('E2E L23 public comment.');
     await page.getByTestId('comment-submit').click();
-    await expect(page.getByText('E2E L23 public comment.')).toBeVisible();
+    // Scope to the list: the composer textarea holds the same text until the
+    // POST clears it, so an unscoped getByText could pass before the save.
+    await expect(
+      page.getByTestId('comments-list').getByText('E2E L23 public comment.'),
+    ).toBeVisible({ timeout: 15000 });
     await page.getByTestId('note-composer').fill('E2E L23 internal note.');
     await page.getByTestId('note-submit').click();
-    await expect(page.getByText('E2E L23 internal note.')).toBeVisible();
+    await expect(page.getByTestId('notes-list').getByText('E2E L23 internal note.')).toBeVisible({
+      timeout: 15000,
+    });
     await logout(page);
 
     // Requester sees comment only (BR-18).
@@ -88,7 +96,9 @@ test.describe('lab23 regression', () => {
     await page.getByTestId('ticket-search').fill(title);
     await page.getByRole('button', { name: /apply/i }).click();
     await openFirstEntry(page, 'ticket');
-    await expect(page.getByText('E2E L23 public comment.')).toBeVisible();
+    await expect(
+      page.getByTestId('comments-list').getByText('E2E L23 public comment.'),
+    ).toBeVisible({ timeout: 15000 });
     expect(await page.getByTestId('internal-notes').count()).toBe(0);
     await logout(page);
   });
