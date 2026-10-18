@@ -15,54 +15,21 @@ const STAFF_LINKS = [
 ];
 
 // Navigate, then let the new document's session-restore /api/auth/me probe
-// (and the page's data fetches) settle before the next teardown. Without the
-// networkidle wait, the next page.goto can abort that in-flight probe; the
-// browser then surfaces an uncatchable "Fetch API cannot load ... /api/auth/me"
-// pageerror even though nothing is actually wrong with the app.
+// (and the page's data fetches) settle before the next teardown. The
+// networkidle wait is what keeps this sweep strict: with it, no navigation
+// can catch a probe in flight, so navigation-cancelled "Fetch API cannot
+// load" pageerrors never arise and every pageerror can be treated as fatal
+// with no exception machinery.
 async function gotoSettled(page: Page, url: string) {
   const response = await page.goto(url);
   await page.waitForLoadState('networkidle', { timeout: 15000 });
   return response;
 }
 
-// Playwright reports navigation-cancelled requests with either the Chromium
-// error code or its mapped description, depending on platform/version —
-// both observed as "Load request cancelled" / net::ERR_ABORTED on this stack.
-const CANCELLED_ERROR_TEXTS = new Set(['net::ERR_ABORTED', 'Load request cancelled']);
-const AUTH_PROBE_PATHS = ['/api/auth/me', '/api/auth/login'];
-
 test.describe('screen hygiene', () => {
   test('zero console errors and zero broken links', async ({ page }) => {
     const errors: string[] = [];
-    // Confirmed-cancelled auth probes: a requestfailed for an auth-probe
-    // endpoint whose errorText is a navigation cancellation. Only these can
-    // excuse a matching "Fetch API cannot load" pageerror below; a genuine
-    // CORS/network failure carries a different errorText (or no cancelled
-    // request at all) and stays fatal.
-    const cancelledAuthPaths = new Set<string>();
-    page.on('requestfailed', (req) => {
-      const errorText = req.failure()?.errorText;
-      if (errorText === undefined || !CANCELLED_ERROR_TEXTS.has(errorText)) return;
-      try {
-        const { pathname } = new URL(req.url());
-        if (AUTH_PROBE_PATHS.includes(pathname)) cancelledAuthPaths.add(pathname);
-      } catch {
-        // Unparseable URL — not an auth probe; ignore here.
-      }
-    });
-    // "Fetch API cannot load" pageerrors are stashed rather than judged on
-    // arrival: the requestfailed event can land after the exception surfaces,
-    // so they are resolved against the confirmed-cancelled set just before
-    // the assertions. Every other pageerror is fatal immediately.
-    const unconfirmedFetchErrors: string[] = [];
-    page.on('pageerror', (err) => {
-      const text = String(err);
-      if (text.startsWith('Fetch API cannot load')) {
-        unconfirmedFetchErrors.push(text);
-        return;
-      }
-      errors.push(`pageerror: ${text}`);
-    });
+    page.on('pageerror', (err) => errors.push(`pageerror: ${String(err)}`));
     page.on('console', (msg) => {
       // Browser network failures surface as generic console errors with no
       // URL, so they are covered by the response check below instead (which
@@ -133,17 +100,6 @@ test.describe('screen hygiene', () => {
     const emptyCta = page.getByTestId('requester-empty-cta');
     if ((await emptyCta.count()) > 0) {
       expect(await emptyCta.getAttribute('href')).toBe('/create-ticket');
-    }
-
-    // Resolve stashed "Fetch API cannot load" pageerrors: excused only when
-    // the same auth-probe endpoint has a requestfailed confirmed as a
-    // navigation cancellation. Non-auth endpoints and unconfirmed auth
-    // failures (genuine CORS/network errors) stay fatal.
-    for (const text of unconfirmedFetchErrors) {
-      const authPath = AUTH_PROBE_PATHS.find((path) => text.includes(path));
-      if (authPath === undefined || !cancelledAuthPaths.has(authPath)) {
-        errors.push(`pageerror: ${text}`);
-      }
     }
 
     expect(badResponses, 'no unexpected API failures').toEqual([]);
