@@ -39,7 +39,7 @@ Summary cards over the caller's own tickets (FR-29), each card clickable into it
 Operational landing for Staff/Admin (FR-30).
 
 * **Cards**: Unassigned (needs triage, strongest emphasis), My Assigned, My In Progress, Waiting for Requester, Follow-Up Due (amber), Resolved Today (success tint). Each drills into the pre-filtered queue via its `drillDown` descriptor.
-* **Shortcuts row**: "Record Action" (→ queue filtered to My Assigned, first ticket), "Open Queue" (→ `/staff/tickets`), "My Work" (→ queue `ownerId=me`). Shortcuts are plain links, never modals.
+* **Shortcuts row**: "Record Action" (→ queue filtered to My Assigned, first ticket), "Open Queue" (→ `/queue`), "My Work" (→ queue `ownerId=me`). Shortcuts are plain links, never modals.
 * **States**: Loading skeletons → Loaded → **Empty** ("Queue is clear. Nice work." + link "Browse all tickets") → Error (banner + Retry).
 * **Layout**: Desktop 3-column grid + shortcuts toolbar; Tablet 2-column; Mobile stacked. Unassigned card stays first in DOM order at every viewport (tab order matches visual order).
 
