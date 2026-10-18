@@ -28,7 +28,7 @@ Tokens (unchanged): Primary `#006B3C` · Secondary `#0B7A46` · Pale `#EAF6EF` �
 Summary cards over the caller's own tickets (FR-29), each card clickable into its filtered list for REQUESTER callers (FR-31). Staff/Admin visiting this screen see counts only and drill down from the staff dashboard instead (api-spec §2).
 
 * **Cards**: My Open (`NEW/OPEN/IN_PROGRESS`), Waiting for Me (`WAITING_FOR_REQUESTER`, amber accent), Resolved, Closed, Reopened, Cancelled — big count + label + chevron affordance. A Follow-Up attention strip appears when `myFollowUpOpen > 0` ("IT flagged N of your ticket(s) for follow-up").
-* **States**: Loading (skeleton cards) → Loaded → **Empty** ("You have no tickets yet." + primary button "Create your first ticket" → `/tickets/new`) → Error (safe banner + Retry, drafts unaffected).
+* **States**: Loading (skeleton cards) → Loaded → **Empty** ("You have no tickets yet." + primary button "Create your first ticket" → `/create-ticket`) → Error (safe banner + Retry, drafts unaffected).
 * **Zero metrics** render `0`, never blanks or dashes (BR-29).
 * **Layout**: Desktop 3-column card grid; Tablet 2-column; Mobile stacked single column. Cards are `<button>`-semantics links with visible focus rings.
 
@@ -39,7 +39,7 @@ Summary cards over the caller's own tickets (FR-29), each card clickable into it
 Operational landing for Staff/Admin (FR-30).
 
 * **Cards**: Unassigned (needs triage, strongest emphasis), My Assigned, My In Progress, Waiting for Requester, Follow-Up Due (amber), Resolved Today (success tint). Each drills into the pre-filtered queue via its `drillDown` descriptor.
-* **Shortcuts row**: "Record Action" (→ queue filtered to My Assigned, first ticket), "Open Queue" (→ `/staff/tickets`), "My Work" (→ queue `ownerId=me`). Shortcuts are plain links, never modals.
+* **Shortcuts row**: "Record Action" (→ queue filtered to My Assigned, first ticket), "Open Queue" (→ `/queue`), "My Work" (→ queue `ownerId=me`). Shortcuts are plain links, never modals.
 * **States**: Loading skeletons → Loaded → **Empty** ("Queue is clear. Nice work." + link "Browse all tickets") → Error (banner + Retry).
 * **Layout**: Desktop 3-column grid + shortcuts toolbar; Tablet 2-column; Mobile stacked. Unassigned card stays first in DOM order at every viewport (tab order matches visual order).
 
