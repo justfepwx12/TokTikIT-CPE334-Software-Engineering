@@ -18,14 +18,18 @@ Closes #
 
 ## UI screenshots
 
-<!-- Required when this PR changes UI. Capture from the live stack (never mockups) and paste here.
+<!-- Required when this PR changes UI. Capture from the live stack (never mockups) and paste an
+     image/attachment link here, e.g. ![staff dashboard](https://github.com/user-attachments/assets/...).
+     Placeholder text ("pending", "screenshots coming soon") fails the required check.
      Docs-only PRs: "N/A — docs only". -->
 
 ## Test evidence
 
 <!-- Raw results of the suites you actually ran, in the safe order
      (server tests before E2E — an E2E run rotates the seeded passwords).
-     e.g. server 239/239 · client RTL 143/143 · e2e 33/33 · tsc/eslint/prisma clean. -->
+     Include the command/suite and outcome counts, e.g.
+     `pnpm --filter server exec vitest run` → 239/239 passed · client RTL 143/143 · e2e 33/33.
+     Placeholder text ("pending", "to do") and results without counts fail the required check. -->
 
 -
 

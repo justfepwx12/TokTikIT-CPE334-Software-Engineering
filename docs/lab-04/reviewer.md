@@ -98,9 +98,9 @@ All Lab 4 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (revie
 
 **Initial Approval:** Not yet approved.
 
-**Review Discussion & Comments:** [PR #152 review thread](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152) — CHANGES_REQUESTED on 2026-10-30: the template alone did not enforce Issue #144's acceptance criterion; the reviewer required a required check that validates the mandatory checklist on PRs targeting `lab4-staging`.
+**Review Discussion & Comments:** [PR #152 review thread](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152) — CHANGES_REQUESTED on 2026-10-30: the template alone did not enforce Issue #144's acceptance criterion; the reviewer required a required check that validates the mandatory checklist on PRs targeting `lab4-staging`. Round 2: the first validator accepted placeholder evidence (`UI screenshots: screenshots coming soon`, `Test evidence: pending`), so the check had to require real image links and explicit suite/command outcome counts.
 
-**Response to Reviewer:** Added `.github/workflows/pr-checklist.yml` (job `pr-checklist`) validating the linked issue, summary, UI screenshots, test evidence, and the four Excluded-Scope items; enabled it as a required status check on `lab4-staging` and updated the PR body to the validated format.
+**Response to Reviewer:** Added `.github/workflows/pr-checklist.yml` (job `pr-checklist`) validating the linked issue, summary, UI screenshots, test evidence, and the four Excluded-Scope items; enabled it as a required status check on `lab4-staging`. Extracted the rules to `.github/scripts/pr-checklist.mjs` with 30 `node:test` cases that run in CI, requiring an image/attachment link when `client/src` changes and suite/command + outcome counts for test evidence while rejecting placeholders such as `pending`, `to do`, and `screenshots coming soon`.
 
 **Status:** Open, awaiting re-review (opened 2026-10-19).
 
