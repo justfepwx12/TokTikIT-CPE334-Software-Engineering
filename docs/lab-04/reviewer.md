@@ -94,13 +94,13 @@ All Lab 4 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (revie
 
 ### #144 (Issue 6.1 — Workflow · PR #152)
 
-**PR Overview & Details:** [Issue #144](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/issues/144) · [PR #152](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152) · [Commits](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152/commits) — docs/tooling only: PR checklist enforcement, completed reviewer records, and workflow bookkeeping (no code/schema/test changes).
+**PR Overview & Details:** [Issue #144](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/issues/144) · [PR #152](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152) · [Commits](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152/commits) — final workflow PR: PR checklist enforcement, completed reviewer records, Kanban bookkeeping, E2E account isolation + actions-flow stability, and idempotent seed password reset for repeatable test/demo runs.
 
 **Initial Approval:** Not yet approved.
 
 **Review Discussion & Comments:** [PR #152 review thread](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152) — CHANGES_REQUESTED on 2026-10-30: the template alone did not enforce Issue #144's acceptance criterion; the reviewer required a required check that validates the mandatory checklist on PRs targeting `lab4-staging`. Round 2: the first validator accepted placeholder evidence (`UI screenshots: screenshots coming soon`, `Test evidence: pending`), so the check had to require real image links and explicit suite/command outcome counts.
 
-**Response to Reviewer:** Added `.github/workflows/pr-checklist.yml` (job `pr-checklist`) validating the linked issue, summary, UI screenshots, test evidence, and the four Excluded-Scope items; enabled it as a required status check on `lab4-staging`. Extracted the rules to `.github/scripts/pr-checklist.mjs` with 30 `node:test` cases that run in CI, requiring an image/attachment link when `client/src` changes and suite/command + outcome counts for test evidence while rejecting placeholders such as `pending`, `to do`, and `screenshots coming soon`.
+**Response to Reviewer:** Added `.github/workflows/pr-checklist.yml` (job `pr-checklist`) validating the linked issue, summary, UI screenshots, test evidence, and the four Excluded-Scope items; enabled it as a required status check on `lab4-staging`. Extracted the rules to `.github/scripts/pr-checklist.mjs` with 31 `node:test` cases that run in CI, requiring an image/attachment link when `client/src` changes and suite/command + outcome counts for test evidence while rejecting placeholders such as `pending`, `to do`, and `screenshots coming soon`. Also isolated the E2E requester account from the server auth suite, stabilized the mobile actions-flow edit/conflict assertions, and made seed re-runs restore documented demo passwords so both suites start from a known state.
 
 **Status:** Open, awaiting re-review (opened 2026-10-19).
 

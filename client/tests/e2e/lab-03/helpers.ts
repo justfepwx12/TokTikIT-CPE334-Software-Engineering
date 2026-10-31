@@ -132,14 +132,13 @@ export { uniqueTitle };
 export async function openFirstEntry(page: Page, kind: 'ticket' | 'queue'): Promise<void> {
   // Wait (don't instant-probe): the list renders after the API responds, and
   // an immediate isVisible() races the fetch and picks the wrong layout.
-  const row = page.getByTestId(`${kind}-row`).first();
-  try {
-    await row.waitFor({ state: 'visible', timeout: 10000 });
-    await row.click();
-    return;
-  } catch {
-    await page.getByTestId(`${kind}-card`).first().click();
-  }
+  // One combined locator re-resolves through table → card re-renders, and the
+  // :visible filter keeps the hidden desktop row from swallowing mobile taps.
+  const entry = page
+    .locator(`[data-testid="${kind}-row"]:visible, [data-testid="${kind}-card"]:visible`)
+    .first();
+  await expect(entry).toBeVisible({ timeout: 15000 });
+  await entry.click();
 }
 
 /** Assert the list body is visible in whichever layout the viewport uses. */

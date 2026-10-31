@@ -1,13 +1,29 @@
-import { describe, it, expect } from "vitest";
+import { beforeAll, describe, it, expect } from "vitest";
 import request from "supertest";
 import { app } from "../../src/App.js";
 import { getPrisma } from "../../src/prisma.js";
-import { DEMO_PASSWORD, TEST_PASSWORD, TEST_PASSWORD_HASH, loginAs } from "../helpers.js";
+import {
+  DEMO_PASSWORD,
+  DEMO_PASSWORD_HASH,
+  TEST_PASSWORD,
+  TEST_PASSWORD_HASH,
+  loginAs,
+} from "../helpers.js";
 
 const SEED_REQUESTER_EMAIL = "anong.srisuk@toktikit.com";
 const INACTIVE_EMAIL = "napat.wongsawat@toktikit.com";
 
 describe("Lab 3 Issue 3 — Auth API (AC-01 to AC-08, AC-11)", () => {
+  // E2E runs and local demos rotate the shared seed requester's password.
+  // Restore the documented seed credential so this suite is independent of
+  // whatever ran before it (the seed itself uses the same password).
+  beforeAll(async () => {
+    await getPrisma().user.updateMany({
+      where: { email: SEED_REQUESTER_EMAIL },
+      data: { passwordHash: DEMO_PASSWORD_HASH, mustChangePassword: true },
+    });
+  });
+
   // ------------------------------------------------------------------
   // AC-01: successful login returns user payload + session cookie
   // ------------------------------------------------------------------

@@ -20,7 +20,8 @@ async function rotatePassword(page: Page, current: string): Promise<void> {
 async function loginAsRequester(page: Page): Promise<void> {
   const notLogin = (url: URL) => !url.pathname.includes('/login');
   await page.goto('/login');
-  await page.getByTestId('login-email').fill('anong.srisuk@toktikit.com');
+  // Dedicated E2E requester; server auth tests own anong's seed-password state.
+  await page.getByTestId('login-email').fill('weerapong.chaiyaporn@toktikit.com');
   await page.getByTestId('login-password').fill(SEED_PASSWORD);
   await page.getByTestId('login-submit').click();
   // Either we leave /login (success) or the safe 401 banner appears.

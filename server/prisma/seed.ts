@@ -91,8 +91,15 @@ async function seedUsers() {
   for (const user of SEED_USERS) {
     const row = await prisma.user.upsert({
       where: { email: user.email },
-      // Idempotent: never overwrite an existing hash/flag on re-run.
-      update: {},
+      // Idempotent demo reset: re-running restores the documented password and
+      // role/active/first-login flags so E2E runs can start from a known state.
+      update: {
+        name: user.name,
+        passwordHash: DEMO_PASSWORD_HASH,
+        role: user.role,
+        isActive: user.isActive,
+        mustChangePassword: user.mustChangePassword,
+      },
       create: {
         name: user.name,
         email: user.email,
