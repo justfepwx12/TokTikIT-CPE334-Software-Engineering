@@ -1,0 +1,107 @@
+name: PR checklist
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+    branches: [lab4-staging]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate:
+    name: pr-checklist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate mandatory PR checklist
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (pr.draft) {
+              core.info('Draft PR — checklist validation will run when it is marked ready for review.');
+              return;
+            }
+
+            const body = (pr.body || '').replace(/\r\n/g, '\n');
+            const errors = [];
+
+            const headings = [...body.matchAll(/^##\s+(.+?)\s*$/gm)];
+            const sections = new Map();
+            for (let i = 0; i < headings.length; i += 1) {
+              const name = headings[i][1].trim().toLowerCase();
+              const start = headings[i].index + headings[i][0].length;
+              const end = i + 1 < headings.length ? headings[i + 1].index : body.length;
+              sections.set(name, body.slice(start, end));
+            }
+
+            const getSection = (name) => sections.get(name.toLowerCase()) ?? null;
+            const meaningful = (text) =>
+              (text ?? '')
+                .replace(/<!--[\s\S]*?-->/g, '')
+                .split('\n')
+                .map((line) => line.trim())
+                .filter((line) => line && !/^[-*+]\s*$/.test(line) && !/^-\s*\[\s*\]\s*$/.test(line))
+                .join('\n');
+
+            const linkedIssue = getSection('Linked issue');
+            if (linkedIssue === null || !/^\s*(Closes|Fixes|Resolves)\s+#\d+/im.test(meaningful(linkedIssue))) {
+              errors.push('`## Linked issue` must contain `Closes #<issue-number>` (or Fixes/Resolves).');
+            }
+
+            const summary = getSection('Summary');
+            if (!meaningful(summary)) {
+              errors.push('`## Summary` must describe what changed and the key decisions.');
+            }
+
+            const screenshots = getSection('UI screenshots');
+            const screenshotText = meaningful(screenshots);
+            if (!screenshotText) {
+              errors.push('`## UI screenshots` is required — paste live-stack evidence, or `N/A — docs only` for docs-only PRs.');
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            const uiChanged = files.some(
+              (file) => file.filename.startsWith('client/src/') || file.filename === 'client/index.html',
+            );
+            if (uiChanged && /^N\/A\b/i.test(screenshotText)) {
+              errors.push('UI files changed, so `## UI screenshots` cannot be `N/A` — attach live-stack captures.');
+            }
+
+            const evidence = getSection('Test evidence');
+            if (!meaningful(evidence)) {
+              errors.push('`## Test evidence` must list the raw suite results you actually ran.');
+            }
+
+            const requiredChecks = [
+              'Scope is limited to the linked issue',
+              'No secrets, tokens, keys, or credentials committed',
+              'Docs cross-references re-checked',
+              '`docs/lab-04/reviewer.md` updated when a review decision changed',
+            ];
+            const normalize = (value) =>
+              value.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            const checkedItems = body
+              .split('\n')
+              .map((line) => line.match(/^\s*[-*+]\s*\[[xX]\]\s*(.*)$/))
+              .filter(Boolean)
+              .map((match) => normalize(match[1]));
+            for (const item of requiredChecks) {
+              if (!checkedItems.some((checked) => checked.includes(normalize(item)))) {
+                errors.push(`Excluded-Scope checklist item is unchecked: "${item}".`);
+              }
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(
+                ['PR checklist is incomplete:', ...errors.map((error) => `- ${error}`)].join('\n'),
+              );
+            } else {
+              core.info('PR checklist is complete.');
+            }
