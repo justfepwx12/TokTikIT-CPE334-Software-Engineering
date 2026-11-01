@@ -32,6 +32,7 @@ function renderPage() {
         <Routes>
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/my-tickets" element={<Probe />} />
+          <Route path="/dashboard/requester" element={<Probe />} />
           <Route path="/login" element={<Probe />} />
         </Routes>
       </MemoryRouter>
@@ -59,11 +60,11 @@ describe("Lab 3 ChangePassword (AC-06/07)", () => {
     expect(screen.queryByRole("button", { name: /cancel/i })).toBeNull();
   });
 
-  it("redirects away when no change is required", async () => {
+  it("redirects away when no change is required (Lab 4 AD-17 role home)", async () => {
     vi.spyOn(api, "getSessionUser").mockResolvedValue({ user: CLEAR });
     renderPage();
     await waitFor(() => expect(screen.getByTestId("probe-path")).toBeDefined());
-    expect(screen.getByTestId("probe-path").textContent).toBe("/my-tickets");
+    expect(screen.getByTestId("probe-path").textContent).toBe("/dashboard/requester");
   });
 
   it("rejects mismatched confirmation without calling the API", async () => {
@@ -95,6 +96,6 @@ describe("Lab 3 ChangePassword (AC-06/07)", () => {
     fireEvent.click(screen.getByTestId("change-submit"));
 
     await waitFor(() => expect(screen.getByTestId("probe-path")).toBeDefined());
-    expect(screen.getByTestId("probe-path").textContent).toBe("/my-tickets");
+    expect(screen.getByTestId("probe-path").textContent).toBe("/dashboard/requester");
   });
 });

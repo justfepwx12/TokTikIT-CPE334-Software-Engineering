@@ -45,8 +45,10 @@ export async function login(page: Page, email: string): Promise<void> {
     if (outcome === 'banner') throw new Error(`Login failed for ${email} with both known passwords.`);
   }
   // Either the role home (already rotated) or the mandatory change form.
+  // Role homes are the Lab 4 dashboards (AD-17); Lab 3 list homes are still
+  // accepted so older seeds resolve the same way.
   const { pathname } = new URL(page.url());
-  if (pathname.includes('/my-tickets') || pathname.includes('/queue')) return;
+  if (pathname.includes('/dashboard') || pathname.includes('/my-tickets') || pathname.includes('/queue')) return;
   await expect(changeForm).toBeVisible({ timeout: 10000 });
   const notChangePw = (url: URL) => !url.pathname.includes('/change-password');
   await rotatePassword(page, SEED_PASSWORD);
@@ -130,14 +132,13 @@ export { uniqueTitle };
 export async function openFirstEntry(page: Page, kind: 'ticket' | 'queue'): Promise<void> {
   // Wait (don't instant-probe): the list renders after the API responds, and
   // an immediate isVisible() races the fetch and picks the wrong layout.
-  const row = page.getByTestId(`${kind}-row`).first();
-  try {
-    await row.waitFor({ state: 'visible', timeout: 10000 });
-    await row.click();
-    return;
-  } catch {
-    await page.getByTestId(`${kind}-card`).first().click();
-  }
+  // One combined locator re-resolves through table → card re-renders, and the
+  // :visible filter keeps the hidden desktop row from swallowing mobile taps.
+  const entry = page
+    .locator(`[data-testid="${kind}-row"]:visible, [data-testid="${kind}-card"]:visible`)
+    .first();
+  await expect(entry).toBeVisible({ timeout: 15000 });
+  await entry.click();
 }
 
 /** Assert the list body is visible in whichever layout the viewport uses. */

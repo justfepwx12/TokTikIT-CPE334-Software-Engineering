@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -43,6 +43,26 @@ const STATUSES: TicketStatus[] = [
 ];
 const PRIORITIES: TicketPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const PAGE_SIZES = [10, 20, 50];
+
+// Dashboard drill-down arrives as URL params (api-spec §2, AD-16, FR-31).
+// Values are validated here so a tampered URL can never produce a server 400.
+function parseStatusParam(raw: string | null): string | undefined {
+  if (!raw) return undefined;
+  const parts = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => (STATUSES as readonly string[]).includes(s));
+  return parts.length > 0 ? parts.join(",") : undefined;
+}
+
+function initialQueryFromParams(params: URLSearchParams): TicketQuery {
+  const query: TicketQuery = { ...DEFAULT_QUERY };
+  const status = parseStatusParam(params.get("status"));
+  if (status) query.status = status;
+  const followUp = params.get("followUp");
+  if (followUp === "true" || followUp === "false") query.followUp = followUp;
+  return query;
+}
 
 function formatDate(value: string): string {
   const d = new Date(value);
@@ -247,12 +267,13 @@ export default function MyTickets() {
   // Session owns the identity (BR-04) — the server scopes the list to the
   // signed-in user, so no id is passed. Name is only for display.
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [systems, setSystems] = useState<RelatedSystem[]>([]);
 
   const [draftSearch, setDraftSearch] = useState("");
-  const [appliedQuery, setAppliedQuery] = useState<TicketQuery>(DEFAULT_QUERY);
+  const [appliedQuery, setAppliedQuery] = useState<TicketQuery>(() => initialQueryFromParams(searchParams));
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
@@ -347,8 +368,16 @@ export default function MyTickets() {
       appliedQuery.categoryId ||
       appliedQuery.systemId ||
       appliedQuery.status ||
-      appliedQuery.priority
+      appliedQuery.priority ||
+      appliedQuery.followUp
   );
+
+  // Single-status select value: multi-status drill-down keeps filtering the
+  // API but shows "All" in the dropdown with a chip below.
+  const statusSelectValue =
+    appliedQuery.status && (STATUSES as readonly string[]).includes(appliedQuery.status)
+      ? appliedQuery.status
+      : "";
 
   return (
     <div className="container py-4" style={{ maxWidth: "1080px" }}>
@@ -440,9 +469,9 @@ export default function MyTickets() {
                 id="filter-status"
                 data-testid="filter-status"
                 className="form-select"
-                value={appliedQuery.status ?? ""}
+                value={statusSelectValue}
                 onChange={(e) =>
-                  updateQuery({ status: (e.target.value || undefined) as TicketStatus | undefined })
+                  updateQuery({ status: e.target.value || undefined })
                 }
               >
               <option value="">All</option>
@@ -506,6 +535,25 @@ onChange={(e) =>
           </div>
         </form>
       </div>
+
+      {(appliedQuery.followUp !== undefined || (appliedQuery.status && appliedQuery.status.includes(","))) && (
+        <div className="alert alert-info d-flex flex-wrap align-items-center gap-2 py-2 small" data-testid="tickets-drilldown-filters">
+          <span>Dashboard filter:</span>
+          {appliedQuery.status && appliedQuery.status.includes(",") && (
+            <span className="badge text-bg-primary" data-testid="tickets-drilldown-status">status: {appliedQuery.status}</span>
+          )}
+          {appliedQuery.followUp !== undefined && (
+            <span className="badge text-bg-warning" data-testid="tickets-drilldown-followup">follow-up: {appliedQuery.followUp}</span>
+          )}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary ms-auto"
+            onClick={() => updateQuery({ status: undefined, followUp: undefined })}
+          >
+            Clear dashboard filter
+          </button>
+        </div>
+      )}
 
       {error && (
         <ErrorState

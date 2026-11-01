@@ -78,7 +78,9 @@ test.describe('admin user administration', () => {
     await page.getByTestId('change-new').fill(E2E_PASSWORD);
     await page.getByTestId('change-confirm').fill(E2E_PASSWORD);
     await page.getByTestId('change-submit').click();
-    await page.waitForURL('**/my-tickets');
+    // New requester home is the requester dashboard (Lab 4 AD-17).
+    await page.waitForURL('**/dashboard/requester');
+    await page.goto('/my-tickets');
     await expect(page.getByTestId('ticket-search')).toBeVisible();
 
     await logout(page);
@@ -87,7 +89,7 @@ test.describe('admin user administration', () => {
     await page.getByTestId('login-email').fill(ADMIN);
     await page.getByTestId('login-password').fill(SEED_PASSWORD);
     await page.getByTestId('login-submit').click();
-    await page.waitForURL('**/queue');
+    await page.waitForURL('**/dashboard/staff');
     await logout(page);
   });
 });

@@ -1,0 +1,44 @@
+name: PR checklist
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+    branches: [lab4-staging, main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate:
+    name: pr-checklist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Test validator logic
+        run: node --test .github/scripts/pr-checklist.test.mjs
+
+      - name: Detect UI changes
+        id: files
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+            const uiChanged = files.some(
+              (file) => file.filename.startsWith('client/src/') || file.filename === 'client/index.html',
+            );
+            core.setOutput('uiChanged', String(uiChanged));
+
+      - name: Validate mandatory PR checklist
+        run: node .github/scripts/pr-checklist.mjs
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          UI_CHANGED: ${{ steps.files.outputs.uiChanged }}

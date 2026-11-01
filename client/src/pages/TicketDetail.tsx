@@ -16,6 +16,7 @@ import Badge from "../components/Badge";
 import { STATUS_COLOR, PRIORITY_COLOR } from "../utils/badgeColors.js";
 import Button from "../components/Button";
 import PublicComments from "../components/PublicComments";
+import ActionsTaken from "../components/ActionsTaken";
 import ValidationMessage from "../components/ValidationMessage";
 
 const REMOVAL_REASON_MIN = 3;
@@ -414,6 +415,12 @@ export default function TicketDetail() {
           for a Requester (BR-18) — there is no notes section here at all. */}
       <div className="mt-3">
         <PublicComments ticketId={ticket.id} />
+      </div>
+
+      {/* Actions Taken (Lab 4 FR-33): read-only list for Requesters — the
+          section itself hides every create/edit affordance by role. */}
+      <div className="mt-3">
+        <ActionsTaken ticketId={ticket.id} />
       </div>
 
       {isModalOpen &&

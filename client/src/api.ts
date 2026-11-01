@@ -134,11 +134,17 @@ export type QueueSortField = "updatedAt" | "status" | "priority";
 
 export interface StaffTicketQuery {
   search?: string;
-  status?: TicketStatus;
+  // Comma-separated multi-values per Lab 4 api-spec §3 (single values keep
+  // working as Lab 3). Unknown values must never be sent — the server 400s.
+  status?: string;
   priority?: TicketPriority;
   categoryId?: number;
   systemId?: number;
   ownerId?: number;
+  // Lab 4 drill-down filters (api-spec §3): latest-action follow-up (AD-18)
+  // and server-computed resolved-today (AD-19).
+  followUp?: "true" | "false";
+  resolvedToday?: "true";
   sort?: QueueSortField;
   order?: SortOrder;
   page?: number;
@@ -227,20 +233,53 @@ export interface TicketQuery {
   search?: string;
   categoryId?: number;
   systemId?: number;
-  status?: TicketStatus;
+  // Comma-separated multi-values per Lab 4 api-spec §3 (single values keep
+  // working as Lab 3).
+  status?: string;
   priority?: TicketPriority;
+  // Lab 4 drill-down filter (api-spec §3, AD-18). Requester scope stays
+  // server-enforced.
+  followUp?: "true" | "false";
   sort?: SortField;
   order?: SortOrder;
   page?: number;
   limit?: number;
 }
 
-async function loadErrorMessage(res: Response): Promise<string> {
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  currentVersion?: number;
+
+  constructor(status: number, message: string, code?: string, currentVersion?: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+    this.currentVersion = currentVersion;
+  }
+}
+
+export function isApiError(err: unknown): err is ApiError {
+  return err instanceof ApiError;
+}
+
+async function loadErrorBody(res: Response): Promise<{ message: string; code?: string; currentVersion?: number }> {
   const body = await res.json().catch(() => null);
   const err = body?.error;
-  if (typeof err === "string") return err;
-  if (err && typeof err.message === "string") return err.message;
-  return `Request failed with status ${res.status}`;
+  if (err && typeof err === "object") {
+    return {
+      message: typeof err.message === "string" ? err.message : `Request failed with status ${res.status}`,
+      code: typeof err.code === "string" ? err.code : undefined,
+      currentVersion: typeof err.currentVersion === "number" ? err.currentVersion : undefined,
+    };
+  }
+  if (typeof err === "string") return { message: err };
+  return { message: `Request failed with status ${res.status}` };
+}
+
+async function loadErrorMessage(res: Response): Promise<string> {
+  return (await loadErrorBody(res)).message;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -249,7 +288,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   // No identity header is sent — the legacy x-requester-id is gone (Issue #95).
   const res = await fetch(`${API_URL}${path}`, { credentials: "include", ...init });
   if (!res.ok) {
-    throw new Error(await loadErrorMessage(res));
+    const body = await loadErrorBody(res);
+    throw new ApiError(res.status, body.message, body.code, body.currentVersion);
   }
   return res.json() as Promise<T>;
 }
@@ -536,5 +576,138 @@ export function postNote(ticketId: number, body: string): Promise<InternalNote> 
 export function triggerResolveIntent(ticketId: number): Promise<{ id: number; status: TicketStatus }> {
   return request<{ id: number; status: TicketStatus }>(`/api/tickets/${ticketId}/resolve-intent`, {
     method: "POST",
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Lab 4 Dashboards (api-spec §2, Issues #138–#139). Aggregated-only: the
+// server computes every metric in-DB and returns counts + drillDown
+// descriptors — the client never counts ticket rows (BR-26). Zero metrics
+// render as 0, never blank (BR-29).
+// ---------------------------------------------------------------------------
+
+export interface DrillDown {
+  endpoint: string;
+  query: string;
+}
+
+export interface RequesterSummary {
+  scope: { requesterId: number };
+  metrics: {
+    myOpen: number;
+    myWaiting: number;
+    myResolved: number;
+    myClosed: number;
+    myReopened: number;
+    myCancelled: number;
+    myFollowUpOpen: number;
+  };
+  drillDown: Record<string, DrillDown>;
+}
+
+export interface StaffSummary {
+  scope: { viewerId: number };
+  metrics: {
+    unassignedCount: number;
+    myAssignedCount: number;
+    myInProgressCount: number;
+    waitingForRequesterCount: number;
+    followUpDueCount: number;
+    resolvedTodayCount: number;
+  };
+  drillDown: Record<string, DrillDown>;
+}
+
+export function getRequesterSummary(): Promise<RequesterSummary> {
+  return request<RequesterSummary>("/api/dashboard/requester/summary");
+}
+
+export function getStaffSummary(): Promise<StaffSummary> {
+  return request<StaffSummary>("/api/dashboard/staff/summary");
+}
+
+// ---------------------------------------------------------------------------
+// Lab 4 Actions Taken (api-spec §1, Issues #135/#137/#140). Performer identity
+// is server-derived (BR-23) — the client never sends performedBy/performedById.
+// Concurrency travels in If-Match (AD-14); idempotent creates carry an
+// Idempotency-Key header (AD-15). A `version` in the body is ignored.
+// ---------------------------------------------------------------------------
+
+export interface ActionPerformer {
+  id: number;
+  name: string;
+  role: UserRole;
+}
+
+export interface ActionTaken {
+  id: number;
+  ticketId: number;
+  actionAt: string;
+  description: string;
+  result: string;
+  performedBy: ActionPerformer;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActionsResponse {
+  actions: ActionTaken[];
+  pagination: Pagination;
+}
+
+// Client mirrors the server contract (api-spec §1, BR-22). The server is
+// authoritative; these only give instant feedback before sending.
+export const ACTION_TEXT_MIN = 1;
+export const ACTION_TEXT_MAX = 2000;
+export const ACTION_FUTURE_SKEW_MS = 5 * 60 * 1000;
+
+export interface CreateActionPayload {
+  actionAt: string;
+  description: string;
+  result: string;
+  followUpRequired?: boolean;
+  followUpNote?: string;
+  attachmentNotes?: string;
+}
+
+export interface UpdateActionPayload {
+  description?: string;
+  result?: string;
+  followUpRequired?: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+}
+
+export function getTicketActions(ticketId: number, page = 1, limit = 20): Promise<ActionsResponse> {
+  return request<ActionsResponse>(`/api/tickets/${ticketId}/actions?page=${page}&limit=${limit}`);
+}
+
+export function createTicketAction(
+  ticketId: number,
+  payload: CreateActionPayload,
+  idempotencyKey?: string
+): Promise<ActionTaken> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
+  return request<ActionTaken>(`/api/tickets/${ticketId}/actions`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateTicketAction(
+  actionId: number,
+  payload: UpdateActionPayload,
+  ifMatch: number
+): Promise<ActionTaken> {
+  return request<ActionTaken>(`/api/actions/${actionId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "If-Match": String(ifMatch) },
+    body: JSON.stringify(payload),
   });
 }

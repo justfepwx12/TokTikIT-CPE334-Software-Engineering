@@ -2,7 +2,7 @@
 
 TokTikIT is a web-based IT request and ticketing management system developed as part of the CPE334 Software Engineering course at KMUTT.
 
-**Lab 3** delivers role-based ticketing — **Requesters** file and track tickets, **IT Staff** work an operational queue (claim, reassign, priorities, status workflow, comments/notes), and **Administrators** manage users — built on **React → Express REST API → Prisma ORM → PostgreSQL**. Authentication uses an HTTP-only server-side session cookie; identity always comes from the session, never from a client header (the Lab 2 `x-requester-id` simulation is removed).
+**Lab 4** extends the role-based ticketing product with **Actions Taken**, **scoped requester/staff dashboards**, optimistic concurrency (`If-Match`), idempotent action creation, follow-up tracking, and exact drill-downs from every metric into the filtered ticket lists — built on **React → Express REST API → Prisma ORM → PostgreSQL**. Authentication uses an HTTP-only server-side session cookie; identity always comes from the session. Lab 3's operational ticketing flows (queue, claim/reassign, priorities, 8-state workflow, comments/notes, admin console) all carry forward unchanged.
 
 ---
 
@@ -16,6 +16,11 @@ TokTikIT is a web-based IT request and ticketing management system developed as 
 * **Ticket operations** — claim, reassign (active IT/Admin only), IT priority (requested priority immutable), and an 8-state status workflow (legal edges only); requesters resolve/reopen via resolve-intent.
 * **Communication** — append-only public comments (owner + staff) and internal notes (staff/admin only, visually distinct); no edit/delete.
 * **Admin console** — list/search/single-role filter, create/edit, activate/deactivate, admin-chosen password resets with self/last-admin safety guards; nothing is ever deleted.
+* **Actions Taken (Lab 4)** — IT Staff/Admin record and edit actions on a ticket (description, result, timestamp, optional follow-up note, attachment notes); requesters read their own ticket's action history. Lists are newest-first and paginated.
+* **Scoped dashboards (Lab 4)** — requester summary (`myOpen`, waiting, resolved, closed, reopened, cancelled, follow-up) and staff summary (unassigned, assigned, in-progress, waiting, follow-up due, resolved today); all counts are aggregated in-DB and empty scopes return `0`, never `null`.
+* **Exact drill-downs (Lab 4)** — every dashboard metric carries a `drillDown` descriptor that opens an existing filtered list resolving to exactly the counted ticket set.
+* **Concurrency & idempotency (Lab 4)** — action edits require `If-Match`; stale writes return `409 STALE_VERSION` with the current version and leave the row untouched. Action creates accept an `Idempotency-Key` (24h TTL), replay the original `201`, and reject key reuse with a different payload as `422`.
+* **Follow-up workflow (Lab 4)** — only the latest recorded action per ticket drives the follow-up badge/filter; clearing `followUpRequired` clears the note and removes the ticket from follow-up metrics.
 
 ---
 
@@ -51,45 +56,55 @@ TokTikIT is a web-based IT request and ticketing management system developed as 
 TokTikIT-CPE334-Software-Engineering/
 ├── client/
 │   ├── src/
-│   │   ├── components/         # Badge, Button, Header, TextInput, TicketBadges, ...
+│   │   ├── components/         # Badge, Button, Header, TextInput, TicketBadges,
+│   │   │                       #   ActionsTaken, ...
 │   │   ├── context/            # AuthContext (session user state)
 │   │   ├── hooks/              # useAuth
 │   │   ├── pages/              # Login, ForgotPassword, ChangePassword, MyTickets,
 │   │   │                       #   CreateTicket, TicketDetail, StaffTicketDetail,
-│   │   │                       #   TicketQueue, UserManagement
-│   │   ├── utils/              # navigation (roleHome, safeRedirect), badgeColors
+│   │   │                       #   TicketQueue, StaffDashboard, RequesterDashboard,
+│   │   │                       #   UserManagement
+│   │   ├── utils/              # navigation, badgeColors, drilldown
 │   │   ├── api.ts              # Session-cookie API client (credentials: include)
 │   │   ├── App.tsx             # Routes + auth/role guards
 │   │   └── main.tsx
 │   ├── tests/
 │   │   ├── e2e/lab-03/         # Playwright specs (auth/staff/resolve/admin flows)
+│   │   ├── e2e/lab-04/         # Playwright specs (actions, dashboards, responsive,
+│   │   │                       #   keyboard, hygiene, Lab 2/3 regression)
 │   │   ├── lab-01/
 │   │   ├── lab-02/
-│   │   └── lab-03/             # Vitest UI tests per screen
+│   │   ├── lab-03/             # Vitest UI tests per screen
+│   │   └── lab-04/             # Vitest/RTL dashboard + Actions Taken tests
 │   ├── playwright.config.ts
 │   ├── vite.config.ts
 │   └── package.json
 ├── server/
-│   ├── controllers/            # auth, admin, staffTickets, ticketOperations,
-│   │                           #   comments, notes, resolveIntent, attachments, ...
+│   ├── controllers/            # auth, admin, staffTickets, ticketOperations, actions,
+│   │                           #   dashboard, comments, notes, resolveIntent, attachments, ...
 │   ├── prisma/
 │   │   ├── migrations/
-│   │   ├── schema.prisma       # User (Role), Ticket (dual priority, owner), Comment, InternalNote, ...
+│   │   ├── schema.prisma       # User, Ticket, Comment, InternalNote, ActionTaken, IdempotencyKey, ...
 │   │   └── seed.ts             # Idempotent demo seed (AD-09 documented password)
 │   ├── src/
 │   │   ├── App.ts              # Express app + route wiring
 │   │   ├── auth.middleware.ts  # requireAuth, requireRole, mustChangePassword gate
+│   │   ├── actionValidation.ts # Action create/edit validation + follow-up rules
+│   │   ├── dashboardFormulas.ts # In-DB dashboard aggregation + drill-down descriptors
 │   │   ├── session.ts          # express-session + Postgres store
 │   │   ├── ticketId.ts         # Shared ticket-id parsing
 │   │   ├── index.ts            # bootstrap / listen
 │   │   └── prisma.ts           # Prisma client singleton
 │   ├── tests/
-│   │   └── lab-03/             # Supertest suites (auth, rbac, queue, ops, comms, admin, seed)
+│   │   ├── lab-03/             # Supertest suites (auth, rbac, queue, ops, comms, admin, seed)
+│   │   └── lab-04/             # Actions API/AuthZ/concurrency, dashboards, migration,
+│   │                           #   workflow spot checks
 │   └── package.json
 ├── docs/
 │   ├── lab-01/
 │   ├── lab-02/
-│   └── lab-03/                 # specification, api-spec, ui-spec, tests, reviewer, ai_use
+│   ├── lab-03/                 # specification, api-spec, ui-spec, tests, reviewer, ai_use
+│   └── lab-04/                 # contract, api/ui specs, tests, reviewer, ai_use, images/
 ├── artifacts/
 │   └── lab-03/screenshots/     # Responsive E2E evidence (desktop/tablet/mobile)
 ├── docker-compose.yml          # PostgreSQL on host port 15432
@@ -174,6 +189,11 @@ Run the backend server and frontend client in separate terminal windows:
 | PATCH | `/api/tickets/:id/it-priority` | Set IT priority (requested priority immutable) |
 | PATCH | `/api/tickets/:id/status` | Status transition per §6 matrix |
 | POST | `/api/tickets/:id/resolve-intent` | Requester resolve/reopen intent |
+| GET | `/api/tickets/:id/actions` | Actions Taken for one ticket (newest-first, paginated; requester own tickets) |
+| POST | `/api/tickets/:id/actions` | Record an action (IT Staff/Admin; optional `Idempotency-Key`) |
+| PATCH | `/api/actions/:id` | Edit an action (IT Staff/Admin; required `If-Match`, stale → `409`) |
+| GET | `/api/dashboard/requester/summary` | Own-ticket metrics + drill-down descriptors |
+| GET | `/api/dashboard/staff/summary` | Staff operational metrics + drill-down descriptors (IT Staff/Admin) |
 | GET/POST | `/api/tickets/:id/comments` | Public comments (owner + staff) |
 | GET/POST | `/api/tickets/:id/notes` | Internal notes (IT Staff, Admin only) |
 | GET | `/api/admin/users` | List/search/filter users (Admin) |
@@ -184,7 +204,7 @@ Run the backend server and frontend client in separate terminal windows:
 | GET | `/api/attachments/:id/download` | Stream binary file content |
 | PATCH | `/api/attachments/:id/remove` | Soft-remove an attachment with mandatory reason |
 
-Full contracts, validation rules, and error envelopes are documented in [`docs/lab-03/api-spec.md`](docs/lab-03/api-spec.md).
+Full contracts, validation rules, and error envelopes are documented in [`docs/lab-03/api-spec.md`](docs/lab-03/api-spec.md) and the Lab 4 additions in [`docs/lab-04/api-spec.md`](docs/lab-04/api-spec.md).
 
 ---
 
@@ -217,6 +237,16 @@ Full contracts, validation rules, and error envelopes are documented in [`docs/l
 | Tests | `server/tests/lab-03/` (81), `client/tests/lab-03/` (UI), `client/tests/e2e/lab-03/` (18 E2E runs) |
 | Docs | `docs/lab-03/` (contract + reviewer + AI use) |
 
+### Lab 4 — Actions Taken, Dashboards & Release Workflow
+
+| Area | Details |
+|---|---|
+| Identity | Same session cookie + 3 roles; actions are performed by the session user |
+| Core flow | Actions Taken create/edit, requester/staff dashboards, exact drill-downs, optimistic concurrency, idempotency, follow-up tracking |
+| Tests | `server/tests/lab-04/` (API/units/migration/workflow), `client/tests/lab-04/` (RTL), `client/tests/e2e/lab-04/` (33 E2E runs) |
+| Docs | `docs/lab-04/` (contract, api/ui specs, tests, reviewer, AI use, responsive images) |
+| Release gate | `pr-checklist` enforces linked issue, summary, UI screenshots, test evidence, and the Excluded-Scope checklist on PRs to `lab4-staging` and `main` |
+
 ---
 
 ## Tests
@@ -224,17 +254,22 @@ Full contracts, validation rules, and error envelopes are documented in [`docs/l
 Run everything (needs DB + seed from the Setup Guide):
 
 ```sh
-# Server — full API suite (root suites + lab-03)
-pnpm --filter server exec vitest run
+# Server — full API suite (root suites + lab-03 + lab-04)
+pnpm --filter server exec vitest run                 # 30 files / 239 tests
 pnpm --filter server exec vitest run tests/lab-03/   # Lab 3 only: 8 files / 81 tests
+pnpm --filter server exec vitest run tests/lab-04/   # Lab 4 only: API, units, migration, workflow
 
-# Client — full UI suite (lab-01 + lab-02 + lab-03)
-pnpm --filter client exec vitest run                 # 17 files / 116 tests
+# Client — full UI suite (lab-01 + lab-02 + lab-03 + lab-04)
+pnpm --filter client exec vitest run                 # 21 files / 143 tests
 
 # E2E — full browser matrix (boots API + Vite itself)
 pnpm --filter client exec playwright test                        # everything
-pnpm --filter client exec playwright test tests/e2e/lab-03/     # Lab 3: 18 runs (6 journeys x desktop/tablet/mobile)
-pnpm --filter client exec playwright test --project=mobile tests/e2e/lab-03/  # one viewport
+pnpm --filter client exec playwright test tests/e2e/lab-04/      # Lab 4: 33 runs across desktop/tablet/mobile
+pnpm --filter client exec playwright test tests/e2e/lab-03/      # Lab 3: 18 runs (6 journeys x desktop/tablet/mobile)
+pnpm --filter client exec playwright test --project=mobile tests/e2e/lab-04/  # one viewport
+
+# CI workflow validator (PR checklist rules)
+node --test .github/scripts/pr-checklist.test.mjs    # 34 tests
 ```
 
 Targeted runs while developing:
@@ -255,6 +290,7 @@ pnpm --filter client exec eslint src tests      # client lint
 pnpm --filter client build                      # production build (tsc -b + vite)
 pnpm --filter server exec prisma validate       # schema check
 pnpm --filter server exec prisma format --check # schema formatting
+node --test .github/scripts/pr-checklist.test.mjs # PR checklist validator (34 tests)
 git diff --check                                # no whitespace errors
 ```
 

@@ -1,0 +1,24 @@
+# Lab 4 — การใช้ AI และการสะท้อนผล (AI Use and Reflection)
+
+**LLM/agent ที่ใช้:** ใช้ opencode โมเดล Muse Spark 1.3 xhigh
+
+## Prompt สำคัญที่เลือกมา (6-10 ข้อ)
+
+| # | Prompt (summarised) | What I did with the result |
+|---|---------------------|----------------------------|
+| 1 | อ่าน Epic #124 และ sub-issue #131/#130/#132 ผ่าน `gh issue view` เพื่อดึง scope, FR/BR/AC/AD ของ Spec-DD Lab 4 | ได้ขอบเขตเอกสาร Lab 4 ที่ต้องร่างทั้ง 4 ไฟล์ (Actions Taken 7 ฟิลด์, 2 dashboards, concurrency, regression) และลำดับงานตาม sub-issue |
+| 2 | วิเคราะห์โครงสร้างเอกสาร Lab 3 (`specification.md`, `ui-spec.md`, `api-spec.md`, `tests.md`) เพื่อใช้เป็น convention ของ Lab 4 | ได้แม่แบบหัวข้อ/รูปแบบตาราง (FR/BR/AC/AD, authorization matrix, traceability, สูตร dashboard) ที่จะร่างต่อโดยไม่แตะ `docs/lab-03/` |
+| 3 | สั่งให้ร่าง `docs/lab-04/specification.md` ตาม convention Lab 3 พร้อมกฎ Lab 4 (BR-22 7-field contract, BR-23 performer auto, BR-24 never-drive-status, BR-25–BR-29 dashboards, BR-27 version/If-Match, BR-28 Idempotency-Key, BR-31 migration safety) | ได้ฉบับร่าง engineering contract ครบทั้ง FR-25–FR-36, BR-22–BR-31, AC-34–AC-59, AD-13–AD-20, D-05–D-08 พร้อมสำเนา transition matrix 8 สถานะอ้างอิง Lab 3 §6 |
+| 4 | สั่งให้ร่าง `docs/lab-04/api-spec.md` ให้ครอบคลุม `GET/POST /tickets/:id/actions`, `PATCH /actions/:id` (If-Match 409, Idempotency-Key 422), 2 dashboard summaries (aggregated-only + drillDown) และ filter ต่อยอดบน list เดิม | ได้สเปก REST ครบทุก endpoint พร้อม payload schema, กฎ 400/401/403/404/409/422 และคำชี้แจง requester-summary เปิดทุก role แบบ own-scope |
+| 5 | สั่งให้ร่าง `docs/lab-04/ui-spec.md` ครอบคลุม `/dashboard/requester`, `/dashboard/staff`, Actions Taken ใน Ticket Detail พร้อม Zen Green tokens/breakpoints เดิมจาก Lab 3 | ได้สเปก UI ครบ (cards + shortcuts + drill-down, empty/error states, create/edit forms, 409 refresh-and-retry, focus management, responsive checklist) |
+| 6 | สั่งให้สร้าง `docs/lab-04/tests.md` ผูก AC-34–AC-59 กับ planned tests 35 rows ตาม path ที่ AD-20 กำหนด | ได้ traceability matrix ครบ 8 ระดับ (Unit/API/UI/Responsive/AuthZ/Workflow/Migration/E2E) พร้อมสูตร pseudo-SQL, empty/drill-down contract และไฟล์ `server/tests/lab-04/`, `client/tests/lab-04/`, `client/tests/e2e/lab-04/` |
+| 7 | สั่งให้สร้าง `ActionTaken` + `IdempotencyKey` schema/migration/seed (Issue #125) โดยห้ามแตะตารางเดิม 7 ตาราง และ seed ต้อง idempotent ครอบคลุม 8 states + 0/1/N + dashboard zero/non-zero | ได้ migration `20261007000000_lab4_action_taken` + `20261009000000_lab4_idempotency_keys` และ seed `seed:<ticketNo>:action:<index>` ที่รันซ้ำแล้ว counts เท่าเดิม |
+| 8 | สั่งให้ implement API (Issue #126) — actions CRUD + AuthZ, dashboard summaries แบบ in-DB aggregation, concurrency (atomic version swap, persisted idempotency keys, twin collapse) พร้อม suites `actions-api/concurrency/authz/dashboard-api` | ได้ API ตรง contract โดย reviewer ตีกลับ 2 รอบ (in-memory eviction/restart loss, gate ไม่ settle, follow-up นับใน memory, resolvedToday ทับ status) แล้วแก้เป็น DB-backed + `deleteMany` expired-key race จน approved |
+| 9 | สั่งให้ implement UI (Issue #127) — 2 dashboards + Actions Taken + hardening + ภาพ AC-53 12 ใบ (4 views × 375/768/1280) ปรับ assertion ตามโค้ดจริง (role home, queue URL filters, per-draft key, stale-response guard) | ได้ client 143/143, RTL lab-04 27/27, build/lint/diff-check ผ่าน หลังแก้ draft-key หายตอน remount, ticket-switch leak และ stale-response แทนที่ list ผิด ticket ตาม reviewer 3 รอบ |
+| 10 | สั่งให้สร้าง Issue 5 coverage (Issue #128) — สกัด `actionValidation.ts`/`dashboardFormulas.ts` เป็น pure modules + `migration-actions`/`workflow-spot`/e2e 7 specs แล้วตรวจ `api-spec.md`/`ui-spec.md`/`tests.md` เทียบโค้ดจริงทีละจุด (endpoint/field/path/เลข AC/route) | ได้ pure units 16/16, migration 5/5, workflow 5/5, e2e 33 runs parsed ครบ พร้อมแก้ route drift (`/tickets/new` → `/create-ticket`, CTA `/staff/tickets` → `/queue`) และ predicate ผิด (`id` → `ticketId`) ตาม reviewer |
+
+## Reflection
+
+AI ช่วยร่าง Spec-DD ของ Lab 4 (7-field contract, dashboard aggregation, optimistic concurrency, idempotency, pseudo-SQL, traceability 35 rows) ได้เร็ว แต่ร่างแรกมีข้อผิดพลาด เช่น JSON ตัวอย่างปิด object ผิด, `followUpRequired` ขัด required/default, AC-45 เรียก `items` ทั้งที่ aggregated-only, `resolvedToday` ไม่มี transition timestamp, follow-up ใช้ any-true แทน latest-action และ CTA route ไม่ตรง `App.tsx` ช่วง implement (Issue #125–#128) เจอปัญหา runtime/concurrency ที่อ่านสเปกไม่เจอ เช่น idempotency หายตอน restart, gate ค้างเมื่อ insert แรก throw, draft key หายตอน remount, stale response ทับ ticket ใหม่ และ predicate ใช้ `id` แทน `ticketId` ทั้งหมดแก้ได้เพราะรันเทสจริงทุกครั้ง (unit 16/16, migration 5/5, workflow 5/5, client 143/143, e2e 33 runs, tsc/build/lint/diff-check, DB-backed บน Docker) บทเรียน: AI ช่วยร่างได้ แต่ต้อง verify 3 ชั้น—labsheet/contract, โค้ดจริง, เทสจริง—ก่อนเปิด PR ไม่งั้นโดน reviewer ตีกลับ (Lab 4 โดน 8 รอบ: spec 2, DB 1, API 2, UI 3)
+
+---
