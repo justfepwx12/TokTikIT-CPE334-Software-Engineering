@@ -17,6 +17,9 @@ import {
 
 test.describe('actions taken flow', () => {
   test('record → edit → requester reads own list', async ({ page }) => {
+    // The mobile project walks the full create → edit → conflict → read-only
+    // journey; the default 60s cap is too tight when navigation settles slowly.
+    test.setTimeout(120_000);
     const title = uniqueTitle('E2E Actions Flow');
     const description = `E2E action ${Date.now()}`;
     const editedResult = `E2E edited ${Date.now()}`;
@@ -84,11 +87,22 @@ test.describe('actions taken flow', () => {
     await clickStable(editTarget);
     await expect(page.getByTestId('action-edit-form')).toBeVisible();
     await page.getByTestId('action-edit-result').fill(editedResult);
+    // Wait for the PATCH itself: on touch viewports the submit tap can race the
+    // form teardown, and the old row would then look like a failed update.
+    const editPatch = page.waitForResponse((res) => {
+      const url = new URL(res.url());
+      return res.request().method() === 'PATCH' && url.pathname === `/api/actions/${rowId}`;
+    });
     await clickStable(page.getByTestId('action-edit-submit'));
+    expect((await editPatch).ok()).toBe(true);
     // The edit textarea still holds editedResult while the save is in flight —
-    // wait for the form to close and the list to render the new value.
+    // wait for the form to close and the list to render the new value. Target
+    // the row by id so a hidden desktop row can never satisfy the assertion.
+    const updatedRow = page
+      .locator(`[data-testid="action-row-${rowId}"]:visible, [data-testid="action-card-${rowId}"]:visible`)
+      .first();
     await expect(page.getByTestId('action-edit-form')).toBeHidden({ timeout: 15000 });
-    await expect(newRow).toContainText(editedResult, { timeout: 15000 });
+    await expect(updatedRow).toContainText(editedResult, { timeout: 15000 });
 
     // 5. Stale-retry: bump the row behind the UI's back, then save → 409 banner.
     await clickStable(editTarget);
@@ -113,12 +127,17 @@ test.describe('actions taken flow', () => {
     );
     expect(bumped).toBe(true);
     await page.getByTestId('action-edit-result').fill('Stale UI attempt.');
+    const stalePatch = page.waitForResponse((res) => {
+      const url = new URL(res.url());
+      return res.request().method() === 'PATCH' && url.pathname === `/api/actions/${rowId}`;
+    });
     await clickStable(page.getByTestId('action-edit-submit'));
+    expect((await stalePatch).status()).toBe(409);
     await expect(page.getByTestId('action-conflict')).toBeVisible({ timeout: 15000 });
     await clickStable(page.getByTestId('action-conflict-refresh'));
     await expect(page.getByTestId('action-conflict')).toBeHidden({ timeout: 15000 });
     // Assert on the list row (the edit textarea shows the same refreshed text).
-    await expect(newRow).toContainText('Bumped behind the UI.', { timeout: 15000 });
+    await expect(updatedRow).toContainText('Bumped behind the UI.', { timeout: 15000 });
     void statusBefore;
 
     await logout(page);

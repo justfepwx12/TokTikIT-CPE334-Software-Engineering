@@ -21,7 +21,6 @@ import {
 const REQ_CREATE = 'sirichai.thongdee@toktikit.com';
 const REQ_RESOLVE = 'weerapong.chaiyaporn@toktikit.com';
 const STAFF = 'somchai.jaidee@toktikit.com';
-const STAFF_PASSWORD = 'TokTickDemo123!';
 const ADMIN = 'admin@toktikit.com';
 
 function uniqueEmail(prefix: string): string {
@@ -57,11 +56,7 @@ test.describe('regression', () => {
     await logout(page);
 
     // Staff queue → claim → IT priority → status (Lab 3).
-    await page.goto('/login');
-    await page.getByTestId('login-email').fill(STAFF);
-    await page.getByTestId('login-password').fill(STAFF_PASSWORD);
-    await page.getByTestId('login-submit').click();
-    await page.waitForURL('**/dashboard/staff');
+    await login(page, STAFF);
     await page.goto('/queue');
     await expectListVisible(page, 'queue');
     await page.getByTestId('queue-search').fill(title);

@@ -17,18 +17,16 @@ export {
 
 import { login as lab3Login } from '../lab-03/helpers';
 
-export const REQUESTER_A = 'anong.srisuk@toktikit.com';
+// Dedicated E2E requester: the server auth API suite logs in as anong with the
+// documented seed password, so rotating anong here would poison that suite.
+export const REQUESTER_A = 'weerapong.chaiyaporn@toktikit.com';
 export const REQUESTER_ZERO = 'busaba.jitdee@toktikit.com';
 export const STAFF = 'somchai.jaidee@toktikit.com';
 export const ADMIN = 'admin@toktikit.com';
-export const STAFF_PASSWORD = 'TokTickDemo123!';
 
-/** Staff login without the requester password-rotation dance (no forced change). */
+/** Staff login through the shared rotation-tolerant helper (no forced change). */
 export async function loginStaff(page: Page, email: string = STAFF): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('login-email').fill(email);
-  await page.getByTestId('login-password').fill(STAFF_PASSWORD);
-  await page.getByTestId('login-submit').click();
+  await lab3Login(page, email);
   await page.waitForURL('**/dashboard/staff', { timeout: 20000 });
 }
 
@@ -91,7 +89,12 @@ export async function recordActionViaUI(
     await page.getByTestId('action-followup').check();
     await page.getByTestId('action-followup-note').fill(followUpNote);
   }
+  const createAction = page.waitForResponse((res) => {
+    const url = new URL(res.url());
+    return res.request().method() === 'POST' && /^\/api\/tickets\/\d+\/actions$/.test(url.pathname);
+  });
   await clickStable(page.getByTestId('action-submit'));
+  expect((await createAction).ok()).toBe(true);
   // NB: getByText(description) also matches the still-filled create textarea,
   // so it can pass before the POST lands — wait for the list entry itself.
   await expect(

@@ -6,6 +6,7 @@ import { app } from "../src/App.js";
 // Duplicated here intentionally — tests must log in with the same known
 // password the seed uses; changing the seed password requires updating this.
 export const DEMO_PASSWORD = "TokTickDemo123!";
+export const DEMO_PASSWORD_HASH = bcrypt.hashSync(DEMO_PASSWORD, 10);
 
 /** A bcrypt hash suitable for creating test users that can log in. */
 // Cost 10 (not production 12) to keep test setup fast; salt is random per
