@@ -104,7 +104,7 @@ All Lab 4 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (revie
 
 **Merged & Closed:** [Merge commit 75186ef](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/commit/75186ef29938678be6cf70ebe0d2bb00b7ff699f) on 2026-11-01.
 
-**Status:** Merged into `lab4-staging`; release promotion to `main` in progress (2026-11-01).
+**Status:** Merged into `lab4-staging`; release PR [#153](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/153) opened to `main` on 2026-11-01.
 
 ---
 
