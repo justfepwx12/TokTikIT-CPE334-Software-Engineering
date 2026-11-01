@@ -2,8 +2,8 @@
 TokTikIT PR checklist — Issue #144 (Lab 4 workflow).
 Branch flow: feature/lab4-* -> lab4-staging (never main directly); release PR: lab4-staging -> main.
 One sub-issue per PR. Copy this template into the PR description.
-The `pr-checklist` required check on `lab4-staging` validates these sections
-and fails when a mandatory item is missing or unchecked.
+The `pr-checklist` required check on `lab4-staging` and `main` validates these
+sections and fails when a mandatory item is missing or unchecked.
 -->
 
 ## Linked issue

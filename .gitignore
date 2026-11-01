@@ -15,10 +15,12 @@ build/
 # Uploaded attachments (runtime artifacts)
 server/uploads/
 
-# Test artifacts
+# Test artifacts (Vitest + Playwright)
 coverage/
 playwright-report/
+blob-report/
 test-results/
+playwright/.cache/
 .eslintcache
 
 # Python virtual environment

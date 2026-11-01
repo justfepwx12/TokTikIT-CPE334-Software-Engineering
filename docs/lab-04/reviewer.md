@@ -3,7 +3,7 @@
 **Author:** Onsinee Chotchuangsakulchai — 67070501078 — GitHub: @justfepwx12  
 **Peer reviewer:** Pawarisa Thongchua — 67070501032 — GitHub: @itspxsh
 
-All Lab 4 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (reviews verified via the GitHub API). Statuses and links are current as of **2026-10-30**.
+All Lab 4 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (reviews verified via the GitHub API). Statuses and links are current as of **2026-11-01**.
 
 ---
 
@@ -16,7 +16,7 @@ All Lab 4 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (revie
 | #126 (PR #149) | feature/lab4-03-api-actions | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 | #127 (PR #150) | feature/lab4-04-ui | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 | #128 (PR #151) | feature/lab4-05-test | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
-| #144 (PR #152) | feature/lab4-06-workflow | Pawarisa Thongchua (@itspxsh) | Awaiting review |
+| #144 (PR #152) | feature/lab4-06-workflow | Pawarisa Thongchua (@itspxsh) | Approved & Merged |
 
 > PR #146 (tracker scaffold) was closed without review and is superseded by the PRs above.
 
@@ -96,13 +96,15 @@ All Lab 4 PRs below are authored by @justfepwx12 and reviewed by @itspxsh (revie
 
 **PR Overview & Details:** [Issue #144](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/issues/144) · [PR #152](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152) · [Commits](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152/commits) — final workflow PR: PR checklist enforcement, completed reviewer records, Kanban bookkeeping, E2E account isolation + actions-flow stability, and idempotent seed password reset for repeatable test/demo runs.
 
-**Initial Approval:** Not yet approved.
+**Initial Approval:** [Pawarisa's approval on PR #152](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152) on 2026-11-01.
 
-**Review Discussion & Comments:** [PR #152 review thread](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152) — CHANGES_REQUESTED on 2026-10-30: the template alone did not enforce Issue #144's acceptance criterion; the reviewer required a required check that validates the mandatory checklist on PRs targeting `lab4-staging`. Round 2: the first validator accepted placeholder evidence (`UI screenshots: screenshots coming soon`, `Test evidence: pending`), so the check had to require real image links and explicit suite/command outcome counts. Round 3: the workflow only covered PRs targeting `lab4-staging` (not release PRs to `main`), and checklist boxes anywhere in the body could satisfy the four required items; the reviewer required both target branches plus section-scoped checklist parsing.
+**Review Discussion & Comments:** [PR #152 review thread](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/pull/152) — CHANGES_REQUESTED on 2026-10-30: the template alone did not enforce Issue #144's acceptance criterion; the reviewer required a required check that validates the mandatory checklist on PRs targeting `lab4-staging`. Round 2: the first validator accepted placeholder evidence (`UI screenshots: screenshots coming soon`, `Test evidence: pending`), so the check had to require real image links and explicit suite/command outcome counts. Round 3: the workflow only covered PRs targeting `lab4-staging` (not release PRs to `main`), and checklist boxes anywhere in the body could satisfy the four required items; the reviewer required both target branches plus section-scoped checklist parsing. Round 4: the reviewer confirmed both fixes on `7f11028`, with the `pr-checklist` workflow green including 34/34 validator tests, and approved.
 
 **Response to Reviewer:** Added `.github/workflows/pr-checklist.yml` (job `pr-checklist`) validating the linked issue, summary, UI screenshots, test evidence, and the four Excluded-Scope items; enabled it as a required status check on both `lab4-staging` and `main` (release PRs). Extracted the rules to `.github/scripts/pr-checklist.mjs` with 34 `node:test` cases that run in CI, requiring an image/attachment link when `client/src` changes and suite/command + outcome counts for test evidence while rejecting placeholders such as `pending`, `to do`, and `screenshots coming soon`. Checklist parsing now requires `## Excluded-Scope checklist` and reads checked boxes only from that section, so checked items elsewhere cannot satisfy it. Also isolated the E2E requester account from the server auth suite, stabilized the mobile actions-flow edit/conflict assertions, and made seed re-runs restore documented demo passwords so both suites start from a known state.
 
-**Status:** Open, awaiting re-review (opened 2026-10-19).
+**Merged & Closed:** [Merge commit 75186ef](https://github.com/justfepwx12/TokTikIT-CPE334-Software-Engineering/commit/75186ef29938678be6cf70ebe0d2bb00b7ff699f) on 2026-11-01.
+
+**Status:** Merged into `lab4-staging`; release promotion to `main` in progress (2026-11-01).
 
 ---
 
