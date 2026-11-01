@@ -16,41 +16,41 @@ Planned test files live under `server/tests/lab-04/`, `client/tests/lab-04/`, an
 
 | # | Level | Related Issue | AC | Tool | Test | Result |
 |---|-------|---------------|----|------|------|--------|
-| 1 | Migration | #133 | AC-56 | Vitest/Prisma | `migration-actions.test.ts` — legacy 7-table row counts identical before/after; pre-Lab-4 tickets read zero actions | Planned |
-| 2 | Migration/Seed | #134 | AC-57 | Vitest/Prisma | `migration-actions.test.ts` — seed runs twice, identical counts; all 8 states present; 0/1/N action coverage; zero + non-zero dashboard fixtures | Planned |
-| 3 | Unit | #135 | AC-35 | Vitest | `action-validation.test.ts` — followUp conditional, skew window, trim/blank rejection | Planned |
-| 4 | Unit | #136 | AC-43 | Vitest | `dashboard-formulas.test.ts` — §3 formulas vs hand-computed fixtures (incl. terminal exclusion, UTC-day boundary) | Planned |
-| 5 | API | #135 | AC-34 | Supertest | `actions-api.test.ts` — staff create 201, performedBy=me, version=1, body performer ignored | Planned |
-| 6 | API | #135 | AC-35 | Supertest | `actions-api.test.ts` — missing note / future actionAt / blank fields → 400, nothing stored | Planned |
-| 7 | API | #135 | AC-36 | Supertest | `actions-api.test.ts` — PATCH with current If-Match → 200, version+1 | Planned |
-| 8 | API | #137 | AC-37 | Supertest | `actions-concurrency.test.ts` — stale If-Match → 409 STALE_VERSION + currentVersion, row unchanged | Planned |
-| 9 | API | #137 | AC-37 | Supertest | `actions-concurrency.test.ts` — two concurrent PATCHes: exactly one 200, one 409, no lost update | Planned |
-| 10 | API | #137 | AC-38 | Supertest | `actions-concurrency.test.ts` — replayed Idempotency-Key → original 201, exactly 1 row; reused key + new payload → 422 | Planned |
-| 11 | Authorization | #135 | AC-39 | Supertest | `actions-authz.test.ts` — Requester POST/PATCH → 403 on own and foreign tickets | Planned |
-| 12 | Authorization | #135 | AC-40 | Supertest | `actions-authz.test.ts` — Requester GET own → 200; foreign → 403/404, no existence leak | Planned |
-| 13 | API | #135 | AC-41 | Supertest | `actions-api.test.ts` — newest-first order + pagination across N actions | Planned |
-| 14 | API | #136 | AC-42 | Supertest | `dashboard-api.test.ts` — Requester A sees own counts; Requester B sees all zeros; Staff sees only own requested tickets; no bleed | Planned |
-| 15 | API | #136 | AC-43 | Supertest | `dashboard-api.test.ts` — staff summary equals direct DB counts (unassigned/mine/followUp/resolvedToday) | Planned |
-| 16 | Authorization | #136 | AC-44 | Supertest | `dashboard-api.test.ts` — Requester on staff summary → 403; no session → 401 | Planned |
-| 17 | API | #136 | AC-45 | Supertest | `dashboard-api.test.ts` — empty scope returns all-zero metrics; never null/500 | Planned |
-| 18 | API | #136 | AC-46 | Supertest | `dashboard-api.test.ts` — every drillDown descriptor (followed with the target list's role; incl. `followUp` + `resolvedToday` filters) resolves to the counted ticket set | Planned |
-| 19 | API | #136 | AC-47 | Supertest + query log | `dashboard-api.test.ts` — aggregation in-DB (groupBy/count), no full-table fetch, no N+1 | Planned |
-| 20 | UI | #139 | AC-48 | Vitest/RTL | `StaffDashboard.test.tsx` — cards + shortcuts + Loading/Empty/Error + drill-down links | Planned |
-| 21 | UI | #138 | AC-49 | Vitest/RTL | `RequesterDashboard.test.tsx` — own-only metrics, empty CTA, no staff metrics rendered | Planned |
-| 22 | UI | #140 | AC-50 | Vitest/RTL | `ActionsTaken.test.tsx` — Staff/Admin see List+Create/Edit; Requester read-only; 0/1/N renders | Planned |
-| 23 | UI | #140 | AC-51 | Vitest/RTL | `ActionsTaken.test.tsx` — conditional follow-up-note error, blank-field errors, save refreshes list | Planned |
-| 24 | UI | #140 | AC-52 | Vitest/RTL | `ActionsTaken.test.tsx` — double-click creates once; draft survives failed save | Planned |
-| 25 | UI | #140 | AC-37 | Vitest/RTL | `ActionsTaken.test.tsx` — 409 renders refresh-and-retry banner; refresh reloads latest | Planned |
-| 26 | UI Style | #141 | AC-48/49 | Vitest/RTL (CSS) | `lab4Style.test.tsx` — Zen Green tokens on dashboard cards, follow-up amber badge, read-only performer chip | Planned |
-| 27 | Responsive | #141 | AC-53 | Playwright | `responsive.spec.ts` — dashboards + detail at 375/768/1280: no page h-scroll, no clipping | Planned |
-| 28 | Responsive | #141 | AC-54 | Playwright (keyboard) | `keyboard.spec.ts` — dashboard → drill-down → view → create completes mouse-free with visible focus | Planned |
-| 29 | E2E | #143 | AC-34–41 | Playwright | `actions-flow.spec.ts` — staff login → record → edit → stale-retry → requester reads own list | Planned |
-| 30 | E2E | #143 | AC-42/46 | Playwright | `requester-dashboard.spec.ts` — requester journey: summary → drill-down → detail → empty-state CTA | Planned |
-| 31 | E2E | #143 | AC-43/46 | Playwright | `staff-dashboard.spec.ts` — staff journey: summary → drill-down → queue → record action | Planned |
-| 32 | E2E | #143 | AC-55 | Playwright | `hygiene.spec.ts` — console-error + broken-link sweep across all Lab 4 screens | Planned |
-| 33 | Workflow | #128 | AC-59 | Supertest | `workflow-spot.test.ts` — legal matrix edges 200, illegal edges 400 unchanged (Lab 3 matrix) | Planned |
-| 34 | Regression | #143 | AC-58 | Playwright | Lab 2+3 journeys re-run (login, create, queue, claim, priorities, transitions, resolve-intent, comments/notes, admin, attachments) — all green, no skips | Planned |
-| 35 | API | #136 | AC-42/43 | Supertest | `dashboard-api.test.ts` — recording a newer `followUpRequired=false` action clears the ticket from follow-up metrics and the `followUp=true` filter (AD-18) | Planned |
+| 1 | Migration | #133 | AC-56 | Vitest/Prisma | `migration-actions.test.ts` — legacy 7-table row counts identical before/after; pre-Lab-4 tickets read zero actions | Passed |
+| 2 | Migration/Seed | #134 | AC-57 | Vitest/Prisma | `migration-actions.test.ts` — seed runs twice, identical counts; all 8 states present; 0/1/N action coverage; zero + non-zero dashboard fixtures | Passed |
+| 3 | Unit | #135 | AC-35 | Vitest | `action-validation.test.ts` — followUp conditional, skew window, trim/blank rejection | Passed |
+| 4 | Unit | #136 | AC-43 | Vitest | `dashboard-formulas.test.ts` — §3 formulas vs hand-computed fixtures (incl. terminal exclusion, UTC-day boundary) | Passed |
+| 5 | API | #135 | AC-34 | Supertest | `actions-api.test.ts` — staff create 201, performedBy=me, version=1, body performer ignored | Passed |
+| 6 | API | #135 | AC-35 | Supertest | `actions-api.test.ts` — missing note / future actionAt / blank fields → 400, nothing stored | Passed |
+| 7 | API | #135 | AC-36 | Supertest | `actions-api.test.ts` — PATCH with current If-Match → 200, version+1 | Passed |
+| 8 | API | #137 | AC-37 | Supertest | `actions-concurrency.test.ts` — stale If-Match → 409 STALE_VERSION + currentVersion, row unchanged | Passed |
+| 9 | API | #137 | AC-37 | Supertest | `actions-concurrency.test.ts` — two concurrent PATCHes: exactly one 200, one 409, no lost update | Passed |
+| 10 | API | #137 | AC-38 | Supertest | `actions-concurrency.test.ts` — replayed Idempotency-Key → original 201, exactly 1 row; reused key + new payload → 422 | Passed |
+| 11 | Authorization | #135 | AC-39 | Supertest | `actions-authz.test.ts` — Requester POST/PATCH → 403 on own and foreign tickets | Passed |
+| 12 | Authorization | #135 | AC-40 | Supertest | `actions-authz.test.ts` — Requester GET own → 200; foreign → 403/404, no existence leak | Passed |
+| 13 | API | #135 | AC-41 | Supertest | `actions-api.test.ts` — newest-first order + pagination across N actions | Passed |
+| 14 | API | #136 | AC-42 | Supertest | `dashboard-api.test.ts` — Requester A sees own counts; Requester B sees all zeros; Staff sees only own requested tickets; no bleed | Passed |
+| 15 | API | #136 | AC-43 | Supertest | `dashboard-api.test.ts` — staff summary equals direct DB counts (unassigned/mine/followUp/resolvedToday) | Passed |
+| 16 | Authorization | #136 | AC-44 | Supertest | `dashboard-api.test.ts` — Requester on staff summary → 403; no session → 401 | Passed |
+| 17 | API | #136 | AC-45 | Supertest | `dashboard-api.test.ts` — empty scope returns all-zero metrics; never null/500 | Passed |
+| 18 | API | #136 | AC-46 | Supertest | `dashboard-api.test.ts` — every drillDown descriptor (followed with the target list's role; incl. `followUp` + `resolvedToday` filters) resolves to the counted ticket set | Passed |
+| 19 | API | #136 | AC-47 | Supertest + query log | `dashboard-api.test.ts` — aggregation in-DB (groupBy/count), no full-table fetch, no N+1 | Passed |
+| 20 | UI | #139 | AC-48 | Vitest/RTL | `StaffDashboard.test.tsx` — cards + shortcuts + Loading/Empty/Error + drill-down links | Passed |
+| 21 | UI | #138 | AC-49 | Vitest/RTL | `RequesterDashboard.test.tsx` — own-only metrics, empty CTA, no staff metrics rendered | Passed |
+| 22 | UI | #140 | AC-50 | Vitest/RTL | `ActionsTaken.test.tsx` — Staff/Admin see List+Create/Edit; Requester read-only; 0/1/N renders | Passed |
+| 23 | UI | #140 | AC-51 | Vitest/RTL | `ActionsTaken.test.tsx` — conditional follow-up-note error, blank-field errors, save refreshes list | Passed |
+| 24 | UI | #140 | AC-52 | Vitest/RTL | `ActionsTaken.test.tsx` — double-click creates once; draft survives failed save | Passed |
+| 25 | UI | #140 | AC-37 | Vitest/RTL | `ActionsTaken.test.tsx` — 409 renders refresh-and-retry banner; refresh reloads latest | Passed |
+| 26 | UI Style | #141 | AC-48/49 | Vitest/RTL (CSS) | `lab4Style.test.tsx` — Zen Green tokens on dashboard cards, follow-up amber badge, read-only performer chip | Passed |
+| 27 | Responsive | #141 | AC-53 | Playwright | `responsive.spec.ts` — dashboards + detail at 375/768/1280: no page h-scroll, no clipping | Passed |
+| 28 | Responsive | #141 | AC-54 | Playwright (keyboard) | `keyboard.spec.ts` — dashboard → drill-down → view → create completes mouse-free with visible focus | Passed |
+| 29 | E2E | #143 | AC-34–41 | Playwright | `actions-flow.spec.ts` — staff login → record → edit → stale-retry → requester reads own list | Passed |
+| 30 | E2E | #143 | AC-42/46 | Playwright | `requester-dashboard.spec.ts` — requester journey: summary → drill-down → detail → empty-state CTA | Passed |
+| 31 | E2E | #143 | AC-43/46 | Playwright | `staff-dashboard.spec.ts` — staff journey: summary → drill-down → queue → record action | Passed |
+| 32 | E2E | #143 | AC-55 | Playwright | `hygiene.spec.ts` — console-error + broken-link sweep across all Lab 4 screens | Passed |
+| 33 | Workflow | #128 | AC-59 | Supertest | `workflow-spot.test.ts` — legal matrix edges 200, illegal edges 400 unchanged (Lab 3 matrix) | Passed |
+| 34 | Regression | #143 | AC-58 | Playwright | Lab 2+3 journeys re-run (login, create, queue, claim, priorities, transitions, resolve-intent, comments/notes, admin, attachments) — all green, no skips | Passed |
+| 35 | API | #136 | AC-42/43 | Supertest | `dashboard-api.test.ts` — recording a newer `followUpRequired=false` action clears the ticket from follow-up metrics and the `followUp=true` filter (AD-18) | Passed |
 
 ---
 
