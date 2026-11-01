@@ -90,7 +90,7 @@ export function validatePullRequest({ body, uiChanged = false, draft = false } =
   if (draft) return { ok: true, skipped: true, errors: [] };
 
   const errors = [];
-  const { sections, cleaned } = parseSections(body);
+  const { sections } = parseSections(body);
   const getSection = (name) => sections.get(name.toLowerCase()) ?? null;
 
   const linkedIssue = meaningful(getSection('Linked issue'));
@@ -137,15 +137,20 @@ export function validatePullRequest({ body, uiChanged = false, draft = false } =
     errors.push('`## Test evidence` must include a suite/command and outcome counts (e.g. `pnpm --filter server exec vitest run` → `239/239 passed`).');
   }
 
-  const checkedItems = cleaned
-    .split('\n')
-    .map((line) => line.match(/^\s*[-*+]\s*\[[xX]\]\s*(.*)$/))
-    .filter(Boolean)
-    .map((match) => normalize(match[1]));
+  const excludedScopeChecklist = getSection('Excluded-Scope checklist');
+  if (excludedScopeChecklist === null) {
+    errors.push('`## Excluded-Scope checklist` section is required.');
+  } else {
+    const checkedItems = excludedScopeChecklist
+      .split('\n')
+      .map((line) => line.match(/^\s*[-*+]\s*\[[xX]\]\s*(.*)$/))
+      .filter(Boolean)
+      .map((match) => normalize(match[1]));
 
-  for (const item of REQUIRED_CHECKS) {
-    if (!checkedItems.some((checked) => checked.includes(normalize(item)))) {
-      errors.push(`Excluded-Scope checklist item is unchecked: "${item}".`);
+    for (const item of REQUIRED_CHECKS) {
+      if (!checkedItems.some((checked) => checked.includes(normalize(item)))) {
+        errors.push(`Excluded-Scope checklist item is unchecked: "${item}".`);
+      }
     }
   }
 

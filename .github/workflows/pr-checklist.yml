@@ -3,7 +3,7 @@ name: PR checklist
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize, ready_for_review]
-    branches: [lab4-staging]
+    branches: [lab4-staging, main]
 
 permissions:
   contents: read

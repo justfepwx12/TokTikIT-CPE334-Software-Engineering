@@ -237,3 +237,24 @@ test('unchecked checklist item fails', () => {
   );
   expectFail(validatePullRequest({ body: makeBody({ checklist }) }), /unchecked/);
 });
+
+test('checked items outside the Excluded-Scope checklist do not pass', () => {
+  const body = makeBody({ checklist: '- None.' }).replace(
+    '## Summary\n\n',
+    `## Summary\n\n${CHECKLIST}\n\n`,
+  );
+  expectFail(validatePullRequest({ body }), /Excluded-Scope checklist item is unchecked/);
+});
+
+test('missing Excluded-Scope checklist section fails', () => {
+  const body = makeBody().replace('## Excluded-Scope checklist', '## Other checklist');
+  expectFail(validatePullRequest({ body }), /Excluded-Scope checklist` section is required/);
+});
+
+test('empty Excluded-Scope checklist cannot borrow checked items from another section', () => {
+  const body = makeBody({ checklist: '' }).replace(
+    '## Summary\n\n',
+    `## Summary\n\n${CHECKLIST}\n\n`,
+  );
+  expectFail(validatePullRequest({ body }), /Excluded-Scope checklist item is unchecked/);
+});
